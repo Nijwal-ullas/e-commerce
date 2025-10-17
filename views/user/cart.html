@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart - RnBB Collection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital@1&display=swap');
+        .logo {
+            font-family: 'Playfair Display', serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-2xl font-bold text-rose-600 italic">Ruhe Collection</h1>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="/" class="text-gray-700 hover:text-rose-600 transition">Home</a>
+                    <a href="/shop" class="text-gray-700 hover:text-rose-600 transition">Shop</a>
+                    <a href="/about" class="text-gray-700 hover:text-rose-600 transition">About Us</a>
+                    <a href="/contact" class="text-gray-700 hover:text-rose-600 transition">Contacts</a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="text-gray-700 hover:text-rose-600"><i class="fas fa-search"></i></button>
+                    <button class="text-gray-700 hover:text-rose-600"><i class="fas fa-user"></i></button>
+                    <button class="text-gray-700 hover:text-rose-600"><i class="fas fa-heart"></i></button>
+                    <button class="text-gray-700 hover:text-rose-600"><i class="fas fa-shopping-bag"></i></button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Cart Content -->
+    <div class="max-w-7xl mx-auto px-6 md:px-12 py-8">
+        <!-- Delivery Address -->
+        <div class="bg-white rounded-lg p-4 mb-6 flex justify-between items-start">
+            <div>
+                <p class="text-sm font-semibold mb-1">Deliver to : <span class="font-normal">Nijavil ullas,</span></p>
+                <p class="text-sm text-gray-600">Thalassary,kannur</p>
+                <p class="text-sm text-gray-600">pin : 670570</p>
+            </div>
+            <button class="text-red-500 text-sm font-semibold hover:underline">change</button>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+            <!-- Cart Items -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Cart Item -->
+                <% const cartItems = [
+                    { 
+                        name: 'SUITS Perfume', 
+                        ml: '200',
+                        originalPrice: '₹1400.00',
+                        price: '₹700',
+                        discount: '50% Off',
+                        image: 'https://images.unsplash.com/photo-1541643600914-78b084683601?w=300&h=400&fit=crop',
+                        deliveryBy: 'sat oct 11'
+                    }
+                ]; %>
+                <% cartItems.forEach((item, index) => { %>
+                <div class="bg-white rounded-lg p-6">
+                    <div class="flex items-start gap-6">
+                        <!-- Product Image -->
+                        <div class="w-32 h-32 bg-gray-50 rounded flex items-center justify-center flex-shrink-0">
+                            <img src="<%= item.image %>" alt="<%= item.name %>" class="h-full object-contain">
+                        </div>
+
+                        <!-- Product Details -->
+                        <div class="flex-1">
+                            <h3 class="text-lg font-semibold mb-2"><%= item.name %></h3>
+                            <div class="mb-3">
+                                <label class="text-sm text-gray-600 mr-2">ml :</label>
+                                <select class="border border-gray-300 rounded px-3 py-1 text-sm">
+                                    <option><%= item.ml %></option>
+                                    <option>50</option>
+                                    <option>100</option>
+                                    <option>150</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center gap-3 mb-4">
+                                <span class="line-through text-gray-400 text-sm"><%= item.originalPrice %></span>
+                                <span class="text-2xl font-bold"><%= item.price %></span>
+                                <span class="text-green-600 text-sm font-semibold"><%= item.discount %></span>
+                            </div>
+
+                            <!-- Quantity Controls -->
+                            <div class="flex items-center gap-4 mb-4">
+                                <div class="flex items-center border border-gray-300 rounded">
+                                    <button onclick="decreaseQty(<%= index %>)" class="px-3 py-1 hover:bg-gray-100">-</button>
+                                    <input type="text" id="qty-<%= index %>" value="1" class="w-12 text-center border-x border-gray-300 focus:outline-none" readonly>
+                                    <button onclick="increaseQty(<%= index %>)" class="px-3 py-1 hover:bg-gray-100">+</button>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="flex gap-4">
+                                <button class="px-6 py-2 border border-gray-300 rounded hover:bg-gray-50 text-sm font-semibold transition">
+                                    Remove
+                                </button>
+                                <button class="px-6 py-2 border border-gray-300 rounded hover:bg-gray-50 text-sm font-semibold transition">
+                                    Move to Wishlist
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Delivery Info (Desktop) -->
+                        <div class="hidden lg:block text-right">
+                            <p class="text-sm text-gray-600 mb-1">Delivery by <span class="font-semibold"><%= item.deliveryBy %></span></p>
+                        </div>
+                    </div>
+                </div>
+                <% }); %>
+            </div>
+
+            <!-- Price Details Sidebar -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg p-6 sticky top-24">
+                    <h3 class="text-lg font-bold mb-4 pb-4 border-b">Price details</h3>
+                    
+                    <div class="space-y-3 mb-4">
+                        <div class="flex justify-between text-sm">
+                            <span>Price</span>
+                            <span>: ₹1400</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span>Discount</span>
+                            <span class="text-green-600">: -₹700</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span>Delivery charge</span>
+                            <span class="text-green-600">: Free</span>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-4 mb-6">
+                        <div class="flex justify-between text-lg font-bold">
+                            <span>Total amount</span>
+                            <span>: ₹700</span>
+                        </div>
+                    </div>
+
+                    <button class="w-full bg-red-500 text-white py-3 rounded font-semibold hover:bg-red-600 transition mb-4">
+                        Place your order
+                    </button>
+
+                    <!-- Coupon Section -->
+                    <div class="border-t pt-4">
+                        <button onclick="toggleCoupon()" class="text-sm font-semibold text-gray-700 hover:text-red-500 transition mb-3">
+                            Apply coupon
+                        </button>
+                        <div id="couponInput" class="hidden">
+                            <input type="text" placeholder="coupon code" class="w-full border border-gray-300 rounded px-4 py-2 text-sm focus:outline-none focus:border-red-500">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-rose-50 mt-16">
+        <div class="max-w-7xl mx-auto px-4 py-12">
+            <!-- Footer Links -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+                <div>
+                    <h3 class="text-rose-600 font-bold mb-4 uppercase text-sm">Need Help</h3>
+                    <ul class="space-y-2 text-gray-700 text-sm">
+                        <li><a href="/contact" class="hover:text-rose-600">Contact Us</a></li>
+                        <li><a href="/track" class="hover:text-rose-600">Track Order</a></li>
+                        <li><a href="/returns" class="hover:text-rose-600">Returns & Refunds</a></li>
+                        <li><a href="/faq" class="hover:text-rose-600">FAQs</a></li>
+                        <li><a href="/account" class="hover:text-rose-600">My Account</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-rose-600 font-bold mb-4 uppercase text-sm">Company</h3>
+                    <ul class="space-y-2 text-gray-700 text-sm">
+                        <li><a href="/about" class="hover:text-rose-600">About Us</a></li>
+                        <li><a href="/legal" class="hover:text-rose-600">Legal Notice</a></li>
+                        <li><a href="/terms" class="hover:text-rose-600">Terms</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-rose-600 font-bold mb-4 uppercase text-sm">More Info</h3>
+                    <ul class="space-y-2 text-gray-700 text-sm">
+                        <li><a href="/faq" class="hover:text-rose-600">FAQ</a></li>
+                        <li><a href="/privacy" class="hover:text-rose-600">Privacy Policy</a></li>
+                        <li><a href="/sitemap" class="hover:text-rose-600">Sitemap</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-rose-600 font-bold mb-4 uppercase text-sm">Store Near Me</h3>
+                    <ul class="space-y-2 text-gray-700 text-sm">
+                        <li><a href="/store/kannur" class="hover:text-rose-600">Kannur</a></li>
+                        <li><a href="/store/kochi" class="hover:text-rose-600">Kochi</a></li>
+                        <li><a href="/store/thrissur" class="hover:text-rose-600">Thrissur</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Features -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 py-8 border-t border-b border-rose-100">
+                <div class="text-center">
+                    <div class="flex justify-center mb-3">
+                        <i class="fas fa-truck text-3xl text-gray-700"></i>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-1">Free Shipping</h4>
+                    <p class="text-xs text-gray-600">For All Orders Over 500Rs</p>
+                </div>
+                <div class="text-center">
+                    <div class="flex justify-center mb-3">
+                        <i class="fas fa-undo text-3xl text-gray-700"></i>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-1">30 Days Returns</h4>
+                    <p class="text-xs text-gray-600">For All Exchange Products</p>
+                </div>
+                <div class="text-center">
+                    <div class="flex justify-center mb-3">
+                        <i class="fas fa-credit-card text-3xl text-gray-700"></i>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-1">Secured Payment</h4>
+                    <p class="text-xs text-gray-600">Payment Cards Accepted</p>
+                </div>
+                <div class="text-center">
+                    <div class="flex justify-center mb-3">
+                        <i class="fas fa-gift text-3xl text-gray-700"></i>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 mb-1">Special Gifts</h4>
+                    <p class="text-xs text-gray-600">Get First Product Orders</p>
+                </div>
+            </div>
+
+            <!-- Payment Methods & Social -->
+            <div class="flex flex-col md:flex-row justify-between items-center pt-8">
+                <div class="mb-4 md:mb-0">
+                    <p class="text-sm text-gray-600 mb-2">100% Secure Payments</p>
+                    <div class="flex space-x-3">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/0/04/Visa.svg" alt="Visa" class="h-6">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" class="h-6">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="PayPal" class="h-6">
+                    </div>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600 mb-2">Follow Us:</p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-700 hover:text-rose-600"><i class="fab fa-facebook text-xl"></i></a>
+                        <a href="#" class="text-gray-700 hover:text-rose-600"><i class="fab fa-instagram text-xl"></i></a>
+                        <a href="#" class="text-gray-700 hover:text-rose-600"><i class="fab fa-tiktok text-xl"></i></a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Copyright -->
+            <div class="text-center pt-8 border-t border-rose-100 mt-8">
+                <p class="text-sm text-gray-600">© The Rakh Store</p>
+            </div>
+        </div>
+    </footer>
+    <script>
+        function increaseQty(index) {
+            const qtyInput = document.getElementById(`qty-${index}`);
+            qtyInput.value = parseInt(qtyInput.value) + 1;
+            updateTotals();
+        }
+
+        function decreaseQty(index) {
+            const qtyInput = document.getElementById(`qty-${index}`);
+            if (parseInt(qtyInput.value) > 1) {
+                qtyInput.value = parseInt(qtyInput.value) - 1;
+                updateTotals();
+            }
+        }
+
+        function toggleCoupon() {
+            const couponInput = document.getElementById('couponInput');
+            couponInput.classList.toggle('hidden');
+        }
+
+        function updateTotals() {
+            // Update cart totals based on quantity
+            // This would be connected to your backend in production
+        }
+    </script>
+</body>
+</html>
