@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rube Collection - My Wishlist</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Lato', sans-serif;
+        }
+        
+        .heading-font {
+            font-family: 'Playfair Display', serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="heading-font text-2xl text-red-700 font-bold">Rube Collection</div>
+                
+                <nav class="hidden md:flex space-x-8">
+                    <a href="#" class="text-gray-700 hover:text-red-700 transition">Home</a>
+                    <a href="#" class="text-gray-700 hover:text-red-700 transition">Shop</a>
+                    <a href="#" class="text-gray-700 hover:text-red-700 transition">About Us</a>
+                    <a href="#" class="text-gray-700 hover:text-red-700 transition">Contacts</a>
+                </nav>
+                
+                <div class="flex items-center space-x-4">
+                    <button class="text-gray-700 hover:text-red-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </button>
+                    <button class="text-gray-700 hover:text-red-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                    </button>
+                    <button class="text-gray-700 hover:text-red-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                        </svg>
+                    </button>
+                    <button class="text-gray-700 hover:text-red-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 class="text-2xl font-semibold text-gray-800 mb-6">My Wishlist (2 items)</h1>
+        
+        <!-- Product Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 mb-12">
+            <!-- Product 1 -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition group">
+                <div class="relative p-6 bg-gray-50">
+                    <button class="absolute top-2 right-2 text-red-700 hover:text-red-800">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 300'%3E%3Crect fill='%23e8f5e9' width='200' height='300'/%3E%3Cpath d='M80 100h40v120h-40z' fill='%2366bb6a'/%3E%3Cellipse cx='100' cy='90' rx='20' ry='30' fill='%23333'/%3E%3C/svg%3E" alt="Aqua Splash" class="w-full h-48 object-contain">
+                </div>
+                <div class="p-4 text-center">
+                    <h3 class="font-medium text-gray-800 mb-1">Aqua Splash</h3>
+                    <p class="text-sm text-gray-500 mb-2">60ml</p>
+                    <p class="text-lg font-bold text-red-700">₹899</p>
+                </div>
+            </div>
+
+            <!-- Product 2 -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition group">
+                <div class="relative p-6 bg-gray-50">
+                    <button class="absolute top-2 right-2 text-red-700 hover:text-red-800">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 300'%3E%3Crect fill='%23fff3e0' width='200' height='300'/%3E%3Cpath d='M80 100h40v120h-40z' fill='%23ffa726'/%3E%3Cellipse cx='100' cy='90' rx='20' ry='30' fill='%23333'/%3E%3C/svg%3E" alt="Citrus Bliss" class="w-full h-48 object-contain">
+                </div>
+                <div class="p-4 text-center">
+                    <h3 class="font-medium text-gray-800 mb-1">Citrus Bliss</h3>
+                    <p class="text-sm text-gray-500 mb-2">100ml</p>
+                    <p class="text-lg font-bold text-red-700">₹1299</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-rose-100 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+                <!-- Need Help -->
+                <div>
+                    <h3 class="font-semibold text-red-700 mb-4">NEED HELP</h3>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li><a href="#" class="hover:text-red-700">Contact Us</a></li>
+                        <li><a href="#" class="hover:text-red-700">Track Order</a></li>
+                        <li><a href="#" class="hover:text-red-700">Returns & Refunds</a></li>
+                        <li><a href="#" class="hover:text-red-700">FAQs</a></li>
+                        <li><a href="#" class="hover:text-red-700">My Accounts</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Company -->
+                <div>
+                    <h3 class="font-semibold text-red-700 mb-4">COMPANY</h3>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li><a href="#" class="hover:text-red-700">About Us</a></li>
+                        <li><a href="#" class="hover:text-red-700">Legal Notice</a></li>
+                    </ul>
+                </div>
+                
+                <!-- More Info -->
+                <div>
+                    <h3 class="font-semibold text-red-700 mb-4">MORE INFO</h3>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li><a href="#" class="hover:text-red-700">T&C</a></li>
+                        <li><a href="#" class="hover:text-red-700">Privacy Policy</a></li>
+                        <li><a href="#" class="hover:text-red-700">Blogs</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Store Near Me -->
+                <div>
+                    <h3 class="font-semibold text-red-700 mb-4">STORE NEAR ME</h3>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li><a href="#" class="hover:text-red-700">Kannu</a></li>
+                        <li><a href="#" class="hover:text-red-700">Kochi</a></li>
+                        <li><a href="#" class="hover:text-red-700">Thrissur</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Features -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 py-8 border-t border-rose-200">
+                <div class="text-center">
+                    <div class="flex justify-center mb-2">
+                        <svg class="w-12 h-12 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 text-sm">Free Shipping</h4>
+                    <p class="text-xs text-gray-600 mt-1">For All orders Over 500rs</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="flex justify-center mb-2">
+                        <svg class="w-12 h-12 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 text-sm">Only Exchange Products</h4>
+                    <p class="text-xs text-gray-600 mt-1">For An Exchange Products</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="flex justify-center mb-2">
+                        <svg class="w-12 h-12 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 text-sm">Secured Payment</h4>
+                    <p class="text-xs text-gray-600 mt-1">Payment Cards Accepted</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="flex justify-center mb-2">
+                        <svg class="w-12 h-12 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"></path>
+                        </svg>
+                    </div>
+                    <h4 class="font-semibold text-gray-800 text-sm">Our Fast Product</h4>
+                    <p class="text-xs text-gray-600 mt-1">One Fast Product Orders</p>
+                </div>
+            </div>
+            
+            <!-- Bottom Footer -->
+            <div class="flex flex-col md:flex-row items-center justify-between pt-8 border-t border-rose-200 gap-4">
+                <div class="text-sm text-gray-600">
+                    © 2025 Rube Perfume | Powerd By
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='25' viewBox='0 0 40 25'%3E%3Crect fill='%23EB001B' width='40' height='25' rx='2'/%3E%3Ctext x='20' y='17' font-family='Arial' font-size='10' fill='white' text-anchor='middle'%3EMC%3C/text%3E%3C/svg%3E" alt="Mastercard" class="h-6">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='25' viewBox='0 0 40 25'%3E%3Crect fill='%231A1F71' width='40' height='25' rx='2'/%3E%3Ctext x='20' y='17' font-family='Arial' font-size='10' fill='white' text-anchor='middle'%3EVISA%3C/text%3E%3C/svg%3E" alt="Visa" class="h-6">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='25' viewBox='0 0 40 25'%3E%3Crect fill='%23016FD0' width='40' height='25' rx='2'/%3E%3Ctext x='20' y='17' font-family='Arial' font-size='8' fill='white' text-anchor='middle'%3EPayPal%3C/text%3E%3C/svg%3E" alt="PayPal" class="h-6">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='25' viewBox='0 0 40 25'%3E%3Crect fill='%23FF6C00' width='40' height='25' rx='2'/%3E%3Ctext x='20' y='17' font-family='Arial' font-size='9' fill='white' text-anchor='middle'%3ERUPY%3C/text%3E%3C/svg%3E" alt="RuPay" class="h-6">
+                    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='25' viewBox='0 0 40 25'%3E%3Crect fill='%23000000' width='40' height='25' rx='2'/%3E%3Ctext x='20' y='17' font-family='Arial' font-size='8' fill='white' text-anchor='middle'%3EMaestro%3C/text%3E%3C/svg%3E" alt="Maestro" class="h-6">
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-600">Follow Us</span>
+                    <a href="#" class="text-gray-600 hover:text-red-700">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    </a>
+                    <a href="#" class="text-gray-600 hover:text-red-700">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                    </a>
+                    <a href="#" class="text-gray-600 hover:text-red-700">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z"/></svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
