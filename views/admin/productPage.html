@@ -32,20 +32,25 @@
             <i class="fas fa-th-large"></i>
             <span>Dashboard</span>
           </a>
-          <a href="#" class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded">
+          <button onclick="toggleDropdown('categorySub', 'chevCat')" class="w-full flex items-center gap-3 px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium">
             <i class="fas fa-folder"></i>
             <span>Category</span>
-          </a>
+            <i id="chevCat" class="fas fa-chevron-down ml-auto text-xs transition-transform duration-300"></i>
+          </button>
+          <div id="categorySub" class="submenu ml-8 mt-1 space-y-1">
+            <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded text-sm">Category List</a>
+            <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded text-sm">Add Category</a>
+          </div>
           <a href="#" class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded">
             <i class="fas fa-cube"></i>
             <span>Brands</span>
           </a>
-          <button onclick="toggleDropdown()" class="w-full flex items-center gap-3 px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium">
+          <button onclick="toggleDropdown('productSub', 'chevProd')" class="w-full flex items-center gap-3 px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium">
             <i class="fas fa-box"></i>
             <span>Products</span>
-            <i id="chevron" class="fas fa-chevron-down ml-auto text-xs transition-transform duration-300"></i>
+            <i id="chevProd" class="fas fa-chevron-down ml-auto text-xs transition-transform duration-300"></i>
           </button>
-          <div id="submenu" class="submenu ml-8 mt-1 space-y-1">
+          <div id="productSub" class="submenu ml-8 mt-1 space-y-1">
             <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded text-sm">Product List</a>
             <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded text-sm">Product Upload</a>
           </div>
@@ -167,10 +172,15 @@
               <i class="fas fa-th-large"></i>
               <span>Dashboard</span>
             </a>
-            <a href="#" class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded">
+            <button onclick="toggleDropdown('categorySub', 'chevCat')" class="w-full flex items-center gap-3 px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium">
               <i class="fas fa-folder"></i>
               <span>Category</span>
-            </a>
+              <i id="chevCat" class="fas fa-chevron-down ml-auto text-xs transition-transform duration-300"></i>
+            </button>
+            <div id="categorySub" class="submenu ml-8 mt-1 space-y-1">
+              <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded text-sm">Category List</a>
+              <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded text-sm">Add Category</a>
+            </div>
             <a href="#" class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded">
               <i class="fas fa-cube"></i>
               <span>Brands</span>
@@ -180,7 +190,7 @@
               <span>Products</span>
               <i class="fas fa-chevron-down ml-auto text-xs"></i>
             </div>
-            <div class="ml-8 space-y-1">
+            <div id="productSub" class="submenu ml-8 mt-1 space-y-1 open">
               <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded text-sm">Product List</a>
               <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded text-sm">Product Upload</a>
             </div>
@@ -419,9 +429,9 @@
   </div>
 
   <script>
-    function toggleDropdown() {
-      const submenu = document.getElementById("submenu");
-      const chevron = document.getElementById("chevron");
+    function toggleDropdown(subId, chevronId) {
+      const submenu = document.getElementById(subId);
+      const chevron = document.getElementById(chevronId);
       submenu.classList.toggle("open");
       chevron.classList.toggle("rotate-180");
     }
