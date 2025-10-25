@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
+import session from 'express-session';
 import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import userRouter from './router/user.js';
@@ -20,6 +21,12 @@ app.set('views',path.join(__dirname,'views'));
 app.use(express.static(path.join(__dirname, 'public'))); 
 app.use(express.json())
 app.use(express.urlencoded({extended:true}))
+app.use(session({
+    secret : process.env.SESSION_SECRET,
+    resave : false,
+    saveUninitialized : true,
+    cookie : { maxAge : 600000 }
+}))
 app.use('/',userRouter);
 // app.use('/admin',adminRouter);
 

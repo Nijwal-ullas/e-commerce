@@ -21,13 +21,16 @@
   },
   "homepage": "https://github.com/Nijwal-ullas/e-commerce#readme",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "dotenv": "^17.2.3",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-ejs-layouts": "^2.5.1",
+    "express-session": "^1.18.2",
     "mongodb": "^6.20.0",
     "mongoose": "^8.19.2",
     "morgan": "^1.10.1",
+    "nodemailer": "^7.0.10",
     "path": "^0.12.7"
   }
 }
