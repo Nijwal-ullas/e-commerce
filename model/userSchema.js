@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-const { Schema, ObjectId } = mongoose;
+const { Schema } = mongoose;
 
 const UserSchema = new Schema({
   Name: { type: String, required: true, trim: true },
@@ -9,11 +9,10 @@ const UserSchema = new Schema({
   Phone: { type: String },
   ProfileImage: { type: String },
   Email: { type: String, required: true, unique: true, lowercase: true },
+  googleId: { type: String },
   UpdatedAt: { type: Date },
   CreatedAt: { type: Date },
 });
 
 const User = mongoose.model('User', UserSchema);
-
 export default User;
-
