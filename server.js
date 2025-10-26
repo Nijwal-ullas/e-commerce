@@ -32,13 +32,7 @@ app.use('/',userRouter);
 
 const port = process.env.PORT;
 
-// app.get('/user/home',(req,res)=>{
-//     console.log("hallo")
-//     res.render('user/home');
-// })
-// app.get('/user/order',(req,res)=>{
-//     res.render('user/orderPage')
-// })
+
 app.listen(port,()=>{
     console.log(`Server is running on port ${port}`);
 })
