@@ -65,8 +65,8 @@ async function sendOtpEmail(email, otp) {
       from: process.env.NODEMAILER_EMAIL,
       to: email,
       subject: 'Your OTP Code',
-      text: `Your OTP code is ${otp}. It is valid for 10 minutes.`,
-      html: `<p>Your OTP code is <b>${otp}</b>. It is valid for 10 minutes.</p>`,
+      text: `Your OTP code is ${otp}. It is valid for 1 minutes.`,
+      html: `<p>Your OTP code is <b>${otp}</b>. It is valid for 1 minutes.</p>`,
     });
 
     return true;
@@ -90,7 +90,7 @@ const register = async (req, res) => {
     console.log(`Generated OTP for ${Email} is: ${otp}`);
     req.session.userOtp = otp;
     req.session.userData = { Name, Email, Password };
-    req.session.otpExpire = Date.now() + 10 * 60 * 1000; 
+    req.session.otpExpire = Date.now() + 1 * 60 * 1000; 
     await sendOtpEmail(Email, otp);
     res.render('user/registerOtpPage', { Email });
   } catch (error) {
@@ -144,8 +144,11 @@ const registerOtpPage = async (req, res) => {
 
 const resendOtp = async (req, res) => {
   try {
+       
     const userData = req.session.userData;
+    
     if (!userData || !userData.Email) {
+      console.log("No userData in session");
       return res.status(400).json({
         success: false,
         message: "Session expired. Please register again.",
@@ -153,29 +156,42 @@ const resendOtp = async (req, res) => {
     }
 
     const Email = userData.Email;
+    console.log("Email found:", Email);
 
-    // ✅ Generate new OTP
     const otp = generateOtp();
+    console.log(`New OTP generated: ${otp}`);
+    
     req.session.userOtp = otp;
-    req.session.otpExpire = Date.now() + 10 * 60 * 1000; // 10 mins expiry
+    req.session.otpExpire = Date.now() + 1 * 60 * 1000;
 
-    // Log OTP in terminal (VS Code)
-    console.log(`🔁 New OTP for ${Email}: ${otp}`);
+    req.session.save(async (saveErr) => {
+      if (saveErr) {
+        console.log("Session save failed:", saveErr);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to save session. Please try again.",
+        });
+      }
 
-    // Send email
-    const emailSent = await sendOtpEmail(Email, otp);
+      console.log("Session saved successfully");
+      console.log("New OTP in session:", req.session.userOtp);
 
-    if (emailSent) {
-      return res.status(200).json({
-        success: true,
-        message: "OTP resent successfully. Please check your email.",
-      });
-    } else {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to resend OTP. Try again later.",
-      });
-    }
+      const emailSent = await sendOtpEmail(Email, otp);
+
+      if (emailSent) {
+        console.log("OTP email sent successfully");
+        return res.status(200).json({
+          success: true,
+          message: "OTP resent successfully. Please check your email.",
+        });
+      } else {
+        console.log("Failed to send email");
+        return res.status(500).json({
+          success: false,
+          message: "Failed to send OTP email. Try again later.",
+        });
+      }
+    });
   } catch (error) {
     console.log("Error in resending OTP:", error);
     return res.status(500).json({

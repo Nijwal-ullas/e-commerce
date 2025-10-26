@@ -12,17 +12,14 @@
 </head>
 
 <body class="bg-gray-100">
-  <!-- Header -->
+
   <%- include('./partial/header.ejs') %>
 
-  <!-- Main Content -->
   <main class="container mx-auto px-4 py-12">
     <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 border border-gray-200">
       <h2 class="text-center text-xl font-semibold mb-6">Login to your account</h2>
 
-      <!-- ✅ Login Form -->
       <form id="loginForm" method="POST" action="/login" novalidate>
-        <!-- Email -->
         <div class="mb-4">
           <label for="email" class="block text-gray-700 mb-1">Email</label>
           <input
@@ -38,7 +35,6 @@
           </p>
         </div>
 
-        <!-- Password -->
         <div class="mb-2 relative">
           <label for="password" class="block text-gray-700 mb-1">Password</label>
           <input
@@ -68,7 +64,6 @@
           >
         </div>
 
-        <!-- Submit -->
         <button
           type="submit"
           class="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 transition mb-4"
@@ -76,13 +71,11 @@
           Login
         </button>
 
-        <!-- Signup Link -->
         <div class="text-center text-sm mb-4">
           <span class="text-gray-600">Not registered? </span>
           <a href="/register" class="text-blue-600 hover:underline">Sign up</a>
         </div>
 
-        <!-- Google Login -->
         <button
           type="button"
           class="w-full border border-gray-300 py-2 rounded hover:bg-gray-50 transition flex items-center justify-center"
@@ -98,11 +91,9 @@
     </div>
   </main>
 
-  <!-- Footer -->
   <%- include('./partial/footer.ejs') %>
 
   <script>
-    // 👁️ Toggle password visibility
     function togglePassword() {
       const passwordInput = document.getElementById("password");
       const type =
@@ -110,7 +101,6 @@
       passwordInput.setAttribute("type", type);
     }
 
-    // ✅ Form validation
     document
       .getElementById("loginForm")
       .addEventListener("submit", function (e) {
@@ -121,7 +111,6 @@
 
         let valid = true;
 
-        // Validate email
         const emailPattern = /^[^ ]+@[^ ]+\.[a-z]{2,3}$/;
         if (!email.value.match(emailPattern)) {
           emailError.classList.remove("hidden");
@@ -130,7 +119,6 @@
           emailError.classList.add("hidden");
         }
 
-        // Validate password
         if (password.value.trim().length < 6) {
           passwordError.classList.remove("hidden");
           valid = false;
@@ -139,7 +127,7 @@
         }
 
         if (!valid) {
-          e.preventDefault(); // stop form from submitting
+          e.preventDefault(); 
         }
       });
   </script>

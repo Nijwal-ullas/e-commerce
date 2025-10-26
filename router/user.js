@@ -7,7 +7,7 @@ router.get('/login',userController.loadLoginPage);
 router.post('/login',userController.login)
 router.get('/register',userController.loadRegisterPage)
 router.post('/register',userController.register)
-router.post('/registerOtpPage',userController.registerOtpPage)
-router.post('/resendOtp',userController.resendOtp)
+router.post('/verify-otp', userController.registerOtpPage);
+router.post('/resend-otp', userController.resendOtp);
 
 export default router;
