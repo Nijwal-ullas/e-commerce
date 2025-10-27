@@ -9,7 +9,7 @@ import passport from './config/passport.js';
 
 
 dotenv.config();
-connectDB();
+await connectDB();
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
