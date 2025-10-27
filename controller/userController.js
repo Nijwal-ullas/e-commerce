@@ -27,15 +27,20 @@ const login = async (req, res) => {
   try {
     const existingUser = await User.findOne({ Email });
     if (!existingUser) {
-      return res.status(400).send("User not found");
-    } else if (existingUser.Password !== Password) {
-      return res.status(400).send("Invalid Password");
-    } else {
-      res.redirect('/');
+      return res.render('/user/loginPage', { message: "User already existing" });
     }
+    if(existingUser.IsBlocked){
+      return render('user/loginPage',{message : "You are blocked by admin"})
+    }
+     const passwordMatch = await bcrypt.compare(Password, existingUser.Password);
+    if (!passwordMatch) {
+      return res.render('user/loginPage', { message: "Incorrect password" });
+    }
+    req.session.user_id = existingUser._id;
+    res.redirect('/');
   } catch (error) {
     console.log(error.message);
-    res.status(500).send("Login failed");
+    res.status(500).render('user/loginPage', { message: "Internal server error" });
   }
 };
 
