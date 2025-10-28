@@ -5,6 +5,7 @@ import session from 'express-session';
 import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import userRouter from './router/user.js';
+import adminRouter from './router/admin.js'
 import passport from './config/passport.js';
 
 
@@ -35,8 +36,14 @@ app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
+app.use((req, res, next) => {
+  res.locals.user = req.session.user || null;
+  next();
+});
+
 
 app.use('/', userRouter);
+app.use('/admin',adminRouter)
 
 const port = process.env.PORT;
 app.listen(port, () => {
