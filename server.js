@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import session from 'express-session';
+import MongoStore from 'connect-mongo';
 import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import userRouter from './router/user.js';
@@ -23,10 +24,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  secret: process.env.SESSION_SECRET,
+  secret: process.env.SESSION_SECRET,  
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 600000 }
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGO_URI,   
+    collectionName: "sessions",        
+    ttl: 14 * 24 * 60 * 60,           
+  }),
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24,       
+    secure: false,                     
+  }
 }));
 
 app.use(passport.initialize());
