@@ -14,16 +14,13 @@
 <body class="bg-gradient-to-br from-indigo-500 to-purple-600 min-h-screen flex items-center justify-center font-sans">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
     
-    <!-- Header -->
     <div class="text-center py-8 border-b border-gray-200">
       <h2 class="text-2xl font-semibold text-gray-800">Login to Admin Panel</h2>
     </div>
 
-    <!-- Body -->
     <div class="p-8">
       <form id="loginForm" action="/admin/login" method="POST" class="space-y-5">
         
-        <!-- Email -->
         <div>
           <label for="email" class="block text-sm font-medium text-gray-600 mb-2">Email</label>
           <input
@@ -36,7 +33,6 @@
           />
         </div>
 
-        <!-- Password -->
         <div>
           <label for="password" class="block text-sm font-medium text-gray-600 mb-2">Password</label>
           <div class="relative">
@@ -58,7 +54,6 @@
           </div>
         </div>
 
-        <!-- Login Button -->
         <button
           type="submit"
           class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold py-3 rounded-md shadow-md hover:shadow-lg hover:opacity-90 transition"
@@ -70,9 +65,7 @@
     </div>
   </div>
 
-  <!-- JS -->
   <script>
-    // Password toggle functionality
     const togglePassword = document.getElementById('togglePassword');
     const passwordInput = document.getElementById('password');
     const toggleIcon = togglePassword.querySelector('i');
