@@ -1,8 +1,8 @@
-<header class="bg-gray-800 text-white py-4 shadow-lg fixed top-0 left-0 w-full z-50">
+<header
+  class="bg-gray-800 text-white py-4 shadow-lg fixed top-0 left-0 w-full z-50"
+>
   <div class="container mx-auto px-4 flex justify-between items-center">
-    <div class="text-red-500 font-serif text-2xl italic">
-      Ruhe Collection
-    </div>
+    <div class="text-red-500 font-serif text-2xl italic">Ruhe Collection</div>
 
     <nav class="hidden md:flex space-x-6">
       <a href="/" class="hover:text-gray-300 transition">Home</a>
@@ -12,49 +12,64 @@
     </nav>
 
     <div class="flex space-x-4 text-lg items-center relative">
-      <% if (user) { %>
-        <div class="relative">
-          <button
-            id="userDropdownBtn"
-            class="hover:text-gray-300 flex items-center space-x-2 focus:outline-none"
-          >
-            <i class="fas fa-user"></i>
-            <span><%= user.Name || user.name %></span>
-            <i class="fas fa-chevron-down text-sm"></i>
-          </button>
-
-          <div
-            id="userDropdown"
-            class="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-lg shadow-lg hidden"
-          >
-            <a href="/userProfile" class="block px-4 py-2 hover:bg-gray-100 transition">Profile</a>
-            <a href="/logout" class="block px-4 py-2 hover:bg-gray-100 transition">Logout</a>
-          </div>
-        </div>
+     <% if (user) { %>
+  <div class="relative">
+    <button
+      id="userDropdownBtn"
+      class="hover:text-gray-300 flex items-center space-x-2 focus:outline-none"
+    >
+      <% if (user.profileImage) { %>
+        <img src="<%= user.profileImage %>" alt="Profile" class="w-8 h-8 rounded-full border border-gray-300" />
       <% } else { %>
-        <div class="relative">
-          <button
-            id="authDropdownBtn"
-            class="hover:text-gray-300 flex items-center space-x-2 focus:outline-none"
-          >
-            <i class="fas fa-user"></i>
-            <span>Account</span>
-            <i class="fas fa-chevron-down text-sm"></i>
-          </button>
-
-          <div
-            id="authDropdown"
-            class="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-lg shadow-lg hidden"
-          >
-            <a href="/login" class="block px-4 py-2 hover:bg-gray-100 transition">Sign In</a>
-            <a href="/register" class="block px-4 py-2 hover:bg-gray-100 transition">Sign Up</a>
-          </div>
-        </div>
+        <i class="fas fa-user"></i>
       <% } %>
+      <span><%= user.name || user.email || 'User' %></span>
+      <i class="fas fa-chevron-down text-sm"></i>
+    </button>
 
-      <button class="hover:text-gray-300 transition"><i class="fas fa-search"></i></button>
-      <button class="hover:text-gray-300 transition"><i class="fas fa-heart"></i></button>
-      <button class="hover:text-gray-300 transition"><i class="fas fa-shopping-bag"></i></button>
+    <div
+      id="userDropdown"
+      class="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-lg shadow-lg hidden"
+    >
+      <a
+        href="/userProfile"
+        class="block px-4 py-2 hover:bg-gray-100 transition"
+      >Profile</a>
+      <a href="/logout" class="block px-4 py-2 hover:bg-gray-100 transition"
+      >Logout</a>
+    </div>
+  </div>
+<% } else { %>
+  <div class="relative">
+    <button
+      id="authDropdownBtn"
+      class="hover:text-gray-300 flex items-center space-x-2 focus:outline-none"
+    >
+      <i class="fas fa-user"></i>
+      <span>Account</span>
+      <i class="fas fa-chevron-down text-sm"></i>
+    </button>
+
+    <div
+      id="authDropdown"
+      class="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-lg shadow-lg hidden"
+    >
+      <a href="/login" class="block px-4 py-2 hover:bg-gray-100 transition">Sign In</a>
+      <a href="/register" class="block px-4 py-2 hover:bg-gray-100 transition">Sign Up</a>
+    </div>
+  </div>
+<% } %>
+
+
+      <button class="hover:text-gray-300 transition">
+        <i class="fas fa-search"></i>
+      </button>
+      <button class="hover:text-gray-300 transition">
+        <i class="fas fa-heart"></i>
+      </button>
+      <button class="hover:text-gray-300 transition">
+        <i class="fas fa-shopping-bag"></i>
+      </button>
     </div>
   </div>
 </header>
