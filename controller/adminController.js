@@ -1,9 +1,9 @@
 import bcrypt from "bcrypt";
-import Admin from "../model/adminSchema.js";
+import admin from "../model/adminSchema.js";
 
 const loadAdminLoginPage = async (req, res) => {
   try {
-    if (req.session.Admin) {
+    if (req.session.admin) {
       return res.redirect("/admin/dashboard");
     }
     res.render("admin/loginPage", { message: null });
@@ -13,23 +13,26 @@ const loadAdminLoginPage = async (req, res) => {
   }
 };
 
-
 const login = async (req, res) => {
   const { email, password } = req.body;
   try {
     if (!email || !password) {
-      return res.render("admin/loginPage", { message: "Please fill all fields" });
+      return res.render("admin/loginPage", {
+        message: "Please fill all fields",
+      });
     }
-    const existingUser = await Admin.findOne({ email });
+    const existingUser = await admin.findOne({ email });
     if (!existingUser) {
-      return res.render("admin/loginPage", { message: "Invalid email or password" });
+      return res.render("admin/loginPage", {
+        message: "Invalid email or password",
+      });
     }
     const isMatch = await bcrypt.compare(password, existingUser.password);
     if (!isMatch) {
       return res.render("admin/loginPage", { message: "Invalid email" });
     }
-    req.session.Admin = true;
-    req.session.AdminId = existingUser._id;
+    req.session.admin = true;
+    req.session.adminId = existingUser._id;
     return res.redirect("/admin/dashboard");
   } catch (error) {
     console.log("Login Error:", error.message);
@@ -37,12 +40,11 @@ const login = async (req, res) => {
   }
 };
 
-
 const loadDashboardPage = async (req, res) => {
-  if (req.session.Admin) {
+  if (req.session.admin) {
     try {
-      const admin = await Admin.findById(req.session.AdminId);
-      const adminName = admin ? admin.email : "Admin";  
+      const adminData = await admin.findById(req.session.adminId);
+      const adminName = adminData ? adminData.email : "Admin";
       return res.render("admin/dashboard", { adminName });
     } catch (error) {
       console.log(error.message);
@@ -54,7 +56,7 @@ const loadDashboardPage = async (req, res) => {
 };
 
 const logout = async (req, res) => {
-   try {
+  try {
     req.session.destroy((err) => {
       if (err) {
         console.log("Error destroying session:", err);
@@ -62,11 +64,10 @@ const logout = async (req, res) => {
       }
       res.redirect("/admin/login");
     });
-   } catch (error) {
-     console.log(error.message);
-      res.status(500).send("Internal Server Error");
-   }
-}
-
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).send("Internal Server Error");
+  }
+};
 
 export default { loadAdminLoginPage, login, loadDashboardPage, logout };
