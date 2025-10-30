@@ -1,20 +1,34 @@
-import express from 'express';
-import userController from '../controller/userController.js';
-import passport from 'passport';
+import express from "express";
+import userController from "../controller/userController.js";
+import passport from "passport";
 const router = express.Router();
 
-router.get('/', userController.loadHomePage)
-router.get('/login',userController.loadLoginPage);
-router.post('/login',userController.login)
-router.get('/register',userController.loadRegisterPage)
-router.post('/register',userController.register)
-router.post('/verify-otp', userController.registerOtpPage);
-router.post('/resend-otp', userController.resendOtp);
-router.get('/logout', userController.logout);
+router.get("/", userController.loadHomePage);
+router.get("/login", userController.loadLoginPage);
+router.post("/login", userController.login);
+router.get("/register", userController.loadRegisterPage);
+router.post("/register", userController.register);
+router.post("/verify-otp", userController.registerOtpPage);
+router.post("/resend-otp", userController.resendOtp);
+router.get("/logout", userController.logout);
 
-router.get('/auth/google',passport.authenticate('google',{scope : ['profile','email']}))
-router.get('/auth/google/callback',passport.authenticate('google',{failureRedirect : '/register'}),(req,res)=>{
-    res.redirect('/')
-})
+router.get(
+    '/auth/google',
+    passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+router.get(
+  '/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  (req, res) => {
+    req.session.user = {
+      _id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      profileImage: req.user.profileImage || null
+    };
+    res.redirect('/');
+  }
+);
+
 
 export default router;
