@@ -1,207 +1,224 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BnB Collection - Register</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-  />
-</head>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BnB Collection - Register</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
 
-<body class="bg-gray-100">
-  <%- include('../partials/user/header') %>
+  <body class="bg-gray-100">
+    <%- include('../partials/user/header') %>
 
-  <main class="container mx-auto px-4 py-12">
-    <div
-      class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 border border-gray-200"
-    >
-      <h2 class="text-center text-xl font-semibold mb-6">
-        Register as a New User
-      </h2>
+    <main class="container mx-auto px-4 py-12">
+      <div
+        class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 border border-gray-200"
+      >
+        <h2 class="text-center text-xl font-semibold mb-6">
+          Register as a New User
+        </h2>
 
-      <form id="registerForm" method="POST" action="/register" novalidate>
-        <div class="mb-4">
-          <label for="name" class="block text-gray-700 mb-1">Name</label>
-          <input
-            type="text"
-            name="Name"
-            id="name"
-            placeholder="Enter your name"
-            required
-            class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
-          />
-          <p id="nameError" class="text-red-500 text-sm mt-1 hidden">
-            Name is required.
-          </p>
-        </div>
+<% if (typeof successMessage !== 'undefined' && successMessage) { %>
+  <div class="mb-4 p-3 text-green-600 bg-green-100 border border-green-300 rounded text-center">
+    <%= successMessage %>
+  </div>
+<% } %>
 
-        <div class="mb-4">
-          <label for="email" class="block text-gray-700 mb-1">Email</label>
-          <input
-            type="email"
-            name="Email"
-            id="email"
-            placeholder="Enter your email"
-            required
-            class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
-          />
-          <p id="emailError" class="text-red-500 text-sm mt-1 hidden">
-            Please enter a valid email address.
-          </p>
-        </div>
+<% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+  <div class="mb-4 p-3 text-red-600 bg-red-100 border border-red-300 rounded text-center">
+    <%= errorMessage %>
+  </div>
+<% } %>
 
-        <div class="mb-4 relative">
-          <label for="password" class="block text-gray-700 mb-1">Password</label>
-          <input
-            type="password"
-            name="Password"
-            id="password"
-            placeholder="Enter password"
-            required
-            minlength="6"
-            class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
-          />
+
+
+        <form id="registerForm" method="POST" action="/register" novalidate>
+          <div class="mb-4">
+            <label for="name" class="block text-gray-700 mb-1">Name</label>
+            <input
+              type="text"
+              name="name"
+              id="name"
+              placeholder="Enter your name"
+              required
+              class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
+            />
+            <p id="nameError" class="text-red-500 text-sm mt-1 hidden">
+              Name is required.
+            </p>
+          </div>
+
+          <div class="mb-4">
+            <label for="email" class="block text-gray-700 mb-1">Email</label>
+            <input
+              type="email"
+              name="email"
+              id="email"
+              placeholder="Enter your email"
+              required
+              class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
+            />
+            <p id="emailError" class="text-red-500 text-sm mt-1 hidden">
+              Please enter a valid email address.
+            </p>
+          </div>
+
+          <div class="mb-4 relative">
+            <label for="password" class="block text-gray-700 mb-1"
+              >Password</label
+            >
+            <input
+              type="password"
+              name="password"
+              id="password"
+              placeholder="Enter password"
+              required
+              minlength="6"
+              class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
+            />
+            <button
+              type="button"
+              onclick="togglePassword()"
+              class="absolute right-3 top-9 text-gray-500"
+            >
+              <i class="fas fa-eye"></i>
+            </button>
+            <p id="passwordError" class="text-red-500 text-sm mt-1 hidden">
+              Password must be at least 6 characters.
+            </p>
+          </div>
+
+          <div class="mb-4 relative">
+            <label for="confirmPassword" class="block text-gray-700 mb-1"
+              >Confirm Password</label
+            >
+            <input
+              type="password"
+              name="confirmPassword"
+              id="confirmPassword"
+              placeholder="Re-enter password"
+              required
+              minlength="6"
+              class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
+            />
+            <button
+              type="button"
+              onclick="toggleConfirmPassword()"
+              class="absolute right-3 top-9 text-gray-500"
+            >
+              <i class="fas fa-eye"></i>
+            </button>
+            <p id="confirmError" class="text-red-500 text-sm mt-1 hidden">
+              Passwords do not match.
+            </p>
+          </div>
+
+          <div class="mb-4">
+            <label for="referral" class="block text-gray-700 mb-1"
+              >Referral Code (optional)</label
+            >
+            <input
+              type="text"
+              name="Referral"
+              id="referral"
+              placeholder="Enter referral code"
+              class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
+            />
+      
+          </div>
+
           <button
-            type="button"
-            onclick="togglePassword()"
-            class="absolute right-3 top-9 text-gray-500"
+            type="submit"
+            class="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 transition mb-4"
           >
-            <i class="fas fa-eye"></i>
+            Register
           </button>
-          <p id="passwordError" class="text-red-500 text-sm mt-1 hidden">
-            Password must be at least 6 characters.
-          </p>
-        </div>
 
-        <div class="mb-4 relative">
-          <label for="confirmPassword" class="block text-gray-700 mb-1"
-            >Confirm Password</label
+          <div class="text-center text-sm mb-4">
+            <span class="text-gray-600">Already have an account? </span>
+            <a href="/login" class="text-red-600 hover:underline">Login</a>
+          </div>
+
+          <a
+            href="/auth/google"
+            class="w-full border border-gray-300 py-2 rounded hover:bg-gray-50 transition flex items-center justify-center text-gray-700"
           >
-          <input
-            type="password"
-            name="ConfirmPassword"
-            id="confirmPassword"
-            placeholder="Re-enter password"
-            required
-            minlength="6"
-            class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
-          />
-          <button
-            type="button"
-            onclick="toggleConfirmPassword()"
-            class="absolute right-3 top-9 text-gray-500"
-          >
-            <i class="fas fa-eye"></i>
-          </button>
-          <p id="confirmError" class="text-red-500 text-sm mt-1 hidden">
-            Passwords do not match.
-          </p>
-        </div>
+            <img
+              src="https://www.google.com/favicon.ico"
+              alt="Google"
+              class="w-5 h-5 mr-2"
+            />
+            Login with Google
+          </a>
+        </form>
+      </div>
+    </main>
 
-        <div class="mb-4">
-          <label for="referral" class="block text-gray-700 mb-1"
-            >Referral Code (optional)</label
-          >
-          <input
-            type="text"
-            name="Referral"
-            id="referral"
-            placeholder="Enter referral code"
-            class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
-          />
-        </div>
+    <%- include('../partials/user/footer') %>
 
-        <button
-          type="submit"
-          class="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 transition mb-4"
-        >
-          Register
-        </button>
+    <script>
+      function togglePassword() {
+        const input = document.getElementById("password");
+        input.type = input.type === "password" ? "text" : "password";
+      }
+      function toggleConfirmPassword() {
+        const input = document.getElementById("confirmPassword");
+        input.type = input.type === "password" ? "text" : "password";
+      }
 
-        <div class="text-center text-sm mb-4">
-          <span class="text-gray-600">Already have an account? </span>
-          <a href="/login" class="text-red-600 hover:underline">Login</a>
-        </div>
+      document
+        .getElementById("registerForm")
+        .addEventListener("submit", function (e) {
+          let valid = true;
 
-        <a
-  href="/auth/google"
-  class="w-full border border-gray-300 py-2 rounded hover:bg-gray-50 transition flex items-center justify-center text-gray-700"
-  >
-  <img
-    src="https://www.google.com/favicon.ico"
-    alt="Google"
-    class="w-5 h-5 mr-2"
-  />
-  Login with Google
-</a>
-      </form>
-    </div>
-  </main>
+          const name = document.getElementById("name");
+          const email = document.getElementById("email");
+          const password = document.getElementById("password");
+          const confirm = document.getElementById("confirmPassword");
 
-  <%- include('../partials/user/footer') %>
+          const nameError = document.getElementById("nameError");
+          const emailError = document.getElementById("emailError");
+          const passwordError = document.getElementById("passwordError");
+          const confirmError = document.getElementById("confirmError");
 
-  <script>
-    function togglePassword() {
-      const input = document.getElementById("password");
-      input.type = input.type === "password" ? "text" : "password";
-    }
-    function toggleConfirmPassword() {
-      const input = document.getElementById("confirmPassword");
-      input.type = input.type === "password" ? "text" : "password";
-    }
+          const emailPattern = /^[^ ]+@[^ ]+\.[a-z]{2,3}$/;
 
-    document
-      .getElementById("registerForm")
-      .addEventListener("submit", function (e) {
-        let valid = true;
+          if (name.value.trim() === "") {
+            nameError.classList.remove("hidden");
+            valid = false;
+          } else {
+            nameError.classList.add("hidden");
+          }
 
-        const name = document.getElementById("name");
-        const email = document.getElementById("email");
-        const password = document.getElementById("password");
-        const confirm = document.getElementById("confirmPassword");
+          if (!email.value.match(emailPattern)) {
+            emailError.classList.remove("hidden");
+            valid = false;
+          } else {
+            emailError.classList.add("hidden");
+          }
 
-        const nameError = document.getElementById("nameError");
-        const emailError = document.getElementById("emailError");
-        const passwordError = document.getElementById("passwordError");
-        const confirmError = document.getElementById("confirmError");
+          if (password.value.trim().length < 6) {
+            passwordError.classList.remove("hidden");
+            valid = false;
+          } else {
+            passwordError.classList.add("hidden");
+          }
 
-        const emailPattern = /^[^ ]+@[^ ]+\.[a-z]{2,3}$/;
+          if (confirm.value !== password.value) {
+            confirmError.classList.remove("hidden");
+            valid = false;
+          } else {
+            confirmError.classList.add("hidden");
+          }
 
-        if (name.value.trim() === "") {
-          nameError.classList.remove("hidden");
-          valid = false;
-        } else {
-          nameError.classList.add("hidden");
-        }
-
-        if (!email.value.match(emailPattern)) {
-          emailError.classList.remove("hidden");
-          valid = false;
-        } else {
-          emailError.classList.add("hidden");
-        }
-
-        if (password.value.trim().length < 6) {
-          passwordError.classList.remove("hidden");
-          valid = false;
-        } else {
-          passwordError.classList.add("hidden");
-        }
-
-        if (confirm.value !== password.value) {
-          confirmError.classList.remove("hidden");
-          valid = false;
-        } else {
-          confirmError.classList.add("hidden");
-        }
-
-        if (!valid) {
-          e.preventDefault(); 
-        }
-      });
-  </script>
-</body>
+          if (!valid) {
+            e.preventDefault();
+          }
+        });
+    </script>
+  </body>
 </html>
