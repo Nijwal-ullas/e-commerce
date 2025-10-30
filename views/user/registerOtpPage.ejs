@@ -1,224 +1,250 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BnB Collection - Verify OTP</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BnB Collection - Verify OTP</title>
 
-  <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
 
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-  <style>
-    .otpBox {
-      width: 48px;
-      height: 48px;
-      text-align: center;
-      font-size: 20px;
-      border: 2px solid #ccc;
-      border-radius: 8px;
-      background-color: #f1f5f9;
-      transition: border-color 0.3s;
-    }
-    .otpBox:focus {
-      outline: none;
-      border-color: #dc2626;
-      background-color: #fff;
-    }
-    button:disabled, a.disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      pointer-events: none;
-    }
-  </style>
-</head>
-<body class="bg-gray-100">
+    <style>
+      .otpBox {
+        width: 48px;
+        height: 48px;
+        text-align: center;
+        font-size: 20px;
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        background-color: #f1f5f9;
+        transition: border-color 0.3s;
+      }
+      .otpBox:focus {
+        outline: none;
+        border-color: #dc2626;
+        background-color: #fff;
+      }
+      button:disabled,
+      a.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100">
+    <%- include('../partials/user/header') %>
 
-  <%- include('../partials/user/header') %>
-
-  <main class="container mx-auto px-4 py-12">
-    <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 border border-red-200">
-      <div class="flex justify-center mb-4">
-        <div class="bg-green-500 rounded-full p-6">
-          <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-          </svg>
+    <main class="container mx-auto px-4 py-12">
+      <div
+        class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 border border-red-200"
+      >
+        <div class="flex justify-center mb-4">
+          <div class="bg-green-500 rounded-full p-6">
+            <svg
+              class="w-12 h-12 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="3"
+                d="M5 13l4 4L19 7"
+              ></path>
+            </svg>
+          </div>
         </div>
+
+        <h2 class="text-center text-2xl font-semibold mb-4">Verify OTP</h2>
+
+        <div class="text-center mb-2">
+          <span class="text-sm text-gray-600">OTP sent to </span>
+          <span class="text-sm text-red-600"><%= email || 'your email' %></span>
+        </div>
+
+        <div id="timer" class="text-center text-sm text-gray-700 mb-6">
+          1:00
+        </div>
+
+        <div class="flex justify-center gap-2 mb-6">
+          <input type="text" maxlength="1" class="otpBox" id="otp1" />
+          <input type="text" maxlength="1" class="otpBox" id="otp2" />
+          <input type="text" maxlength="1" class="otpBox" id="otp3" />
+          <input type="text" maxlength="1" class="otpBox" id="otp4" />
+          <input type="text" maxlength="1" class="otpBox" id="otp5" />
+          <input type="text" maxlength="1" class="otpBox" id="otp6" />
+        </div>
+
+        <div class="text-center mb-4">
+          <a
+            href="#"
+            id="resendBtn"
+            class="text-sm text-gray-600 hover:text-gray-800 disabled"
+            >Resend OTP</a
+          >
+        </div>
+
+        <button
+          id="verifyBtn"
+          class="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 transition"
+        >
+          Verify OTP
+        </button>
       </div>
+    </main>
 
-      <h2 class="text-center text-2xl font-semibold mb-4">Verify OTP</h2>
+    <%- include('../partials/user/footer') %>
 
-      <div class="text-center mb-2">
-        <span class="text-sm text-gray-600">OTP sent to </span>
-        <span class="text-sm text-red-600"><%= Email || 'your email' %></span>
-      </div>
+    <script>
+      const otpInputs = document.querySelectorAll(".otpBox");
+      const verifyBtn = document.getElementById("verifyBtn");
+      const resendBtn = document.getElementById("resendBtn");
+      const timerEl = document.getElementById("timer");
 
-      <div id="timer" class="text-center text-sm text-gray-700 mb-6">1:00</div>
+      resendBtn.classList.add("disabled");
 
-      <div class="flex justify-center gap-2 mb-6">
-        <input type="text" maxlength="1" class="otpBox" id="otp1">
-        <input type="text" maxlength="1" class="otpBox" id="otp2">
-        <input type="text" maxlength="1" class="otpBox" id="otp3">
-        <input type="text" maxlength="1" class="otpBox" id="otp4">
-        <input type="text" maxlength="1" class="otpBox" id="otp5">
-        <input type="text" maxlength="1" class="otpBox" id="otp6">
-      </div>
+      otpInputs.forEach((input, index) => {
+        input.addEventListener("keyup", (e) => {
+          if (e.key >= "0" && e.key <= "9") {
+            if (index < otpInputs.length - 1) otpInputs[index + 1].focus();
+          } else if (e.key === "Backspace" && index > 0) {
+            otpInputs[index - 1].focus();
+          }
+        });
+      });
 
-      <div class="text-center mb-4">
-        <a href="#" id="resendBtn" class="text-sm text-gray-600 hover:text-gray-800 disabled">Resend OTP</a>
-      </div>
+      let timeLeft = 59;
+      let timer = setInterval(updateTimer, 1000);
 
-      <button id="verifyBtn" class="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 transition">
-        Verify OTP
-      </button>
-    </div>
-  </main>
+      function updateTimer() {
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          timerEl.textContent = "OTP Expired! Please resend.";
+          disableOtpInputs(true);
 
-  <%- include('../partials/user/footer') %>
+          resendBtn.classList.remove("disabled");
+        } else {
+          const seconds = timeLeft < 10 ? `0${timeLeft}` : timeLeft;
+          timerEl.textContent = `00:${seconds}`;
+          timeLeft--;
+        }
+      }
 
-  <script>
-    const otpInputs = document.querySelectorAll('.otpBox');
-    const verifyBtn = document.getElementById('verifyBtn');
-    const resendBtn = document.getElementById('resendBtn');
-    const timerEl = document.getElementById('timer');
+      function disableOtpInputs(state) {
+        otpInputs.forEach((box) => (box.disabled = state));
+        verifyBtn.disabled = state;
+      }
 
-    resendBtn.classList.add('disabled');
+      verifyBtn.addEventListener("click", async () => {
+        const otp = Array.from(otpInputs)
+          .map((input) => input.value)
+          .join("");
+        if (otp.length < 6) {
+          return Swal.fire({
+            icon: "error",
+            title: "Invalid OTP",
+            text: "Please enter all 6 digits!",
+            confirmButtonColor: "#e11d48",
+          });
+        }
 
-    otpInputs.forEach((input, index) => {
-      input.addEventListener('keyup', (e) => {
-        if (e.key >= '0' && e.key <= '9') {
-          if (index < otpInputs.length - 1) otpInputs[index + 1].focus();
-        } else if (e.key === 'Backspace' && index > 0) {
-          otpInputs[index - 1].focus();
+        if (verifyBtn.disabled) {
+          return Swal.fire({
+            icon: "warning",
+            title: "OTP Expired!",
+            text: "Please resend a new OTP to verify again.",
+            confirmButtonColor: "#e11d48",
+          });
+        }
+
+        try {
+          const response = await fetch("/verify-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ otp }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            Swal.fire({
+              icon: "success",
+              title: "OTP Verified!",
+              text: "Your account has been created successfully.",
+              confirmButtonColor: "#16a34a",
+            }).then(() => {
+              window.location.href = data.redirectUrl || "/";
+            });
+          } else {
+            Swal.fire({
+              icon: "error",
+              title: "Verification Failed",
+              text: data.message || "Invalid OTP. Please try again.",
+              confirmButtonColor: "#e11d48",
+            });
+          }
+        } catch (error) {
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "Something went wrong while verifying OTP.",
+            confirmButtonColor: "#e11d48",
+          });
         }
       });
-    });
 
-    let timeLeft = 59;
-    let timer = setInterval(updateTimer, 1000);
+      resendBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
 
-    function updateTimer() {
-      if (timeLeft <= 0) {
-        clearInterval(timer);
-        timerEl.textContent = "OTP Expired! Please resend.";
-        disableOtpInputs(true);
+        resendBtn.classList.add("disabled");
 
-        resendBtn.classList.remove('disabled');
-      } else {
-        const seconds = timeLeft < 10 ? `0${timeLeft}` : timeLeft;
-        timerEl.textContent = `00:${seconds}`;
-        timeLeft--;
-      }
-    }
+        try {
+          const response = await fetch("/resend-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
 
-    function disableOtpInputs(state) {
-      otpInputs.forEach(box => box.disabled = state);
-      verifyBtn.disabled = state;
-    }
+          const data = await response.json();
 
-    verifyBtn.addEventListener('click', async () => {
-      const otp = Array.from(otpInputs).map(input => input.value).join('');
-      if (otp.length < 6) {
-        return Swal.fire({
-          icon: 'error',
-          title: 'Invalid OTP',
-          text: 'Please enter all 6 digits!',
-          confirmButtonColor: '#e11d48'
-        });
-      }
-
-      if (verifyBtn.disabled) {
-        return Swal.fire({
-          icon: 'warning',
-          title: 'OTP Expired!',
-          text: 'Please resend a new OTP to verify again.',
-          confirmButtonColor: '#e11d48'
-        });
-      }
-
-      try {
-        const response = await fetch('/verify-otp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ otp })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
           Swal.fire({
-            icon: 'success',
-            title: 'OTP Verified!',
-            text: 'Your account has been created successfully.',
-            confirmButtonColor: '#16a34a'
-          }).then(() => {
-            window.location.href = data.redirectUrl || '/';
+            icon: data.success ? "success" : "error",
+            title: data.success ? "OTP Resent!" : "Failed",
+            text: data.message,
+            confirmButtonColor: data.success ? "#16a34a" : "#e11d48",
           });
-        } else {
+
+          if (data.success) {
+            otpInputs.forEach((box) => {
+              box.disabled = false;
+              box.value = "";
+            });
+            verifyBtn.disabled = false;
+
+            timeLeft = 60;
+            clearInterval(timer);
+            timer = setInterval(updateTimer, 1000);
+          } else {
+            resendBtn.classList.remove("disabled");
+          }
+        } catch (err) {
           Swal.fire({
-            icon: 'error',
-            title: 'Verification Failed',
-            text: data.message || 'Invalid OTP. Please try again.',
-            confirmButtonColor: '#e11d48'
+            icon: "error",
+            title: "Error",
+            text: "Something went wrong while resending OTP.",
+            confirmButtonColor: "#e11d48",
           });
+
+          resendBtn.classList.remove("disabled");
         }
-      } catch (error) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Something went wrong while verifying OTP.',
-          confirmButtonColor: '#e11d48'
-        });
-      }
-    });
-
-    resendBtn.addEventListener('click', async (e) => {
-      e.preventDefault();
-
-      resendBtn.classList.add('disabled');
-
-      try {
-        const response = await fetch('/resend-otp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
-
-        const data = await response.json();
-
-        Swal.fire({
-          icon: data.success ? 'success' : 'error',
-          title: data.success ? 'OTP Resent!' : 'Failed',
-          text: data.message,
-          confirmButtonColor: data.success ? '#16a34a' : '#e11d48'
-        });
-
-        if (data.success) {
-          otpInputs.forEach(box => {
-            box.disabled = false;
-            box.value = '';
-          });
-          verifyBtn.disabled = false;
-
-          timeLeft = 60;
-          clearInterval(timer);
-          timer = setInterval(updateTimer, 1000);
-        } else {
-          resendBtn.classList.remove('disabled');
-        }
-
-      } catch (err) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Something went wrong while resending OTP.',
-          confirmButtonColor: '#e11d48'
-        });
-
-        resendBtn.classList.remove('disabled');
-      }
-    });
-  </script>
-</body>
+      });
+    </script>
+  </body>
 </html>
