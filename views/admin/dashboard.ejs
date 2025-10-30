@@ -1,46 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Perfume Dashboard</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <style>
-    .submenu { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
-    .submenu.open { max-height: 200px; }
-  </style>
-</head>
-<body class="bg-gray-100 font-sans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Perfume Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      .submenu {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+      .submenu.open {
+        max-height: 200px;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 font-sans">
+    <div class="flex h-screen">
+      <%- include('../partials/admin/sidebar') %>
 
-  <div class="flex h-screen">
-    <%- include('../partials/admin/sidebar') %>
+      <div class="flex-1 overflow-auto">
+        <%- include('../partials/admin/header') %>
 
-    <div class="flex-1 overflow-auto">
-      <%- include('../partials/admin/header') %>
-
-      <div class="p-6">
-        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-8 text-white mb-6 flex justify-between items-center">
-          <div>
-            <h1 class="text-2xl font-bold mb-2">Welcome, <%= adminName || 'Admin' %></h1>
-            <p class="text-sm opacity-90 mb-4">Here’s what’s happening today.</p>
-            <button class="bg-white text-indigo-500 font-semibold py-2 px-6 rounded-lg hover:shadow-lg transition">
-              <i class="fas fa-chart-line mr-2"></i>View Report
-            </button>
+        <div class="p-6">
+          <div
+            class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-8 text-white mb-6 flex justify-between items-center"
+          >
+            <div>
+              <h1 class="text-2xl font-bold mb-2">
+                Welcome, <%= adminName || 'admin' %>
+              </h1>
+              <p class="text-sm opacity-90 mb-4">
+                Here’s what’s happening today.
+              </p>
+              <button
+                class="bg-white text-indigo-500 font-semibold py-2 px-6 rounded-lg hover:shadow-lg transition"
+              >
+                <i class="fas fa-chart-line mr-2"></i>View Report
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <script>
-    function toggleDropdown(subId, chevronId){
-      const sub = document.getElementById(subId);
-      const chevron = document.getElementById(chevronId);
-      sub.classList.toggle("open");
-      chevron.classList.toggle("rotate-180");
-    }
-  </script>
-
-</body>
+    <script>
+      function toggleDropdown(subId, chevronId) {
+        const sub = document.getElementById(subId);
+        const chevron = document.getElementById(chevronId);
+        sub.classList.toggle("open");
+        chevron.classList.toggle("rotate-180");
+      }
+    </script>
+  </body>
 </html>
