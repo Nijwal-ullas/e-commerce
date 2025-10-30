@@ -1,82 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login | Ruhe Collection</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-  />
-</head>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login | Ruhe Collection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
+  </head>
 
-<body class="bg-gradient-to-br from-indigo-500 to-purple-600 min-h-screen flex items-center justify-center font-sans">
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
-    
-    <div class="text-center py-8 border-b border-gray-200">
-      <h2 class="text-2xl font-semibold text-gray-800">Login to Admin Panel</h2>
-    </div>
+  <body
+    class="bg-gradient-to-br from-indigo-500 to-purple-600 min-h-screen flex items-center justify-center font-sans"
+  >
+    <div
+      class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+    >
+      <div class="text-center py-8 border-b border-gray-200">
+        <h2 class="text-2xl font-semibold text-gray-800">
+          Login to Admin Panel
+        </h2>
+      </div>
 
-    <div class="p-8">
-      <form id="loginForm" action="/admin/login" method="POST" class="space-y-5">
-        
-        <div>
-          <label for="email" class="block text-sm font-medium text-gray-600 mb-2">Email</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            required
-            placeholder="Enter your email"
-            class="w-full border border-gray-300 rounded-md px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
-          />
-        </div>
-
-        <div>
-          <label for="password" class="block text-sm font-medium text-gray-600 mb-2">Password</label>
-          <div class="relative">
+      <div class="p-8">
+        <form
+          id="loginForm"
+          action="/admin/login"
+          method="POST"
+          class="space-y-5"
+        >
+          <div>
+            <label
+              for="email"
+              class="block text-sm font-medium text-gray-600 mb-2"
+              >Email</label
+            >
             <input
-              type="password"
-              id="password"
-              name="password"
+              type="email"
+              id="email"
+              name="email"
               required
-              placeholder="Enter your password"
+              placeholder="Enter your email"
               class="w-full border border-gray-300 rounded-md px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
             />
-            <button
-              type="button"
-              id="togglePassword"
-              class="absolute inset-y-0 right-4 flex items-center text-gray-400 hover:text-indigo-500"
-            >
-              <i class="far fa-eye"></i>
-            </button>
           </div>
-        </div>
 
-        <button
-          type="submit"
-          class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold py-3 rounded-md shadow-md hover:shadow-lg hover:opacity-90 transition"
-        >
-          Login
-        </button>
+          <div>
+            <label
+              for="password"
+              class="block text-sm font-medium text-gray-600 mb-2"
+              >Password</label
+            >
+            <div class="relative">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                required
+                placeholder="Enter your password"
+                class="w-full border border-gray-300 rounded-md px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
+              />
+              <button
+                type="button"
+                id="togglePassword"
+                class="absolute inset-y-0 right-4 flex items-center text-gray-400 hover:text-indigo-500"
+              >
+                <i class="far fa-eye"></i>
+              </button>
+            </div>
+          </div>
 
-      </form>
+          <button
+            type="submit"
+            class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold py-3 rounded-md shadow-md hover:shadow-lg hover:opacity-90 transition"
+          >
+            Login
+          </button>
+        </form>
+      </div>
     </div>
-  </div>
 
-  <script>
-    const togglePassword = document.getElementById('togglePassword');
-    const passwordInput = document.getElementById('password');
-    const toggleIcon = togglePassword.querySelector('i');
+    <script>
+      const togglePassword = document.getElementById("togglePassword");
+      const passwordInput = document.getElementById("password");
+      const toggleIcon = togglePassword.querySelector("i");
 
-    togglePassword.addEventListener('click', function() {
-      const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-      passwordInput.setAttribute('type', type);
+      togglePassword.addEventListener("click", function () {
+        const type =
+          passwordInput.getAttribute("type") === "password"
+            ? "text"
+            : "password";
+        passwordInput.setAttribute("type", type);
 
-      toggleIcon.classList.toggle('fa-eye');
-      toggleIcon.classList.toggle('fa-eye-slash');
-    });
-  </script>
-</body>
+        toggleIcon.classList.toggle("fa-eye");
+        toggleIcon.classList.toggle("fa-eye-slash");
+      });
+    </script>
+  </body>
 </html>
