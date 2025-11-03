@@ -15,30 +15,32 @@ const loadAdminLoginPage = async (req, res) => {
 
 const login = async (req, res) => {
   const { email, password } = req.body;
+
   try {
     if (!email || !password) {
-      return res.render("admin/loginPage", {
-        message: "Please fill all fields",
-      });
+      return res.status(400).json({ success: false, message: "Please fill all fields" });
     }
+
     const existingUser = await admin.findOne({ email });
     if (!existingUser) {
-      return res.render("admin/loginPage", {
-        message: "Invalid email or password",
-      });
+      return res.status(401).json({ success: false, message: "Invalid email or password" });
     }
+
     const isMatch = await bcrypt.compare(password, existingUser.password);
     if (!isMatch) {
-      return res.render("admin/loginPage", { message: "Invalid email" });
+      return res.status(401).json({ success: false, message: "Invalid email or password" });
     }
+
     req.session.admin = true;
     req.session.adminId = existingUser._id;
-    return res.redirect("/admin/dashboard");
+    return res.json({ success: true, message: "Login successful" });
+
   } catch (error) {
-    console.log("Login Error:", error.message);
-    res.status(500).send("Internal Server Error");
+    console.error("Login Error:", error.message);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
+
 
 const loadDashboardPage = async (req, res) => {
   if (req.session.admin) {
