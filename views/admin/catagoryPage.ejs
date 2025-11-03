@@ -104,19 +104,19 @@
                     </button>
                     <% } %>
 
-                   <button
-  class="edit-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-blue-600 hover:border-blue-400"
-  data-id="<%= category._id %>"
->
-  <i class="fas fa-edit"></i>
-</button>
+                    <button
+                      class="edit-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-blue-600 hover:border-blue-400"
+                      data-id="<%= category._id %>"
+                    >
+                      <i class="fas fa-edit"></i>
+                    </button>
 
-<button
-  class="delete-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-red-600 hover:border-red-400"
-  data-id="<%= category._id %>"
->
-  <i class="fas fa-trash"></i>
-</button>
+                    <button
+                      class="delete-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-red-600 hover:border-red-400"
+                      data-id="<%= category._id %>"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
                   </td>
                 </tr>
                 <% }) %> <% } else { %>
@@ -261,116 +261,130 @@
 
     <!-- ✅ SCRIPT -->
     <script>
-  // --- Add Category ---
-  const addBtn = document.getElementById("addCategoryBtn");
-  const addModal = document.getElementById("addCategoryModal");
-  const cancelAdd = document.getElementById("cancelAddCategory");
-  const addForm = document.getElementById("addCategoryForm");
+      // --- Add Category ---
+      const addBtn = document.getElementById("addCategoryBtn");
+      const addModal = document.getElementById("addCategoryModal");
+      const cancelAdd = document.getElementById("cancelAddCategory");
+      const addForm = document.getElementById("addCategoryForm");
 
-  addBtn.addEventListener("click", () => addModal.classList.replace("hidden", "flex"));
-  cancelAdd.addEventListener("click", () => addModal.classList.add("hidden"));
+      addBtn.addEventListener("click", () =>
+        addModal.classList.replace("hidden", "flex")
+      );
+      cancelAdd.addEventListener("click", () =>
+        addModal.classList.add("hidden")
+      );
 
-  addForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const data = Object.fromEntries(new FormData(addForm));
-    try {
-      const res = await axios.post("/admin/addCatagory", data);
-      alert(res.data.message || "Category added successfully");
-      location.reload();
-    } catch (err) {
-      alert(err.response?.data?.message || "Error adding category");
-    }
-  });
+      addForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(addForm));
+        try {
+          const res = await axios.post("/admin/addCatagory", data);
+          alert(res.data.message || "Category added successfully");
+          location.reload();
+        } catch (err) {
+          alert(err.response?.data?.message || "Error adding category");
+        }
+      });
 
-  // --- Edit / Delete / List / Unlist ---
-  const tbody = document.getElementById("categoryTableBody");
-  const editModal = document.getElementById("editCategoryModal");
-  const cancelEdit = document.getElementById("cancelEditCategory");
-  const editForm = document.getElementById("editCategoryForm");
+      // --- Edit / Delete / List / Unlist ---
+      const tbody = document.getElementById("categoryTableBody");
+      const editModal = document.getElementById("editCategoryModal");
+      const cancelEdit = document.getElementById("cancelEditCategory");
+      const editForm = document.getElementById("editCategoryForm");
 
-  cancelEdit.addEventListener("click", () => editModal.classList.add("hidden"));
+      cancelEdit.addEventListener("click", () =>
+        editModal.classList.add("hidden")
+      );
 
-  tbody.addEventListener("click", async (e) => {
-    const btn = e.target.closest("button");
-    const row = e.target.closest("tr");
-    if (!btn || !row) return;
+      tbody.addEventListener("click", async (e) => {
+        const btn = e.target.closest("button");
+        const row = e.target.closest("tr");
+        if (!btn || !row) return;
 
-    const id = btn.dataset.id;
+        const id = btn.dataset.id;
 
-    // ✏️ Edit Category
-    if (btn.classList.contains("edit-btn")) {
-      document.getElementById("editCategoryId").value = id;
-      document.getElementById("editCategoryName").value = row.querySelector("td:nth-child(2)").innerText;
-      document.getElementById("editCategoryDescription").value = row.querySelector("td:nth-child(3)").innerText === "—" ? "" : row.querySelector("td:nth-child(3)").innerText;
-      editModal.classList.replace("hidden", "flex");
-      return;
-    }
+        // ✏️ Edit Category
+        if (btn.classList.contains("edit-btn")) {
+          document.getElementById("editCategoryId").value = id;
+          document.getElementById("editCategoryName").value =
+            row.querySelector("td:nth-child(2)").innerText;
+          document.getElementById("editCategoryDescription").value =
+            row.querySelector("td:nth-child(3)").innerText === "—"
+              ? ""
+              : row.querySelector("td:nth-child(3)").innerText;
+          editModal.classList.replace("hidden", "flex");
+          return;
+        }
 
-    // 🗑️ Delete Category
-    if (btn.classList.contains("delete-btn")) {
-      if (!confirm("Delete this category?")) return;
-      try {
-        const res = await axios.delete(`/admin/deleteCatagory/${id}`);
-        alert(res.data.message || "Category deleted");
-        row.remove();
-      } catch (err) {
-        alert(err.response?.data?.message || "Error deleting category");
-      }
-      return;
-    }
+        // 🗑️ Delete Category
+        if (btn.classList.contains("delete-btn")) {
+          if (!confirm("Delete this category?")) return;
+          try {
+            const res = await axios.delete(`/admin/deleteCatagory/${id}`);
+            alert(res.data.message || "Category deleted");
+            row.remove();
+          } catch (err) {
+            alert(err.response?.data?.message || "Error deleting category");
+          }
+          return;
+        }
 
-    // 🟢 List Category
-    if (btn.classList.contains("list-btn")) {
-      try {
-        const res = await axios.patch(`/admin/listCategory/${id}`);
-        alert(res.data.message || "Category listed");
-        row.querySelector("span").textContent = "Listed";
-        row.querySelector("span").className =
-          "px-3 py-1 text-sm rounded-full bg-green-100 text-green-600";
-        btn.outerHTML = `
+        // 🟢 List Category
+        if (btn.classList.contains("list-btn")) {
+          try {
+            const res = await axios.patch(`/admin/listCategory/${id}`);
+            alert(res.data.message || "Category listed");
+            row.querySelector("span").textContent = "Listed";
+            row.querySelector("span").className =
+              "px-3 py-1 text-sm rounded-full bg-green-100 text-green-600";
+            btn.outerHTML = `
           <button class="unlist-btn bg-yellow-500 text-white px-3 py-1 rounded hover:opacity-80" data-id="${id}">
             Unlist
           </button>`;
-      } catch (err) {
-        alert(err.response?.data?.message || "Error listing category");
-      }
-      return;
-    }
+          } catch (err) {
+            alert(err.response?.data?.message || "Error listing category");
+          }
+          return;
+        }
 
-    // 🔴 Unlist Category
-    if (btn.classList.contains("unlist-btn")) {
-      try {
-        const res = await axios.patch(`/admin/unlistCategory/${id}`);
-        alert(res.data.message || "Category unlisted");
-        row.querySelector("span").textContent = "Unlisted";
-        row.querySelector("span").className =
-          "px-3 py-1 text-sm rounded-full bg-red-100 text-red-600";
-        btn.outerHTML = `
+        // 🔴 Unlist Category
+        if (btn.classList.contains("unlist-btn")) {
+          try {
+            const res = await axios.patch(`/admin/unlistCategory/${id}`);
+            alert(res.data.message || "Category unlisted");
+            row.querySelector("span").textContent = "Unlisted";
+            row.querySelector("span").className =
+              "px-3 py-1 text-sm rounded-full bg-red-100 text-red-600";
+            btn.outerHTML = `
           <button class="list-btn bg-green-500 text-white px-3 py-1 rounded hover:opacity-80" data-id="${id}">
             List
           </button>`;
-      } catch (err) {
-        alert(err.response?.data?.message || "Error unlisting category");
-      }
-    }
-  });
+          } catch (err) {
+            alert(err.response?.data?.message || "Error unlisting category");
+          }
+        }
+      });
 
-  // --- Update Category (Edit Form) ---
-  editForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const id = document.getElementById("editCategoryId").value;
-    const name = document.getElementById("editCategoryName").value;
-    const description = document.getElementById("editCategoryDescription").value;
+      // --- Update Category (Edit Form) ---
+      editForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const id = document.getElementById("editCategoryId").value;
+        const name = document.getElementById("editCategoryName").value;
+        const description = document.getElementById(
+          "editCategoryDescription"
+        ).value;
 
-    try {
-      const res = await axios.put(`/admin/editCatagory/${id}`, { name, description });
-      alert(res.data.message || "Category updated");
-      location.reload();
-    } catch (err) {
-      alert(err.response?.data?.message || "Error updating category");
-    }
-  });
-</script>
-
+        try {
+          const res = await axios.put(`/admin/editCatagory/${id}`, {
+            name,
+            description,
+          });
+          alert(res.data.message || "Category updated");
+          location.reload();
+        } catch (err) {
+          alert(err.response?.data?.message || "Error updating category");
+        }
+      });
+    </script>
   </body>
 </html>
