@@ -13,14 +13,13 @@ const catagoryPage = async (req, res) => {
       categories,
       currentPage: page,
       totalPages: Math.ceil(totalCategories / limit),
-      totalCategories, // ✅ added this
+      totalCategories,
     });
   } catch (error) {
     console.error(error.message);
     res.status(500).send("Server Error");
   }
 };
-
 
 const addCatagory = async (req, res) => {
   const { name, description } = req.body;
@@ -90,11 +89,15 @@ const deleteCatagory = async (req, res) => {
 
 const listCatagory = async (req, res) => {
   try {
-    const category = await catagory.findByIdAndUpdate(
-      req.params.id,
-      { isListed: true },
-    );
-    res.status(200).json({ success: true, message: "Are you sure to list this Catagory..?"});
+    const category = await catagory.findByIdAndUpdate(req.params.id, {
+      isListed: true,
+    });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "Are you sure to list this Catagory..?",
+      });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -102,16 +105,25 @@ const listCatagory = async (req, res) => {
 
 const unlistCatagory = async (req, res) => {
   try {
-    const category = await catagory.findByIdAndUpdate(
-      req.params.id,
-      { isListed: false },
-    );
-    res.status(200).json({ success: true, message: "Are you sure to unlist this Catagory..?"});
+    const category = await catagory.findByIdAndUpdate(req.params.id, {
+      isListed: false,
+    });
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "Are you sure to unlist this Catagory..?",
+      });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-
-
-export default { catagoryPage, addCatagory, editCatagory, deleteCatagory,listCatagory,unlistCatagory };
+export default {
+  catagoryPage,
+  addCatagory,
+  editCatagory,
+  deleteCatagory,
+  listCatagory,
+  unlistCatagory,
+};
