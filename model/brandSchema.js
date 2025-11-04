@@ -1,11 +1,11 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const { Schema, ObjectId } = mongoose;
 
 const BrandSchema = new Schema({
-  Name: { type: String },
-  CreatedAt: { type: Date },
-  BrandLogo: { type: String },
+  name: { type: String },
+  createdAt: { type: Date },
+  brandLogo: { type: String },
 });
 
 const Brand = mongoose.model('Brand', BrandSchema);
