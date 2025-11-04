@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 dotenv.config();
 
+//home page
 const loadHomePage = async (req, res) => {
   try {
     if (req.session.user) {
@@ -17,6 +18,7 @@ const loadHomePage = async (req, res) => {
   }
 };
 
+//login side
 const loadLoginPage = async (req, res) => {
   try {
     res.render("user/loginPage");
@@ -30,24 +32,30 @@ const login = async (req, res) => {
   const { email, password } = req.body;
   try {
     if (!email || !password) {
-      return res.render("user/loginPage", {
-        message: "Please enter both email and password.",
+      return res.status(400).json({
+        success: false,
+        message: "Please fill in both email and password.",
       });
     }
     const existingUser = await user.findOne({ email });
     if (!existingUser) {
-      return res.render("user/loginPage", { message: "User not found" });
-    }
-    if (existingUser.isBlocked) {
-      return res.render("user/loginPage", {
-        message: "You are blocked by admin. Please contact support.",
+      return res.status(404).json({
+        success: false,
+        message: "User not found. Please register first.",
       });
     }
-
+    if (existingUser.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: "You are blocked by admin.",
+      });
+    }
     const passwordMatch = await bcrypt.compare(password, existingUser.password);
-
     if (!passwordMatch) {
-      return res.render("user/loginPage", { message: "Incorrect password" });
+      return res.status(401).json({
+        success: false,
+        message: "Incorrect password.",
+      });
     }
     req.session.user = {
       _id: existingUser._id,
@@ -57,15 +65,20 @@ const login = async (req, res) => {
 
     console.log("User logged in successfully:", req.session.user);
 
-    return res.redirect("/");
+    return res.status(200).json({
+      success: true,
+      message: "Login successful!",
+    });
   } catch (error) {
-    console.log("Login error:", error);
-    return res
-      .status(500)
-      .render("user/loginPage", { message: "Internal server error" });
+    console.error("Login error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error. Please try again later.",
+    });
   }
 };
 
+//register page
 const loadRegisterPage = async (req, res) => {
   try {
     res.render("user/registerPage");
@@ -75,6 +88,43 @@ const loadRegisterPage = async (req, res) => {
 };
 
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000);
+
+const register = async (req, res) => {
+  try {
+    const { name, email, phone, password, confirmPassword } = req.body;
+    if (!email || !password || !name || !phone) {
+      return res
+        .status(400)
+        .json({ success: false, message: "All fields required" });
+    }
+    if (password !== confirmPassword) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Passwords do not match" });
+    }
+    const existingUser = await user.findOne({ email });
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ success: false, message: "User already exists" });
+    }
+    const otp = generateOtp();
+    req.session.userOtp = otp;
+    req.session.otpExpire = Date.now() + 1 * 60 * 1000;
+    req.session.userData = { name, email, phone, password };
+    await sendOtpEmail(email, otp);
+    return res.status(200).json({
+      success: true,
+      message: "OTP sent to email.",
+      redirectUrl: "/register-otp",
+    });
+  } catch (error) {
+    console.log(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
+  }
+};
 
 async function sendOtpEmail(email, otp) {
   if (!email) {
@@ -103,41 +153,12 @@ async function sendOtpEmail(email, otp) {
   }
 }
 
-const register = async (req, res) => {
+const loadRegisterOtpPage = async (req, res) => {
   try {
-    const { name, email, password, confirmPassword } = req.body;
-    console.log("Registration data received:", req.body);
-    if (!email) {
-      return res.render("user/registerPage", { message: "Email is required." });
-    }
-    if (password !== confirmPassword) {
-      return res.render("user/registerPage", {
-        message: "Passwords do not match",
-      });
-    }
-    const existingUser = await user.findOne({ email });
-    if (existingUser) {
-      return res.render("user/registerPage", {
-        message: "User already exists",
-      });
-    }
-    const otp = generateOtp();
-    console.log(`Generated OTP for ${email} is: ${otp}`);
-    req.session.userOtp = otp;
-    req.session.userData = { name, email, password };
-    req.session.otpExpire = Date.now() + 1 * 60 * 1000;
-    if (!email || !email.trim()) {
-      return res.render("user/registerPage", {
-        message: "Invalid email address",
-      });
-    }
-    await sendOtpEmail(email, otp);
+    const email = req.session?.userData?.email;
     res.render("user/registerOtpPage", { email });
   } catch (error) {
-    console.log("Error in register:", error);
-    res
-      .status(500)
-      .render("user/registerPage", { message: "Internal server error" });
+    console.log(error.message);
   }
 };
 
@@ -146,44 +167,45 @@ const securePassword = async (password) => await bcrypt.hash(password, 10);
 const registerOtpPage = async (req, res) => {
   try {
     const { otp } = req.body;
+
     if (!req.session.userOtp || Date.now() > req.session.otpExpire) {
-      return res
-        .status(400)
-        .json({ success: false, message: "OTP expired or invalid" });
+      return res.status(400).json({ success: false, message: "OTP expired" });
     }
-    if (String(otp) !== String(req.session.userOtp)) {
+    if (String(req.session.userOtp) !== String(otp)) {
       return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
     const userData = req.session.userData;
     if (!userData) {
       return res.status(400).json({
         success: false,
-        message:
-          "Session expired. Please start the registration process again.",
+        message: "Session expired, register again",
       });
     }
-    const passwordHash = await securePassword(userData.password);
+    const hashedPassword = await securePassword(userData.password);
     const newUser = new user({
       name: userData.name,
       email: userData.email,
-      password: passwordHash,
+      phone: userData.phone,
+      password: hashedPassword,
     });
+
     await newUser.save();
+
+    req.session.userOtp = null;
+    req.session.userData = null;
+    req.session.otpExpire = null;
+
     req.session.user = {
       _id: newUser._id,
       name: newUser.name,
       email: newUser.email,
     };
-    req.session.userOtp = null;
-    req.session.userData = null;
-    req.session.otpExpire = null;
-    return res.json({ success: true, redirectUrl: "/" });
+    return res.status(200).json({ success: true, redirectUrl: "/" });
   } catch (error) {
-    console.log("Error in OTP verification:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error during OTP verification.",
-    });
+    console.log(error);
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -196,7 +218,6 @@ const resendOtp = async (req, res) => {
         message: "Session expired. Please register again.",
       });
     }
-
     const email = userData.email;
     const otp = generateOtp();
     console.log(`New OTP for ${email}: ${otp}`);
@@ -229,6 +250,7 @@ export default {
   loadRegisterPage,
   register,
   login,
+  loadRegisterOtpPage,
   registerOtpPage,
   resendOtp,
   logout,
