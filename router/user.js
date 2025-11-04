@@ -8,6 +8,7 @@ router.get("/login", userController.loadLoginPage);
 router.post("/login", userController.login);
 router.get("/register", userController.loadRegisterPage);
 router.post("/register", userController.register);
+router.get("/register-otp", userController.loadRegisterOtpPage);
 router.post("/verify-otp", userController.registerOtpPage);
 router.post("/resend-otp", userController.resendOtp);
 router.get("/logout", userController.logout);
