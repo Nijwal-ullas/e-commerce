@@ -1,22 +1,22 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const { Schema, ObjectId } = mongoose;
 
 const ProductSchema = new Schema({
-  ProductName: { type: String },
-  CategoryId: { type: Schema.Types.ObjectId },
-  ProductImage: [{ type: String,  }],
-  DiscountPercentage: { type: Double },
-  SalePrice: { type: String },
-  UpdatedAt: { type: Date },
-  Description: { type: String },
-  CreatedAt: { type: Date },
-  IsListed: { type: String },
-  RegularPrice: { type: String },
-  BrandId: { type: Schema.Types.ObjectId },
-  VariantItem: [{
-     Ml: { type: Double },
-     Quantity: { type: Double },
+  productName: { type: String },
+  categoryId: { type: Schema.Types.ObjectId },
+  p1roductImage: [{ type: String,  }],
+  discountPercentage: { type: Number },
+  salePrice: { type: String },
+  updatedAt: { type: Date },
+  description: { type: String },
+  createdAt: { type: Date },
+  isListed: { type: String },
+  regularPrice: { type: String },
+  brandId: { type: Schema.Types.ObjectId },
+  variantItem: [{
+     ml: { type: Number },
+     quantity: { type: Number },
   }],
 });
 
