@@ -131,36 +131,34 @@
             <div
               class="flex items-center justify-between px-6 py-4 border-t bg-white"
             >
-              <div class="flex items-center space-x-4">
-                <span class="text-sm text-gray-700">
-                  Page <%= currentPage %> of <%= totalPages %> — Total
-                  Categories: <%= totalCategories %>
-                </span>
+              <span class="text-sm text-gray-700">
+                Page <%= currentPage %> of <%= totalPages %> — Total Categories:
+                <%= totalCategories %>
+              </span>
 
-                <div class="flex space-x-2">
-                  <a
-                    href="?page=<%= Math.max(1, currentPage - 1) %>"
-                    class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage <= 1 ? 'pointer-events-none opacity-50' : '' %>"
-                  >
-                    <i class="fas fa-chevron-left text-sm"></i>
-                  </a>
+              <div class="flex space-x-2">
+                <a
+                  href="?page=<%= Math.max(1, currentPage - 1) %>"
+                  class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage <= 1 ? 'pointer-events-none opacity-50' : '' %>"
+                >
+                  <i class="fas fa-chevron-left text-sm"></i>
+                </a>
 
-                  <% for (let i = 1; i <= totalPages; i++) { %>
-                  <a
-                    href="?page=<%= i %>"
-                    class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium <%= i === currentPage ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100 border border-gray-300' %>"
-                  >
-                    <%= i %>
-                  </a>
-                  <% } %>
+                <% for (let i = 1; i <= totalPages; i++) { %>
+                <a
+                  href="?page=<%= i %>"
+                  class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium <%= i === currentPage ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100 border border-gray-300' %>"
+                >
+                  <%= i %>
+                </a>
+                <% } %>
 
-                  <a
-                    href="?page=<%= Math.min(totalPages, currentPage + 1) %>"
-                    class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage >= totalPages ? 'pointer-events-none opacity-50' : '' %>"
-                  >
-                    <i class="fas fa-chevron-right text-sm"></i>
-                  </a>
-                </div>
+                <a
+                  href="?page=<%= Math.min(totalPages, currentPage + 1) %>"
+                  class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage >= totalPages ? 'pointer-events-none opacity-50' : '' %>"
+                >
+                  <i class="fas fa-chevron-right text-sm"></i>
+                </a>
               </div>
             </div>
           </div>
@@ -168,7 +166,6 @@
       </main>
     </div>
 
-    <!-- ADD CATEGORY MODAL -->
     <div
       id="addCategoryModal"
       class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden items-center justify-center"
@@ -214,7 +211,6 @@
       </div>
     </div>
 
-    <!-- EDIT CATEGORY MODAL -->
     <div
       id="editCategoryModal"
       class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden items-center justify-center"
@@ -259,9 +255,7 @@
       </div>
     </div>
 
-    <!-- ✅ SCRIPT -->
     <script>
-      // --- Add Category ---
       const addBtn = document.getElementById("addCategoryBtn");
       const addModal = document.getElementById("addCategoryModal");
       const cancelAdd = document.getElementById("cancelAddCategory");
@@ -286,7 +280,6 @@
         }
       });
 
-      // --- Edit / Delete / List / Unlist ---
       const tbody = document.getElementById("categoryTableBody");
       const editModal = document.getElementById("editCategoryModal");
       const cancelEdit = document.getElementById("cancelEditCategory");
@@ -303,7 +296,6 @@
 
         const id = btn.dataset.id;
 
-        // ✏️ Edit Category
         if (btn.classList.contains("edit-btn")) {
           document.getElementById("editCategoryId").value = id;
           document.getElementById("editCategoryName").value =
@@ -316,7 +308,6 @@
           return;
         }
 
-        // 🗑️ Delete Category
         if (btn.classList.contains("delete-btn")) {
           if (!confirm("Delete this category?")) return;
           try {
@@ -329,7 +320,6 @@
           return;
         }
 
-        // 🟢 List Category
         if (btn.classList.contains("list-btn")) {
           try {
             const res = await axios.patch(`/admin/listCategory/${id}`);
@@ -347,7 +337,6 @@
           return;
         }
 
-        // 🔴 Unlist Category
         if (btn.classList.contains("unlist-btn")) {
           try {
             const res = await axios.patch(`/admin/unlistCategory/${id}`);
@@ -365,7 +354,6 @@
         }
       });
 
-      // --- Update Category (Edit Form) ---
       editForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const id = document.getElementById("editCategoryId").value;
