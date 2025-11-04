@@ -26,6 +26,8 @@ const customerInfo = async (req, res) => {
       totalUsers: count,
       currentPage: page,
       totalPages: Math.ceil(count / limit),
+      limit,
+      search,
     });
   } catch (error) {
     console.error("Error loading customers:", error);
@@ -55,4 +57,24 @@ const unblockCustomer = async (req, res) => {
   }
 };
 
-export default { customerInfo, blockCustomer, unblockCustomer };
+
+
+
+const deleteUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const deletedUser = await user.findByIdAndDelete(userId);
+
+    if (!deletedUser) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    return res.status(200).json({ success: true, message: "User deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return res.status(500).json({ success: false, message: "Server error deleting user" });
+  }
+};
+
+export default { customerInfo, blockCustomer, unblockCustomer, deleteUser };
