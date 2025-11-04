@@ -4,7 +4,7 @@ const { Schema } = mongoose;
 
 const UserSchema = new Schema({
   name: { type: String, required: true, trim: true },
-  password: { type: String , required: false },
+  password: { type: String , required: true },
   isBlocked: { type: Boolean, default: false },
   phone: { type: String , required: false, sparse: true,default: null},
   profileImage: { type: String },
