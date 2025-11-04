@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Brand Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body class="bg-gray-100">
+    <div class="flex h-screen">
+      <%- include('../partials/admin/sidebar') %>
+
+      <main class="flex-1 overflow-y-auto">
+        <%- include('../partials/admin/header') %>
+
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-semibold text-gray-800">
+              Brand Management
+            </h1>
+            <button
+              id="addBrandBtn"
+              class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Add Brand
+            </button>
+          </div>
+
+          <div class="overflow-x-auto bg-white rounded-lg shadow">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Logo</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="brandTableBody" class="divide-y divide-gray-200">
+                <% if (brands && brands.length > 0) { %>
+                <% brands.forEach(brand => { %>
+                <tr data-id="<%= brand._id %>">
+                  <td class="px-6 py-4">
+                    <img
+                      src="<%= brand.logo || 'https://cdn-icons-png.flaticon.com/128/711/711769.png' %>"
+                      alt="<%= brand.name %>"
+                      class="w-14 h-14 object-cover rounded"
+                    />
+                  </td>
+                  <td class="px-6 py-4 font-medium text-gray-800"><%= brand.name %></td>
+                  <td class="px-6 py-4 text-gray-600"><%= brand.description || '—' %></td>
+                  <td class="px-6 py-4">
+                    <span
+                      class="px-3 py-1 text-sm rounded-full <%= brand.isListed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600' %>"
+                    >
+                      <%= brand.isListed ? 'Listed' : 'Unlisted' %>
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 flex gap-2">
+                    <% if (brand.isListed) { %>
+                    <button
+                      class="unlist-btn bg-yellow-500 text-white px-3 py-1 rounded hover:opacity-80"
+                      data-id="<%= brand._id %>"
+                    >
+                      Unlist
+                    </button>
+                    <% } else { %>
+                    <button
+                      class="list-btn bg-green-500 text-white px-3 py-1 rounded hover:opacity-80"
+                      data-id="<%= brand._id %>"
+                    >
+                      List
+                    </button>
+                    <% } %>
+
+                    <button
+                      class="edit-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-blue-600 hover:border-blue-400"
+                      data-id="<%= brand._id %>"
+                    >
+                      <i class="fas fa-edit"></i>
+                    </button>
+
+                    <button
+                      class="delete-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-red-600 hover:border-red-400"
+                      data-id="<%= brand._id %>"
+                    >
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+                <% }) %>
+                <% } else { %>
+                <tr>
+                  <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                    No brands found
+                  </td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+
+            <div class="flex items-center justify-between px-6 py-4 border-t bg-white">
+              <span class="text-sm text-gray-700">
+                Page <%= currentPage %> of <%= totalPages %> — Total Brands:
+                <%= totalBrands %>
+              </span>
+
+              <div class="flex space-x-2">
+                <a
+                  href="?page=<%= Math.max(1, currentPage - 1) %>"
+                  class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage <= 1 ? 'pointer-events-none opacity-50' : '' %>"
+                >
+                  <i class="fas fa-chevron-left text-sm"></i>
+                </a>
+
+                <% for (let i = 1; i <= totalPages; i++) { %>
+                <a
+                  href="?page=<%= i %>"
+                  class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium <%= i === currentPage ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100 border border-gray-300' %>"
+                >
+                  <%= i %>
+                </a>
+                <% } %>
+
+                <a
+                  href="?page=<%= Math.min(totalPages, currentPage + 1) %>"
+                  class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage >= totalPages ? 'pointer-events-none opacity-50' : '' %>"
+                >
+                  <i class="fas fa-chevron-right text-sm"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Add Brand Modal -->
+    <div
+      id="addBrandModal"
+      class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden items-center justify-center"
+    >
+      <div class="bg-white rounded-lg p-6 w-96">
+        <h2 class="text-xl font-semibold mb-4 text-gray-800">
+          Add New Brand
+        </h2>
+        <form id="addBrandForm">
+          <div class="mb-3">
+            <label class="block text-gray-700 mb-1">Name</label>
+            <input
+              type="text"
+              name="name"
+              required
+              class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
+            />
+          </div>
+          <div class="mb-3">
+            <label class="block text-gray-700 mb-1">Description</label>
+            <textarea
+              name="description"
+              rows="3"
+              class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
+            ></textarea>
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+            <button
+              type="button"
+              id="cancelAddBrand"
+              class="px-4 py-2 border rounded text-gray-600 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Edit Brand Modal -->
+    <div
+      id="editBrandModal"
+      class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden items-center justify-center"
+    >
+      <div class="bg-white rounded-lg p-6 w-96">
+        <h2 class="text-xl font-semibold mb-4 text-gray-800">Edit Brand</h2>
+        <form id="editBrandForm">
+          <input type="hidden" id="editBrandId" />
+          <div class="mb-3">
+            <label class="block text-gray-700 mb-1">Name</label>
+            <input
+              type="text"
+              id="editBrandName"
+              required
+              class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
+            />
+          </div>
+          <div class="mb-3">
+            <label class="block text-gray-700 mb-1">Description</label>
+            <textarea
+              id="editBrandDescription"
+              rows="3"
+              class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
+            ></textarea>
+          </div>
+          <div class="flex justify-end gap-2 mt-4">
+            <button
+              type="button"
+              id="cancelEditBrand"
+              class="px-4 py-2 border rounded text-gray-600 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              Update
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      const addBtn = document.getElementById("addBrandBtn");
+      const addModal = document.getElementById("addBrandModal");
+      const cancelAdd = document.getElementById("cancelAddBrand");
+      const addForm = document.getElementById("addBrandForm");
+
+      addBtn.addEventListener("click", () =>
+        addModal.classList.replace("hidden", "flex")
+      );
+      cancelAdd.addEventListener("click", () =>
+        addModal.classList.add("hidden")
+      );
+
+      addForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(addForm));
+        try {
+          const res = await axios.post("/admin/addBrand", data);
+          alert(res.data.message || "Brand added successfully");
+          location.reload();
+        } catch (err) {
+          alert(err.response?.data?.message || "Error adding brand");
+        }
+      });
+
+      const tbody = document.getElementById("brandTableBody");
+      const editModal = document.getElementById("editBrandModal");
+      const cancelEdit = document.getElementById("cancelEditBrand");
+      const editForm = document.getElementById("editBrandForm");
+
+      cancelEdit.addEventListener("click", () =>
+        editModal.classList.add("hidden")
+      );
+
+      tbody.addEventListener("click", async (e) => {
+        const btn = e.target.closest("button");
+        const row = e.target.closest("tr");
+        if (!btn || !row) return;
+
+        const id = btn.dataset.id;
+
+        if (btn.classList.contains("edit-btn")) {
+          document.getElementById("editBrandId").value = id;
+          document.getElementById("editBrandName").value =
+            row.querySelector("td:nth-child(2)").innerText;
+          document.getElementById("editBrandDescription").value =
+            row.querySelector("td:nth-child(3)").innerText === "—"
+              ? ""
+              : row.querySelector("td:nth-child(3)").innerText;
+          editModal.classList.replace("hidden", "flex");
+          return;
+        }
+
+        if (btn.classList.contains("delete-btn")) {
+          if (!confirm("Delete this brand?")) return;
+          try {
+            const res = await axios.delete(`/admin/deleteBrand/${id}`);
+            alert(res.data.message || "Brand deleted");
+            row.remove();
+          } catch (err) {
+            alert(err.response?.data?.message || "Error deleting brand");
+          }
+          return;
+        }
+
+        if (btn.classList.contains("list-btn")) {
+          try {
+            const res = await axios.patch(`/admin/listBrand/${id}`);
+            alert(res.data.message || "Brand listed");
+            row.querySelector("span").textContent = "Listed";
+            row.querySelector("span").className =
+              "px-3 py-1 text-sm rounded-full bg-green-100 text-green-600";
+            btn.outerHTML = `
+          <button class="unlist-btn bg-yellow-500 text-white px-3 py-1 rounded hover:opacity-80" data-id="${id}">
+            Unlist
+          </button>`;
+          } catch (err) {
+            alert(err.response?.data?.message || "Error listing brand");
+          }
+          return;
+        }
+
+        if (btn.classList.contains("unlist-btn")) {
+          try {
+            const res = await axios.patch(`/admin/unlistBrand/${id}`);
+            alert(res.data.message || "Brand unlisted");
+            row.querySelector("span").textContent = "Unlisted";
+            row.querySelector("span").className =
+              "px-3 py-1 text-sm rounded-full bg-red-100 text-red-600";
+            btn.outerHTML = `
+          <button class="list-btn bg-green-500 text-white px-3 py-1 rounded hover:opacity-80" data-id="${id}">
+            List
+          </button>`;
+          } catch (err) {
+            alert(err.response?.data?.message || "Error unlisting brand");
+          }
+        }
+      });
+
+      editForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const id = document.getElementById("editBrandId").value;
+        const name = document.getElementById("editBrandName").value;
+        const description = document.getElementById(
+          "editBrandDescription"
+        ).value;
+
+        try {
+          const res = await axios.put(`/admin/editBrand/${id}`, {
+            name,
+            description,
+          });
+          alert(res.data.message || "Brand updated");
+          location.reload();
+        } catch (err) {
+          alert(err.response?.data?.message || "Error updating brand");
+        }
+      });
+    </script>
+  </body>
+</html>
