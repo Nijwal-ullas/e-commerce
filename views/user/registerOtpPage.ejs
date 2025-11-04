@@ -172,8 +172,8 @@
             body: JSON.stringify({ otp }),
           });
 
-          const data = await response.json();
-
+          const data = await response.json()
+          
           if (data.success) {
             Swal.fire({
               icon: "success",
