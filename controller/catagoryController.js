@@ -3,11 +3,15 @@ import catagory from "../model/catagorySchema.js";
 const catagoryPage = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = 3;
+    const limit = 5;
     const skip = (page - 1) * limit;
 
     const totalCategories = await catagory.countDocuments();
-    const categories = await catagory.find().skip(skip).limit(limit);
+    const categories = await catagory
+      .find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     res.render("admin/catagoryPage", {
       categories,
@@ -20,6 +24,7 @@ const catagoryPage = async (req, res) => {
     res.status(500).send("Server Error");
   }
 };
+
 
 const addCatagory = async (req, res) => {
   const { name, description } = req.body;
@@ -89,15 +94,19 @@ const deleteCatagory = async (req, res) => {
 
 const listCatagory = async (req, res) => {
   try {
-    const category = await catagory.findByIdAndUpdate(req.params.id, {
-      isListed: true,
+    const category = await catagory.findByIdAndUpdate(
+      req.params.id,
+      { isListed: true },
+      { new: true }
+    );
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Category listed successfully",
+      category,
     });
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Are you sure to list this Catagory..?",
-      });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -105,25 +114,44 @@ const listCatagory = async (req, res) => {
 
 const unlistCatagory = async (req, res) => {
   try {
-    const category = await catagory.findByIdAndUpdate(req.params.id, {
-      isListed: false,
+    const category = await catagory.findByIdAndUpdate(
+      req.params.id,
+      { isListed: false },
+      { new: true }
+    );
+    if (!category) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Category unlisted successfully",
+      category,
     });
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Are you sure to unlist this Catagory..?",
-      });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-export default {
-  catagoryPage,
-  addCatagory,
-  editCatagory,
-  deleteCatagory,
-  listCatagory,
-  unlistCatagory,
+const searchCatagory = async (req, res) => {
+  try {
+    const query = req.query.query?.trim();
+    if (!query) {
+      return res.status(400).json({ message: "Search query is required" });
+    }
+
+    const categories = await catagory
+      .find({
+        name: { $regex: query, $options: "i" },
+      })
+      .sort({ createdAt: -1 })
+      .limit(20);
+
+    res.status(200).json({ categories });
+  } catch (error) {
+    console.error("Search error:", error);
+    res.status(500).json({ message: "Server error during search" });
+  }
 };
+
+
+export default { catagoryPage, addCatagory, editCatagory, deleteCatagory, listCatagory, unlistCatagory, searchCatagory, };
