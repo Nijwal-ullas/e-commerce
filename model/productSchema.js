@@ -8,9 +8,7 @@ const ProductSchema = new Schema({
   p1roductImage: [{ type: String,  }],
   discountPercentage: { type: Number },
   salePrice: { type: String },
-  updatedAt: { type: Date },
   description: { type: String },
-  createdAt: { type: Date },
   isListed: { type: String },
   regularPrice: { type: String },
   brandId: { type: Schema.Types.ObjectId },
@@ -18,7 +16,9 @@ const ProductSchema = new Schema({
      ml: { type: Number },
      quantity: { type: Number },
   }],
-});
+},
+{ timestamps: true }   
+);
 
 const Product = mongoose.model('Product', ProductSchema);
 
