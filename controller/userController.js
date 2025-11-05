@@ -109,6 +109,7 @@ const register = async (req, res) => {
         .json({ success: false, message: "User already exists" });
     }
     const otp = generateOtp();
+    console.log(`OTP for ${email}: ${otp}`);
     req.session.userOtp = otp;
     req.session.otpExpire = Date.now() + 1 * 60 * 1000;
     req.session.userData = { name, email, phone, password };
@@ -118,6 +119,7 @@ const register = async (req, res) => {
       message: "OTP sent to email.",
       redirectUrl: "/register-otp",
     });
+
   } catch (error) {
     console.log(error);
     return res
@@ -146,6 +148,7 @@ async function sendOtpEmail(email, otp) {
       subject: "Your OTP Code",
       html: `<p>Your OTP code is <b>${otp}</b>. It is valid for 1 minute.</p>`,
     });
+
     return true;
   } catch (error) {
     console.log("Error sending OTP email:", error);

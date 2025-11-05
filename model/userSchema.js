@@ -10,9 +10,9 @@ const UserSchema = new Schema({
   profileImage: { type: String },
   email: { type: String, required: true, unique: true, lowercase: true },
   googleId: { type: String,unique: true, sparse: true},
-  updatedAt: { type: Date },
-  createdAt: { type: Date },
-});
+},
+{ timestamps: true }   
+);
 
 const User = mongoose.model('User', UserSchema);
 export default User;

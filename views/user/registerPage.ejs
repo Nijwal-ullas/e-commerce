@@ -57,6 +57,7 @@
             <input
               type="text"
               maxlength="10"
+              id="phone"
               oninput="this.value = this.value.replace(/[^0-9]/g, '')"
               class="w-full px-4 py-2 border rounded-md focus:outline-none focus:border-red-500"
               placeholder="Enter your phone number"
@@ -159,48 +160,49 @@
     </main>
 
     <%- include('../partials/user/footer') %>
-
+    
     <script>
       function togglePassword() {
         const input = document.getElementById("password");
         input.type = input.type === "password" ? "text" : "password";
       }
-
+      
       function toggleConfirmPassword() {
         const input = document.getElementById("confirmPassword");
         input.type = input.type === "password" ? "text" : "password";
       }
-
+      
       const registerForm = document.getElementById("registerForm");
       const responseMessage = document.getElementById("responseMessage");
       const registerBtn = document.getElementById("registerBtn");
-
+      
       registerForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-
+        
         const name = document.getElementById("name");
         const email = document.getElementById("email");
         const phone = document.getElementById("phone");
         const password = document.getElementById("password");
         const confirm = document.getElementById("confirmPassword");
         const referral = document.getElementById("referral");
-
+        console.log(phone)
+        
         const nameError = document.getElementById("nameError");
         const emailError = document.getElementById("emailError");
         const phoneError = document.getElementById("phoneError");
         const passwordError = document.getElementById("passwordError");
         const confirmError = document.getElementById("confirmError");
-
+        
         const emailPattern = /^[^ ]+@[^ ]+\.[a-z]{2,3}$/;
         let valid = true;
-
+        
         responseMessage.classList.add("hidden");
         nameError.classList.add("hidden");
         emailError.classList.add("hidden");
         phoneError.classList.add("hidden");
         passwordError.classList.add("hidden");
         confirmError.classList.add("hidden");
-
+        
         if (
           !name.value.trim() ||
           !email.value.trim() ||
@@ -209,35 +211,36 @@
           !phone.value.trim()
         ) {
           alert(" Please fill in all required fields.");
-          return;
+          
+          return
         }
 
         if (name.value.trim().length < 2) {
           nameError.classList.remove("hidden");
           valid = false;
         }
-
+        
         if (!email.value.match(emailPattern)) {
           emailError.classList.remove("hidden");
           valid = false;
         }
-
+        
         if (password.value.trim().length < 6) {
           passwordError.classList.remove("hidden");
           valid = false;
         }
-
+        
         if (confirm.value !== password.value) {
           confirmError.classList.remove("hidden");
           valid = false;
         }
-
-
+        
+        
         if (!valid) return;
-
         registerBtn.disabled = true;
         registerBtn.textContent = "Registering...";
-
+        
+        console.log("here")
         try {
           const res = await axios.post("/register", {
             name: name.value,
@@ -247,7 +250,7 @@
             confirmPassword: confirm.value,
             referral: referral.value,
           });
-
+          
           if (res.data.success) {
             window.location.href = res.data.redirectUrl;
           } else {
@@ -256,7 +259,7 @@
         } catch (error) {
           alert(
             error.response?.data?.message ||
-              "An unexpected error occurred. Please try again."
+            "An unexpected error occurred. Please try again."
           );
         } finally {
           registerBtn.disabled = false;

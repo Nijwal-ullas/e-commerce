@@ -4,7 +4,7 @@ const customerInfo = async (req, res) => {
   try {
     let search = req.query.search || "";
     let page = parseInt(req.query.page) || 1;
-    const limit = 3;
+    const limit = 5;
     const users = await user
       .find({
         $or: [
@@ -12,6 +12,7 @@ const customerInfo = async (req, res) => {
           { email: { $regex: ".*" + search + ".*", $options: "i" } },
         ],
       })
+      .sort({createdAt : -1})
       .limit(limit)
       .skip((page - 1) * limit)
       .exec();

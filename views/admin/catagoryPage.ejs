@@ -24,12 +24,22 @@
             <h1 class="text-2xl font-semibold text-gray-800">
               Category Management
             </h1>
-            <button
-              id="addCategoryBtn"
-              class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-            >
-              Add Category
-            </button>
+
+            <div class="flex gap-4 items-center">
+              <input
+                type="text"
+                id="searchInput"
+                placeholder="Search categories..."
+                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
+              />
+
+              <button
+                id="addCategoryBtn"
+                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              >
+                Add Category
+              </button>
+            </div>
           </div>
 
           <div class="overflow-x-auto bg-white rounded-lg shadow">
@@ -128,6 +138,7 @@
                 <% } %>
               </tbody>
             </table>
+
             <div
               class="flex items-center justify-between px-6 py-4 border-t bg-white"
             >
@@ -168,7 +179,7 @@
 
     <div
       id="addCategoryModal"
-      class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden items-center justify-center"
+      class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden flex items-center justify-center"
     >
       <div class="bg-white rounded-lg p-6 w-96">
         <h2 class="text-xl font-semibold mb-4 text-gray-800">
@@ -211,167 +222,216 @@
       </div>
     </div>
 
-    <div
-      id="editCategoryModal"
-      class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden items-center justify-center"
-    >
-      <div class="bg-white rounded-lg p-6 w-96">
-        <h2 class="text-xl font-semibold mb-4 text-gray-800">Edit Category</h2>
-        <form id="editCategoryForm">
-          <input type="hidden" id="editCategoryId" />
-          <div class="mb-3">
-            <label class="block text-gray-700 mb-1">Name</label>
-            <input
-              type="text"
-              id="editCategoryName"
-              required
-              class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
-            />
-          </div>
-          <div class="mb-3">
-            <label class="block text-gray-700 mb-1">Description</label>
-            <textarea
-              id="editCategoryDescription"
-              rows="3"
-              class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
-            ></textarea>
-          </div>
-          <div class="flex justify-end gap-2 mt-4">
-            <button
-              type="button"
-              id="cancelEditCategory"
-              class="px-4 py-2 border rounded text-gray-600 hover:bg-gray-100"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-            >
-              Update
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
     <script>
       const addBtn = document.getElementById("addCategoryBtn");
       const addModal = document.getElementById("addCategoryModal");
       const cancelAdd = document.getElementById("cancelAddCategory");
       const addForm = document.getElementById("addCategoryForm");
+      const modalTitle = addModal.querySelector("h2");
+      const submitBtn = addForm.querySelector('button[type="submit"]');
+      const searchInput = document.getElementById("searchInput");
+      const tableBody = document.getElementById("categoryTableBody");
+      const table = document.querySelector("table");
 
-      addBtn.addEventListener("click", () =>
-        addModal.classList.replace("hidden", "flex")
-      );
-      cancelAdd.addEventListener("click", () =>
-        addModal.classList.add("hidden")
-      );
+      let debounceTimeout;
+      let editingId = null;
+
+      function openModal(isEdit = false, cat = {}) {
+        editingId = isEdit ? cat._id : null;
+        modalTitle.textContent = isEdit ? "Edit Category" : "Add New Category";
+        submitBtn.textContent = isEdit ? "Update" : "Save";
+
+        addForm.name.value = cat.name || "";
+        addForm.description.value = cat.description || "";
+
+        addModal.classList.replace("hidden", "flex");
+      }
+
+      addBtn.addEventListener("click", () => openModal(false));
+      cancelAdd.addEventListener("click", () => {
+        addModal.classList.replace("flex", "hidden");
+        addForm.reset();
+        editingId = null;
+      });
 
       addForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(addForm));
+
         try {
-          const res = await axios.post("/admin/addCatagory", data);
-          alert(res.data.message || "Category added successfully");
-          location.reload();
+          let res;
+          if (editingId) {
+            res = await axios.put(`/admin/editCatagory/${editingId}`, data);
+            alert(res.data.message);
+
+            const row = table.querySelector(`tr[data-id="${editingId}"]`);
+            row.cells[1].textContent = data.name;
+            row.cells[2].textContent = data.description || "—";
+          } else {
+            res = await axios.post("/admin/addCatagory", data);
+            alert(res.data.message);
+            location.reload();
+          }
+
+          addModal.classList.replace("flex", "hidden");
+          addForm.reset();
+          editingId = null;
         } catch (err) {
-          alert(err.response?.data?.message || "Error adding category");
+          alert(err.response?.data?.message || "Operation failed");
         }
       });
 
-      const tbody = document.getElementById("categoryTableBody");
-      const editModal = document.getElementById("editCategoryModal");
-      const cancelEdit = document.getElementById("cancelEditCategory");
-      const editForm = document.getElementById("editCategoryForm");
+      searchInput.addEventListener("input", function () {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(async () => {
+          const query = searchInput.value.trim();
 
-      cancelEdit.addEventListener("click", () =>
-        editModal.classList.add("hidden")
-      );
+          if (!query) {
+            location.reload();
+            return;
+          }
 
-      tbody.addEventListener("click", async (e) => {
-        const btn = e.target.closest("button");
-        const row = e.target.closest("tr");
-        if (!btn || !row) return;
+          try {
+            const { data } = await axios.get("/admin/catagory/search", {
+              params: { query },
+            });
+            renderTableRows(data.categories);
+          } catch (err) {
+            console.error(err);
+            alert("Search error");
+          }
+        }, 400);
+      });
+
+      function renderTableRows(categories) {
+        if (!categories || categories.length === 0) {
+          tableBody.innerHTML = `
+        <tr>
+          <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+            No categories match "<strong>${searchInput.value}</strong>"
+          </td>
+        </tr>`;
+          return;
+        }
+
+        tableBody.innerHTML = categories
+          .map(
+            (cat) => `
+        <tr data-id="${cat._id}">
+          <td class="px-6 py-4">
+            <img src="${
+              cat.image ||
+              "https://cdn-icons-png.flaticon.com/128/3050/3050082.png"
+            }"
+                 alt="${cat.name}" class="w-14 h-14 object-cover rounded">
+          </td>
+          <td class="px-6 py-4 font-medium text-gray-800">${cat.name}</td>
+          <td class="px-6 py-4 text-gray-600">${cat.description || "—"}</td>
+          <td class="px-6 py-4">
+            <span class="px-3 py-1 text-sm rounded-full ${
+              cat.isListed
+                ? "bg-green-100 text-green-600"
+                : "bg-red-100 text-red-600"
+            }">
+              ${cat.isListed ? "Listed" : "Unlisted"}
+            </span>
+          </td>
+          <td class="px-6 py-4 flex gap-2">
+            <button class="${
+              cat.isListed
+                ? "unlist-btn bg-yellow-500"
+                : "list-btn bg-green-500"
+            } text-white px-3 py-1 rounded hover:opacity-80" data-id="${
+              cat._id
+            }">
+              ${cat.isListed ? "Unlist" : "List"}
+            </button>
+
+            <button class="edit-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-blue-600 hover:border-blue-400"
+                    data-id="${cat._id}">
+              <i class="fas fa-edit"></i>
+            </button>
+
+            <button class="delete-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-red-600 hover:border-red-400"
+                    data-id="${cat._id}">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>`
+          )
+          .join("");
+      }
+
+      table.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".delete-btn");
+        if (!btn) return;
 
         const id = btn.dataset.id;
+        if (!confirm("Delete this category?")) return;
 
-        if (btn.classList.contains("edit-btn")) {
-          document.getElementById("editCategoryId").value = id;
-          document.getElementById("editCategoryName").value =
-            row.querySelector("td:nth-child(2)").innerText;
-          document.getElementById("editCategoryDescription").value =
-            row.querySelector("td:nth-child(3)").innerText === "—"
-              ? ""
-              : row.querySelector("td:nth-child(3)").innerText;
-          editModal.classList.replace("hidden", "flex");
-          return;
-        }
-
-        if (btn.classList.contains("delete-btn")) {
-          if (!confirm("Delete this category?")) return;
-          try {
-            const res = await axios.delete(`/admin/deleteCatagory/${id}`);
-            alert(res.data.message || "Category deleted");
-            row.remove();
-          } catch (err) {
-            alert(err.response?.data?.message || "Error deleting category");
-          }
-          return;
-        }
-
-        if (btn.classList.contains("list-btn")) {
-          try {
-            const res = await axios.patch(`/admin/listCategory/${id}`);
-            alert(res.data.message || "Category listed");
-            row.querySelector("span").textContent = "Listed";
-            row.querySelector("span").className =
-              "px-3 py-1 text-sm rounded-full bg-green-100 text-green-600";
-            btn.outerHTML = `
-          <button class="unlist-btn bg-yellow-500 text-white px-3 py-1 rounded hover:opacity-80" data-id="${id}">
-            Unlist
-          </button>`;
-          } catch (err) {
-            alert(err.response?.data?.message || "Error listing category");
-          }
-          return;
-        }
-
-        if (btn.classList.contains("unlist-btn")) {
-          try {
-            const res = await axios.patch(`/admin/unlistCategory/${id}`);
-            alert(res.data.message || "Category unlisted");
-            row.querySelector("span").textContent = "Unlisted";
-            row.querySelector("span").className =
-              "px-3 py-1 text-sm rounded-full bg-red-100 text-red-600";
-            btn.outerHTML = `
-          <button class="list-btn bg-green-500 text-white px-3 py-1 rounded hover:opacity-80" data-id="${id}">
-            List
-          </button>`;
-          } catch (err) {
-            alert(err.response?.data?.message || "Error unlisting category");
-          }
+        try {
+          await axios.delete(`/admin/deleteCatagory/${id}`);
+          alert("Category deleted");
+          btn.closest("tr").remove();
+        } catch (err) {
+          alert(err.response?.data?.message || "Delete failed");
         }
       });
 
-      editForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const id = document.getElementById("editCategoryId").value;
-        const name = document.getElementById("editCategoryName").value;
-        const description = document.getElementById(
-          "editCategoryDescription"
-        ).value;
+      table.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".list-btn, .unlist-btn");
+        if (!btn) return;
+
+        const id = btn.dataset.id;
+        const isList = btn.classList.contains("list-btn");
+        const url = isList
+          ? `/admin/listCategory/${id}`
+          : `/admin/unlistCategory/${id}`;
 
         try {
-          const res = await axios.put(`/admin/editCatagory/${id}`, {
-            name,
-            description,
-          });
-          alert(res.data.message || "Category updated");
-          location.reload();
+          const { data } = await axios.patch(url);
+          alert(data.message || (isList ? "Listed" : "Unlisted"));
+
+          const row = btn.closest("tr");
+          const statusSpan = row.querySelector("td:nth-child(4) span");
+
+          if (isList) {
+            btn.classList.replace("list-btn", "unlist-btn");
+            btn.classList.replace("bg-green-500", "bg-yellow-500");
+            btn.textContent = "Unlist";
+            statusSpan.classList.replace("bg-red-100", "bg-green-100");
+            statusSpan.classList.replace("text-red-600", "text-green-600");
+            statusSpan.textContent = "Listed";
+          } else {
+            btn.classList.replace("unlist-btn", "list-btn");
+            btn.classList.replace("bg-yellow-500", "bg-green-500");
+            btn.textContent = "List";
+            statusSpan.classList.replace("bg-green-100", "bg-red-100");
+            statusSpan.classList.replace("text-green-600", "text-red-600");
+            statusSpan.textContent = "Unlisted";
+          }
         } catch (err) {
-          alert(err.response?.data?.message || "Error updating category");
+          alert(err.response?.data?.message || "Failed");
         }
+      });
+
+      table.addEventListener("click", (e) => {
+        const btn = e.target.closest(".edit-btn");
+        if (!btn) return;
+
+        const row = btn.closest("tr");
+        const id = row.dataset.id;
+
+        const cat = {
+          _id: id,
+          name: row.cells[1].textContent.trim(),
+          description:
+            row.cells[2].textContent.trim() === "—"
+              ? ""
+              : row.cells[2].textContent.trim(),
+        };
+
+        openModal(true, cat);
       });
     </script>
   </body>
