@@ -5,8 +5,8 @@ import session from "express-session";
 import MongoStore from "connect-mongo";
 import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
-import userRouter from "./router/user.js";
-import adminRouter from "./router/admin.js";
+import userRouter from "./router/user/user.js";
+import adminRouter from "./router/admin/admin.js";
 import passport from "./config/passport.js";
 import morgan from "morgan";
 
