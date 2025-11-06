@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 dotenv.config();
 
-//home page
 const loadHomePage = async (req, res) => {
   try {
     if (req.session.user) {
@@ -18,7 +17,6 @@ const loadHomePage = async (req, res) => {
   }
 };
 
-//login side
 const loadLoginPage = async (req, res) => {
   try {
     res.render("user/loginPage");
@@ -78,7 +76,6 @@ const login = async (req, res) => {
   }
 };
 
-//register page
 const loadRegisterPage = async (req, res) => {
   try {
     res.render("user/registerPage");
