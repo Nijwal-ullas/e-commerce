@@ -109,7 +109,7 @@ const register = async (req, res) => {
         .json({ success: false, message: "User already exists" });
     }
     const otp = generateOtp();
-    console.log(`OTP for ${email}: ${otp}`);
+    console.log("Sending OTP to:", email, " | OTP:", otp);
     req.session.userOtp = otp;
     req.session.otpExpire = Date.now() + 1 * 60 * 1000;
     req.session.userData = { name, email, phone, password };
@@ -119,7 +119,6 @@ const register = async (req, res) => {
       message: "OTP sent to email.",
       redirectUrl: "/register-otp",
     });
-
   } catch (error) {
     console.log(error);
     return res
@@ -247,6 +246,157 @@ const logout = (req, res) => {
   });
 };
 
+const loadForgotPasswordPage = async (req, res) => {
+  try {
+    res.render("user/forgotPasswordPage");
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).send("Internal Server Error");
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const userExist = await user.findOne({ email });
+    if (!userExist) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    console.log("FORGOT OTP:", otp);
+
+    req.session.forgotOtp = otp;
+    req.session.forgotEmail = email;
+    req.session.forgotOtpExpire = Date.now() + 1 * 60 * 1000;
+
+    await sendOtpEmail(email, otp);
+
+    return res.json({
+      success: true,
+      message: "OTP sent",
+      redirectUrl: "/forgot-otp",
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+const loadForgotOtpPage = async (req, res) => {
+  try {
+    const email = req.session?.forgotEmail;
+    if (!email) return res.redirect("/forgotPasswordPage");
+
+    res.render("user/forgotOtpPage", { email });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).send("Internal Server Error");
+  }
+};
+
+const forgotOtpVerify = async (req, res) => {
+  try {
+    const { otp } = req.body;
+
+    if (!req.session.forgotOtp || Date.now() > req.session.forgotOtpExpire) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired",
+      });
+    }
+
+    if (String(req.session.forgotOtp) !== String(otp)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP verified",
+      redirectUrl: "/reset-password",
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+const loadResetPasswordPage = (req, res) => {
+  const email = req.session.forgotEmail;
+  if (!email) return res.redirect("/forgot-password");
+  res.render("user/resetPasswordPage", { email });
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { password, confirmPassword } = req.body;
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
+    }
+
+    const email = req.session.forgotEmail;
+    const hashedPassword = await securePassword(password);
+
+    await user.findOneAndUpdate(
+      { email },
+      { $set: { password: hashedPassword } }
+    );
+
+    req.session.forgotOtp = null;
+    req.session.forgotOtpExpire = null;
+    req.session.forgotEmail = null;
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successful!",
+      redirectUrl: "/login",
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+const resendForgotOtp = async (req, res) => {
+  try {
+    const email = req.session.forgotEmail;
+    if (!email)
+      return res
+        .status(400)
+        .json({ success: false, message: "Session expired" });
+
+    const otp = generateOtp();
+    req.session.forgotOtp = otp;
+    req.session.forgotOtpExpire = Date.now() + 60000;
+
+    await sendOtpEmail(email, otp);
+
+    res.json({ success: true, message: "OTP resent!" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 export default {
   loadHomePage,
   loadLoginPage,
@@ -257,4 +407,11 @@ export default {
   registerOtpPage,
   resendOtp,
   logout,
+  loadForgotPasswordPage,
+  forgotPassword,
+  loadForgotOtpPage,
+  forgotOtpVerify,
+  loadResetPasswordPage,
+  resetPassword,
+  resendForgotOtp,
 };
