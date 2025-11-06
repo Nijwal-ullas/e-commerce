@@ -1,12 +1,12 @@
     import express from "express";
     const router = express.Router();
-    import adminController from "../controller/adminController.js";
-    import auth from "../middleware/auth.js";
-    import customerController from "../controller/customerController.js";
-    import catagoryController from "../controller/catagoryController.js";
-    import brandController from "../controller/brandController.js";
+    import adminController from "../../controller/admin/adminController.js";
+    import auth from "../../middleware/auth.js";
+    import customerController from "../../controller/admin/customerController.js";
+    import catagoryController from "../../controller/admin/catagoryController.js";
+    import brandController from "../../controller/admin/brandController.js";
     import multer from "multer";
-    import storage from "../helpers/multer.js";
+    import storage from "../../helpers/multer.js";
 
     const upload = multer({ storage: storage });
 
