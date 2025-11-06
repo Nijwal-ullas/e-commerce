@@ -1,4 +1,4 @@
-import catagory from "../model/catagorySchema.js";
+import catagory from "../../model/catagorySchema.js";
 
 const catagoryPage = async (req, res) => {
   try {

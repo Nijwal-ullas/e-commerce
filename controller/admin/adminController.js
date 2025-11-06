@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import admin from "../model/adminSchema.js";
+import admin from "../../model/adminSchema.js";
 
 const loadAdminLoginPage = async (req, res) => {
   try {

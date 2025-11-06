@@ -1,5 +1,5 @@
-import Brand from "../model/brandSchema.js";
-import Product from "../model/productSchema.js"; 
+import Brand from "../../model/brandSchema.js";
+import Product from "../../model/productSchema.js"; 
 
 const brandPage = async (req, res) => {
   try {
