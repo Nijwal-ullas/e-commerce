@@ -10,6 +10,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
     />
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   </head>
 
   <body
@@ -36,10 +37,11 @@
               type="email"
               id="email"
               name="email"
-              required
               placeholder="Enter your email"
               class="w-full border border-gray-300 rounded-md px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
+              novalidate
             />
+            <p id="emailError" class="text-red-500 text-sm mt-1"></p>
           </div>
 
           <div>
@@ -48,15 +50,16 @@
               class="block text-sm font-medium text-gray-600 mb-2"
               >Password</label
             >
+
             <div class="relative">
               <input
                 type="password"
                 id="password"
                 name="password"
-                required
                 placeholder="Enter your password"
                 class="w-full border border-gray-300 rounded-md px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none transition"
               />
+
               <button
                 type="button"
                 id="togglePassword"
@@ -65,6 +68,8 @@
                 <i class="far fa-eye"></i>
               </button>
             </div>
+
+            <p id="passwordError" class="text-red-500 text-sm mt-1"></p>
           </div>
 
           <button
@@ -93,11 +98,31 @@
       });
 
       const form = document.getElementById("loginForm");
+      const emailError = document.getElementById("emailError");
+      const passwordError = document.getElementById("passwordError");
+
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        const email = document.getElementById("email").value;
-        const password = document.getElementById("password").value;
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value.trim();
+
+        emailError.textContent = "";
+        passwordError.textContent = "";
+
+        let isValid = true;
+
+        if (!email) {
+          emailError.textContent = "Please enter email";
+          isValid = false;
+        }
+
+        if (!password) {
+          passwordError.textContent = "Please enter password";
+          isValid = false;
+        }
+
+        if (!isValid) return;
 
         try {
           const response = await axios.post("/admin/login", {
@@ -106,14 +131,23 @@
           });
 
           if (response.data.success) {
-            alert("Login successful!");
-            window.location.href = "/admin/dashboard";
+            Swal.fire({
+              icon: "success",
+              title: "Login Successful!",
+              timer: 1200,
+              showConfirmButton: false,
+            });
+
+            setTimeout(() => {
+              window.location.href = "/admin/dashboard";
+            }, 1200);
           } else {
-            alert(response.data.message || "Invalid credentials");
+            passwordError.textContent =
+              response.data.message || "Invalid email or password";
           }
         } catch (error) {
           console.error("Login failed:", error);
-          alert("Server error. Please try again later.");
+          passwordError.textContent = "Invalid email or password.";
         }
       });
     </script>
