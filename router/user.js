@@ -12,6 +12,14 @@ router.get("/register-otp", userController.loadRegisterOtpPage);
 router.post("/verify-otp", userController.registerOtpPage);
 router.post("/resend-otp", userController.resendOtp);
 router.get("/logout", userController.logout);
+router.get("/forgot-password", userController.loadForgotPasswordPage);
+router.post("/forgot-password", userController.forgotPassword);
+router.get("/forgot-otp", userController.loadForgotOtpPage);
+router.post("/forgot-verify-otp", userController.forgotOtpVerify);
+router.get("/reset-password", userController.loadResetPasswordPage);
+router.post("/reset-password", userController.resetPassword);
+router.post("/resend-forgot-otp", userController.resendForgotOtp);
+
 
 router.get(
     '/auth/google',
