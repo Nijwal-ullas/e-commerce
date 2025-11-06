@@ -185,7 +185,6 @@
         const password = document.getElementById("password");
         const confirm = document.getElementById("confirmPassword");
         const referral = document.getElementById("referral");
-        console.log(phone)
         
         const nameError = document.getElementById("nameError");
         const emailError = document.getElementById("emailError");
@@ -240,7 +239,6 @@
         registerBtn.disabled = true;
         registerBtn.textContent = "Registering...";
         
-        console.log("here")
         try {
           const res = await axios.post("/register", {
             name: name.value,
