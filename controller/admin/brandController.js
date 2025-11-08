@@ -4,23 +4,41 @@ import Product from "../../model/productSchema.js";
 const brandPage = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = 3;
+    const limit = 5;
     const skip = (page - 1) * limit;
 
-    const totalBrands = await Brand.countDocuments();
-    const brands = await Brand.find().sort({createdAt :-1}).skip(skip).limit(limit);
+    const search = req.query.search?.trim() || "";
+
+    let query = {};
+    if (search) {
+      query = {
+        name: { $regex: search, $options: "i" }
+      };
+    }
+
+    const totalBrands = await Brand.countDocuments(query);
+
+    const brands = await Brand.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
     const totalPages = Math.ceil(totalBrands / limit);
+
     res.render("admin/brandPage", {
       brands,
       currentPage: page,
-      totalPages: totalPages,
-      totalBrands: totalBrands,
+      totalPages,
+      totalBrands,
+      search,            
     });
+
   } catch (error) {
     console.error(error.message);
     res.status(500).send("Server Error");
   }
 };
+
 
 const searchBrand = async (req, res) => {
   try {
@@ -55,7 +73,7 @@ const addBrand = async (req, res) => {
 
     let brandLogo = '';
     if (req.file) {
-      brandLogo = `/uploads/re-image/${req.file.filename}`; 
+      brandLogo = `/uploads/re-image/${req.file.filename}`;
     }
 
     const brand = new Brand({
@@ -71,6 +89,7 @@ const addBrand = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 const editBrand = async (req, res) => {
   try {
@@ -102,22 +121,20 @@ const editBrand = async (req, res) => {
   }
 };
 
-
-
 const deleteBrand = async (req, res) => {
   try {
     const { id } = req.params;
-    const brand = await Brand.findByIdAndDelete(id);
-
-    if (!brand) {
-      return res.status(404).json({ message: 'Brand not found' });
-    }
-
     const productCount = await Product.countDocuments({ brand: id });
+
     if (productCount > 0) {
       return res.status(400).json({
         message: 'Cannot delete brand; it is associated with products',
       });
+    }
+
+    const brand = await Brand.findByIdAndDelete(id);
+    if (!brand) {
+      return res.status(404).json({ message: 'Brand not found' });
     }
 
     res.json({ message: 'Brand deleted successfully' });

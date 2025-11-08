@@ -59,6 +59,8 @@ const loadDashboardPage = async (req, res) => {
 
 const logout = async (req, res) => {
   try {
+      res.clearCookie("admin-session");  
+
     req.session.destroy((err) => {
       if (err) {
         console.log("Error destroying session:", err);

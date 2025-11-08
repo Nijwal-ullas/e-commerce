@@ -36,24 +36,33 @@ const customerInfo = async (req, res) => {
   }
 };
 
+
+
 const blockCustomer = async (req, res) => {
   try {
     const userId = req.query.id;
+    const { page = 1, search = "" } = req.query; 
+
     await user.updateOne({ _id: userId }, { $set: { isBlocked: true } });
-    res.redirect("/admin/users");
+
+    res.redirect(`/admin/users?page=${page}&search=${encodeURIComponent(search)}`);
   } catch (error) {
-    console.error("Error loading customers:", error);
+    console.error("Error blocking user:", error);
     res.status(500).send("Server Error");
   }
 };
+
 
 const unblockCustomer = async (req, res) => {
   try {
     const userId = req.query.id;
+    const { page = 1, search = "" } = req.query;
+
     await user.updateOne({ _id: userId }, { $set: { isBlocked: false } });
-    res.redirect("/admin/users");
+
+    res.redirect(`/admin/users?page=${page}&search=${encodeURIComponent(search)}`);
   } catch (error) {
-    console.error("Error loading customers:", error);
+    console.error("Error unblocking user:", error);
     res.status(500).send("Server Error");
   }
 };
@@ -61,21 +70,6 @@ const unblockCustomer = async (req, res) => {
 
 
 
-const deleteUser = async (req, res) => {
-  try {
-    const userId = req.params.id;
 
-    const deletedUser = await user.findByIdAndDelete(userId);
 
-    if (!deletedUser) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-
-    return res.status(200).json({ success: true, message: "User deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting user:", error);
-    return res.status(500).json({ success: false, message: "Server error deleting user" });
-  }
-};
-
-export default { customerInfo, blockCustomer, unblockCustomer, deleteUser };
+export default { customerInfo, blockCustomer, unblockCustomer };

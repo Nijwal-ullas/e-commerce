@@ -6,9 +6,16 @@ const catagoryPage = async (req, res) => {
     const limit = 5;
     const skip = (page - 1) * limit;
 
-    const totalCategories = await catagory.countDocuments();
+    const search = req.query.search?.trim() || "";
+
+    const query = search
+      ? { name: { $regex: search, $options: "i" } }
+      : {};
+
+    const totalCategories = await catagory.countDocuments(query);
+
     const categories = await catagory
-      .find()
+      .find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -18,12 +25,14 @@ const catagoryPage = async (req, res) => {
       currentPage: page,
       totalPages: Math.ceil(totalCategories / limit),
       totalCategories,
+      search, 
     });
   } catch (error) {
     console.error(error.message);
     res.status(500).send("Server Error");
   }
 };
+
 
 
 const addCatagory = async (req, res) => {
