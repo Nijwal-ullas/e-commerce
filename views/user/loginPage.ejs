@@ -6,6 +6,8 @@
     <title>BnB Collection - Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
@@ -15,17 +17,24 @@
   <body class="bg-gray-100">
     <%- include('../partials/user/header') %>
 
-    <main class="flex items-center justify-center min-h-screen bg-gray-100 px-4">
+    <main
+      class="flex items-center justify-center min-h-screen bg-gray-100 px-4"
+    >
       <div
         class="w-full max-w-md bg-white rounded-lg shadow-lg p-8 border border-gray-200"
       >
         <h2 class="text-center text-xl font-semibold mb-6">
-          Login to your account 
+          Login to your account
         </h2>
 
-        
-
         <form id="loginForm" novalidate>
+          <% if (typeof message !== 'undefined' && message) { %>
+          <div
+            class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm"
+          >
+            <%= message %>
+          </div>
+          <% } %>
           <div class="mb-4">
             <label for="email" class="block text-gray-700 mb-1">Email</label>
             <input
@@ -35,9 +44,8 @@
               class="w-full px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
               required
             />
-            <p id="emailError" class="text-red-500 text-sm mt-1 hidden">
-              Please enter a valid email address.
-            </p>
+            <p id="emailError" class="text-red-500 text-sm mt-1"></p>
+            <p id="emailError" class="text-red-500 text-sm mt-1"></p>
           </div>
 
           <div class="mb-2 relative">
@@ -59,13 +67,14 @@
             >
               <i class="fas fa-eye"></i>
             </button>
-            <p id="passwordError" class="text-red-500 text-sm mt-1 hidden">
-              Password must be at least 6 characters.
-            </p>
+            <p id="passwordError" class="text-red-500 text-sm mt-1"></p>
           </div>
 
           <div class="text-left mb-4">
-            <a href="/forgot-Password" class="text-sm text-gray-600 hover:text-gray-800">
+            <a
+              href="/forgot-Password"
+              class="text-sm text-gray-600 hover:text-gray-800"
+            >
               Forgot password?
             </a>
           </div>
@@ -103,12 +112,6 @@
     <%- include('../partials/user/footer') %>
 
     <script>
-      function togglePassword() {
-        const passwordInput = document.getElementById("password");
-        passwordInput.type =
-          passwordInput.type === "password" ? "text" : "password";
-      }
-
       const loginForm = document.getElementById("loginForm");
       const emailInput = document.getElementById("email");
       const passwordInput = document.getElementById("password");
@@ -119,26 +122,29 @@
       loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        let valid = true;
+        emailError.textContent = "";
+        passwordError.textContent = "";
+
+        const email = emailInput.value.trim();
+        const password = passwordInput.value.trim();
+
         const emailPattern = /^[^ ]+@[^ ]+\.[a-z]{2,3}$/;
+        let valid = true;
 
-        if (!emailInput.value.trim() || !passwordInput.value.trim()) {
-          alert(" Please fill in all fields.");
-          return;
+        if (!email) {
+          emailError.textContent = "Please enter your email.";
+          valid = false;
+        } else if (!email.match(emailPattern)) {
+          emailError.textContent = "Please enter a valid email.";
+          valid = false;
         }
 
-        if (!emailInput.value.match(emailPattern)) {
-          emailError.classList.remove("hidden");
+        if (!password) {
+          passwordError.textContent = "Please enter your password.";
           valid = false;
-        } else {
-          emailError.classList.add("hidden");
-        }
-
-        if (passwordInput.value.trim().length < 6) {
-          passwordError.classList.remove("hidden");
+        } else if (password.length < 6) {
+          passwordError.textContent = "Password must be at least 6 characters.";
           valid = false;
-        } else {
-          passwordError.classList.add("hidden");
         }
 
         if (!valid) return;
@@ -147,21 +153,23 @@
         loginBtn.textContent = "Logging in...";
 
         try {
-          const res = await axios.post("/login", {
-            email: emailInput.value,
-            password: passwordInput.value,
-          });
+          const res = await axios.post("/login", { email, password });
 
           if (res.data.success) {
-            alert("Login successful!");
-            setTimeout(() => {
-              window.location.href = "/";
-            }, 1000);
-          } else {
-            alert(res.data.message || "Invalid credentials.");
+            Swal.fire({
+              icon: "success",
+              title: "Login Successful!",
+              timer: 1000,
+              showConfirmButton: false,
+            });
+            setTimeout(() => (window.location.replace ( "/")), 1000);
           }
         } catch (error) {
-          alert(error.response?.data?.message || "Login failed.");
+          if (error.response) {
+            passwordError.textContent = error.response.data.message;
+          } else {
+            passwordError.textContent = "Something went wrong.";
+          }
         } finally {
           loginBtn.disabled = false;
           loginBtn.textContent = "Login";
