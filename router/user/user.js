@@ -1,7 +1,9 @@
 import express from "express";
 import userController from "../../controller/user/userController.js";
+import auth from "../../middleware/auth.js";
 import passport from "passport";
 const router = express.Router();
+router.use(auth.isBlocked)
 
 router.get("/", userController.loadHomePage);
 router.get("/login", userController.loadLoginPage);
