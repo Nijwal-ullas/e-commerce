@@ -2,6 +2,7 @@ import user from "../../model/userSchema.js";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
+import { otp as generateOtp } from "../../utilities/otpGenerator.js";
 dotenv.config();
 
 const loadHomePage = async (req, res) => {
@@ -83,8 +84,6 @@ const loadRegisterPage = async (req, res) => {
     console.log(error.message);
   }
 };
-
-const generateOtp = () => Math.floor(100000 + Math.random() * 900000);
 
 const register = async (req, res) => {
   try {
@@ -194,12 +193,12 @@ const registerOtpPage = async (req, res) => {
     req.session.userData = null;
     req.session.otpExpire = null;
 
-    req.session.user = {
-      _id: newUser._id,
-      name: newUser.name,
-      email: newUser.email,
-    };
-    return res.status(200).json({ success: true, redirectUrl: "/" });
+    // req.session.user = {
+    //   _id: newUser._id,
+    //   name: newUser.name,
+    //   email: newUser.email,
+    // };
+    return res.status(200).json({ success: true, redirectUrl: "/login" });
   } catch (error) {
     console.log(error);
     return res
@@ -238,6 +237,7 @@ const resendOtp = async (req, res) => {
 };
 
 const logout = (req, res) => {
+  res.clearCookie("user-session");
   req.session.destroy(() => {
     res.redirect("/");
   });
