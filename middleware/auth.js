@@ -5,7 +5,11 @@ const userAuth = async (req, res, next) => {
   if (req.session.user) {
     try {
       const currentUser = await user.findById(req.session.user);
+
       if (currentUser && !currentUser.isBlocked) {
+        
+        res.locals.user = currentUser;
+
         next();
       } else {
         res.redirect("/login");
@@ -19,22 +23,42 @@ const userAuth = async (req, res, next) => {
   }
 };
 
+
 const adminAuth = async (req, res, next) => {
-  if (req.session.admin && req.session.adminId) {
+  if (req.session?.admin && req.session?.adminId) {
     try {
       const currentAdmin = await admin.findById(req.session.adminId);
       if (currentAdmin) {
-        next();
-      } else {
-        res.redirect("/admin/login");
+        res.locals.admin = currentAdmin;
+        return next();
       }
     } catch (error) {
-      console.log(error);
-      res.status(500).send("Internal Server Error");
+      console.error("Admin auth error:", error);
     }
-  } else {
-    res.redirect("/admin/login");
   }
+  res.redirect("/admin/login");
 };
 
-export default { userAuth, adminAuth };
+const isBlocked = async (req, res, next) => {
+  if (req.session.user?._id) {
+    try {
+      const userData = await user.findById(req.session.user._id).select("isBlocked");
+      if (userData?.isBlocked) {
+        delete req.session.user;     
+        res.locals.user = null;
+        return next();
+      }
+    } catch (err) {
+      console.error("Block check error:", err);
+    }
+  }
+  next();
+};
+
+
+const setUser = (req, res, next) => {
+  res.locals.user = req.session.user || null;
+  next();
+};
+
+export default { userAuth, adminAuth, isBlocked, setUser };
