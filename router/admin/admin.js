@@ -9,6 +9,7 @@
     import storage from "../../helpers/multer.js";
 
     const upload = multer({ storage: storage });
+    // router.use(auth.adminAuth)
 
     router.get("/login", adminController.loadAdminLoginPage);
     router.post("/login", adminController.login);
@@ -19,7 +20,6 @@
     router.get("/users", auth.adminAuth, customerController.customerInfo);
     router.get('/blockCustomer',auth.adminAuth,customerController.blockCustomer)
     router.get('/unblockCustomer',auth.adminAuth,customerController.unblockCustomer)
-    router.delete('/deleteUser/:id',auth.adminAuth,customerController.deleteUser)
 
     // Category routes
     router.get("/catagory", auth.adminAuth, catagoryController.catagoryPage);
