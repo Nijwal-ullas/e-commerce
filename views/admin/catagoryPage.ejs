@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Category Management</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link
@@ -14,6 +15,7 @@
 
   <body class="bg-gray-100">
     <div class="flex h-screen">
+
       <%- include('../partials/admin/sidebar') %>
 
       <main class="flex-1 overflow-y-auto">
@@ -26,16 +28,35 @@
             </h1>
 
             <div class="flex gap-4 items-center">
-              <input
-                type="text"
-                id="searchInput"
-                placeholder="Search categories..."
-                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
-              />
+              <form method="get">
+                <input
+                  type="text"
+                  name="search"
+                  id="searchInput"
+                  value="<%= typeof search !== 'undefined' ? search : '' %>"
+                  placeholder="Search categories..."
+                  class="px-4 py-2 border border-gray-300 rounded focus:outline-none"
+                />
+
+                <button
+                  type="submit"
+                  class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  Search
+                </button>
+
+                <button
+                  type="button"
+                  id="clearSearchBtn"
+                  class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 hidden"
+                >
+                  Clear
+                </button>
+              </form>
 
               <button
                 id="addCategoryBtn"
-                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
               >
                 Add Category
               </button>
@@ -44,92 +65,66 @@
 
           <div class="overflow-x-auto bg-white rounded-lg shadow">
             <table class="w-full">
-              <thead class="bg-gray-50">
+              <thead class="bg-gray-70">
                 <tr>
-                  <th
-                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                  >
-                    Image
-                  </th>
-                  <th
-                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                  >
-                    Name
-                  </th>
-                  <th
-                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                  >
-                    Description
-                  </th>
-                  <th
-                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                  >
-                    Status
-                  </th>
-                  <th
-                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
-                  >
-                    Actions
-                  </th>
+                  <th class="px-6 py-3">Image</th>
+                  <th class="px-6 py-3">Name</th>
+                  <th class="px-6 py-3">Description</th>
+                  <th class="px-6 py-3">Status</th>
+                  <th class="px-6 py-3">Actions</th>
                 </tr>
               </thead>
+
               <tbody id="categoryTableBody" class="divide-y divide-gray-200">
-                <% if (categories && categories.length > 0) { %> <%
-                categories.forEach(category => { %>
+                <% if (categories && categories.length > 0) { %>
+                <% categories.forEach(category => { %>
                 <tr data-id="<%= category._id %>">
                   <td class="px-6 py-4">
                     <img
                       src="<%= category.image || 'https://cdn-icons-png.flaticon.com/128/3050/3050082.png' %>"
-                      alt="<%= category.name %>"
                       class="w-14 h-14 object-cover rounded"
                     />
                   </td>
+
                   <td class="px-6 py-4 font-medium text-gray-800">
                     <%= category.name %>
                   </td>
+
                   <td class="px-6 py-4 text-gray-600">
-                    <%= category.description || '—' %>
+                    <%= category.description || "—" %>
                   </td>
+
                   <td class="px-6 py-4">
                     <span
-                      class="px-3 py-1 text-sm rounded-full <%= category.isListed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600' %>"
+                      class="px-3 py-1 text-sm rounded-full
+                      <%= category.isListed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600' %>"
                     >
-                      <%= category.isListed ? 'Listed' : 'Unlisted' %>
+                      <%= category.isListed ? "Listed" : "Unlisted" %>
                     </span>
                   </td>
+
                   <td class="px-6 py-4 flex gap-2">
                     <% if (category.isListed) { %>
-                    <button
-                      class="unlist-btn bg-yellow-500 text-white px-3 py-1 rounded hover:opacity-80"
-                      data-id="<%= category._id %>"
-                    >
-                      Unlist
-                    </button>
+                      <button class="unlist-btn bg-yellow-500 text-white px-3 py-1 rounded">
+                        Unlist
+                      </button>
                     <% } else { %>
-                    <button
-                      class="list-btn bg-green-500 text-white px-3 py-1 rounded hover:opacity-80"
-                      data-id="<%= category._id %>"
-                    >
-                      List
-                    </button>
+                      <button class="list-btn bg-green-500 text-white px-3 py-1 rounded">
+                        List
+                      </button>
                     <% } %>
 
-                    <button
-                      class="edit-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-blue-600 hover:border-blue-400"
-                      data-id="<%= category._id %>"
-                    >
+                    <button class="edit-btn border w-8 h-8 rounded flex items-center justify-center text-gray-600">
                       <i class="fas fa-edit"></i>
                     </button>
 
-                    <button
-                      class="delete-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-red-600 hover:border-red-400"
-                      data-id="<%= category._id %>"
-                    >
+                    <button class="delete-btn border w-8 h-8 rounded flex items-center justify-center text-gray-600">
                       <i class="fas fa-trash"></i>
                     </button>
                   </td>
                 </tr>
-                <% }) %> <% } else { %>
+                <% }) %>
+                <% } else { %>
                 <tr>
                   <td colspan="5" class="px-6 py-8 text-center text-gray-500">
                     No categories found
@@ -139,36 +134,30 @@
               </tbody>
             </table>
 
-            <div
-              class="flex items-center justify-between px-6 py-4 border-t bg-white"
-            >
+            <div class="flex items-center justify-between px-6 py-4 border-t bg-white">
               <span class="text-sm text-gray-700">
-                Page <%= currentPage %> of <%= totalPages %> — Total Categories:
-                <%= totalCategories %>
+                Page <%= currentPage %> of <%= totalPages %> — Total: <%= totalCategories %>
               </span>
 
               <div class="flex space-x-2">
-                <a
-                  href="?page=<%= Math.max(1, currentPage - 1) %>"
-                  class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage <= 1 ? 'pointer-events-none opacity-50' : '' %>"
-                >
-                  <i class="fas fa-chevron-left text-sm"></i>
+                <a href="?page=<%= Math.max(1,currentPage-1) %>&search=<%= search || '' %>"
+                   class="w-8 h-8 flex items-center justify-center border rounded
+                   <%= currentPage <= 1 ? 'pointer-events-none opacity-50' : '' %>">
+                   <i class="fas fa-chevron-left"></i>
                 </a>
 
-                <% for (let i = 1; i <= totalPages; i++) { %>
-                <a
-                  href="?page=<%= i %>"
-                  class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium <%= i === currentPage ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100 border border-gray-300' %>"
-                >
-                  <%= i %>
-                </a>
+                <% for(let i=1;i<=totalPages;i++){ %>
+                  <a href="?page=<%= i %>&search=<%= search || '' %>"
+                     class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium
+                     <%= i === currentPage ? 'bg-blue-500 text-white' : 'text-gray-700 border' %>">
+                     <%= i %>
+                  </a>
                 <% } %>
 
-                <a
-                  href="?page=<%= Math.min(totalPages, currentPage + 1) %>"
-                  class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage >= totalPages ? 'pointer-events-none opacity-50' : '' %>"
-                >
-                  <i class="fas fa-chevron-right text-sm"></i>
+                <a href="?page=<%= Math.min(totalPages,currentPage+1) %>&search=<%= search || '' %>"
+                   class="w-8 h-8 flex items-center justify-center border rounded
+                   <%= currentPage >= totalPages ? 'pointer-events-none opacity-50' : '' %>">
+                   <i class="fas fa-chevron-right"></i>
                 </a>
               </div>
             </div>
@@ -177,48 +166,34 @@
       </main>
     </div>
 
-    <div
-      id="addCategoryModal"
-      class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden flex items-center justify-center"
-    >
+
+    <div id="addCategoryModal" class="fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center">
       <div class="bg-white rounded-lg p-6 w-96">
-        <h2 class="text-xl font-semibold mb-4 text-gray-800">
-          Add New Category
-        </h2>
+
+        <h2 class="text-xl font-semibold mb-4">Add Category</h2>
+
         <form id="addCategoryForm">
           <div class="mb-3">
             <label class="block text-gray-700 mb-1">Name</label>
-            <input
-              type="text"
-              name="name"
-              required
-              class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
-            />
+            <input type="text" name="name" required class="w-full border rounded px-3 py-2">
           </div>
+
           <div class="mb-3">
             <label class="block text-gray-700 mb-1">Description</label>
-            <textarea
-              name="description"
-              rows="3"
-              class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
-            ></textarea>
+            <textarea name="description" rows="3" class="w-full border rounded px-3 py-2"></textarea>
           </div>
+
           <div class="flex justify-end gap-2 mt-4">
-            <button
-              type="button"
-              id="cancelAddCategory"
-              class="px-4 py-2 border rounded text-gray-600 hover:bg-gray-100"
-            >
+            <button type="button" id="cancelAddCategory" class="px-4 py-2 border rounded text-gray-600">
               Cancel
             </button>
-            <button
-              type="submit"
-              class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
+
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">
               Save
             </button>
           </div>
         </form>
+
       </div>
     </div>
 
@@ -227,19 +202,25 @@
       const addModal = document.getElementById("addCategoryModal");
       const cancelAdd = document.getElementById("cancelAddCategory");
       const addForm = document.getElementById("addCategoryForm");
-      const modalTitle = addModal.querySelector("h2");
-      const submitBtn = addForm.querySelector('button[type="submit"]');
-      const searchInput = document.getElementById("searchInput");
-      const tableBody = document.getElementById("categoryTableBody");
       const table = document.querySelector("table");
+      const searchInput = document.getElementById("searchInput");
+      const clearBtn = document.getElementById("clearSearchBtn");
 
-      let debounceTimeout;
       let editingId = null;
+
+      if (searchInput.value.trim().length > 0) {
+        clearBtn.classList.remove("hidden");
+      }
+clearBtn.addEventListener("click", () => {
+  window.location.href = "/admin/catagory";
+});
+
 
       function openModal(isEdit = false, cat = {}) {
         editingId = isEdit ? cat._id : null;
-        modalTitle.textContent = isEdit ? "Edit Category" : "Add New Category";
-        submitBtn.textContent = isEdit ? "Update" : "Save";
+
+        addModal.querySelector("h2").innerText = isEdit ? "Edit Category" : "Add Category";
+        addForm.querySelector("button[type='submit']").innerText = isEdit ? "Update" : "Save";
 
         addForm.name.value = cat.name || "";
         addForm.description.value = cat.description || "";
@@ -248,11 +229,13 @@
       }
 
       addBtn.addEventListener("click", () => openModal(false));
+
       cancelAdd.addEventListener("click", () => {
         addModal.classList.replace("flex", "hidden");
         addForm.reset();
         editingId = null;
       });
+
 
       addForm.addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -262,178 +245,73 @@
           let res;
           if (editingId) {
             res = await axios.put(`/admin/editCatagory/${editingId}`, data);
-            alert(res.data.message);
-
-            const row = table.querySelector(`tr[data-id="${editingId}"]`);
-            row.cells[1].textContent = data.name;
-            row.cells[2].textContent = data.description || "—";
           } else {
-            res = await axios.post("/admin/addCatagory", data);
-            alert(res.data.message);
-            location.reload();
+            res = await axios.post(`/admin/addCatagory`, data);
           }
 
-          addModal.classList.replace("flex", "hidden");
-          addForm.reset();
-          editingId = null;
+          alert(res.data.message);
+          location.reload();
+
         } catch (err) {
-          alert(err.response?.data?.message || "Operation failed");
+          alert(err.response?.data?.message || "Failed");
         }
       });
 
-      searchInput.addEventListener("input", function () {
-        clearTimeout(debounceTimeout);
-        debounceTimeout = setTimeout(async () => {
-          const query = searchInput.value.trim();
-
-          if (!query) {
-            location.reload();
-            return;
-          }
-
-          try {
-            const { data } = await axios.get("/admin/catagory/search", {
-              params: { query },
-            });
-            renderTableRows(data.categories);
-          } catch (err) {
-            console.error(err);
-            alert("Search error");
-          }
-        }, 400);
-      });
-
-      function renderTableRows(categories) {
-        if (!categories || categories.length === 0) {
-          tableBody.innerHTML = `
-        <tr>
-          <td colspan="5" class="px-6 py-8 text-center text-gray-500">
-            No categories match "<strong>${searchInput.value}</strong>"
-          </td>
-        </tr>`;
-          return;
-        }
-
-        tableBody.innerHTML = categories
-          .map(
-            (cat) => `
-        <tr data-id="${cat._id}">
-          <td class="px-6 py-4">
-            <img src="${
-              cat.image ||
-              "https://cdn-icons-png.flaticon.com/128/3050/3050082.png"
-            }"
-                 alt="${cat.name}" class="w-14 h-14 object-cover rounded">
-          </td>
-          <td class="px-6 py-4 font-medium text-gray-800">${cat.name}</td>
-          <td class="px-6 py-4 text-gray-600">${cat.description || "—"}</td>
-          <td class="px-6 py-4">
-            <span class="px-3 py-1 text-sm rounded-full ${
-              cat.isListed
-                ? "bg-green-100 text-green-600"
-                : "bg-red-100 text-red-600"
-            }">
-              ${cat.isListed ? "Listed" : "Unlisted"}
-            </span>
-          </td>
-          <td class="px-6 py-4 flex gap-2">
-            <button class="${
-              cat.isListed
-                ? "unlist-btn bg-yellow-500"
-                : "list-btn bg-green-500"
-            } text-white px-3 py-1 rounded hover:opacity-80" data-id="${
-              cat._id
-            }">
-              ${cat.isListed ? "Unlist" : "List"}
-            </button>
-
-            <button class="edit-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-blue-600 hover:border-blue-400"
-                    data-id="${cat._id}">
-              <i class="fas fa-edit"></i>
-            </button>
-
-            <button class="delete-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-red-600 hover:border-red-400"
-                    data-id="${cat._id}">
-              <i class="fas fa-trash"></i>
-            </button>
-          </td>
-        </tr>`
-          )
-          .join("");
-      }
 
       table.addEventListener("click", async (e) => {
         const btn = e.target.closest(".delete-btn");
         if (!btn) return;
 
-        const id = btn.dataset.id;
         if (!confirm("Delete this category?")) return;
+
+        const id = btn.closest("tr").dataset.id;
 
         try {
           await axios.delete(`/admin/deleteCatagory/${id}`);
-          alert("Category deleted");
-          btn.closest("tr").remove();
+          alert("Deleted");
+          location.reload();
         } catch (err) {
-          alert(err.response?.data?.message || "Delete failed");
+          alert("Failed");
         }
       });
+
 
       table.addEventListener("click", async (e) => {
         const btn = e.target.closest(".list-btn, .unlist-btn");
         if (!btn) return;
 
-        const id = btn.dataset.id;
-        const isList = btn.classList.contains("list-btn");
-        const url = isList
+        const id = btn.closest("tr").dataset.id;
+        const url = btn.classList.contains("list-btn")
           ? `/admin/listCategory/${id}`
           : `/admin/unlistCategory/${id}`;
 
         try {
           const { data } = await axios.patch(url);
-          alert(data.message || (isList ? "Listed" : "Unlisted"));
-
-          const row = btn.closest("tr");
-          const statusSpan = row.querySelector("td:nth-child(4) span");
-
-          if (isList) {
-            btn.classList.replace("list-btn", "unlist-btn");
-            btn.classList.replace("bg-green-500", "bg-yellow-500");
-            btn.textContent = "Unlist";
-            statusSpan.classList.replace("bg-red-100", "bg-green-100");
-            statusSpan.classList.replace("text-red-600", "text-green-600");
-            statusSpan.textContent = "Listed";
-          } else {
-            btn.classList.replace("unlist-btn", "list-btn");
-            btn.classList.replace("bg-yellow-500", "bg-green-500");
-            btn.textContent = "List";
-            statusSpan.classList.replace("bg-green-100", "bg-red-100");
-            statusSpan.classList.replace("text-green-600", "text-red-600");
-            statusSpan.textContent = "Unlisted";
-          }
+          alert(data.message);
+          location.reload();
         } catch (err) {
-          alert(err.response?.data?.message || "Failed");
+          alert("Failed");
         }
       });
+
 
       table.addEventListener("click", (e) => {
         const btn = e.target.closest(".edit-btn");
         if (!btn) return;
 
         const row = btn.closest("tr");
-        const id = row.dataset.id;
 
         const cat = {
-          _id: id,
+          _id: row.dataset.id,
           name: row.cells[1].textContent.trim(),
-          description:
-            row.cells[2].textContent.trim() === "—"
-              ? ""
-              : row.cells[2].textContent.trim(),
+          description: row.cells[2].textContent.trim() === "—"
+            ? ""
+            : row.cells[2].textContent.trim(),
         };
-      
 
         openModal(true, cat);
       });
+
     </script>
   </body>
 </html>

@@ -6,6 +6,8 @@
     <title>Brand Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
       rel="stylesheet"
@@ -24,16 +26,43 @@
             <h1 class="text-2xl font-semibold text-gray-800">
               Brand Management
             </h1>
+
             <div class="flex gap-3 items-center">
-              <input
-                type="text"
-                id="searchInput"
-                placeholder="Search brands..."
-                class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
-              />
+              <form
+                id="searchForm"
+                class="flex gap-2"
+                action="/admin/brand"
+                method="GET"
+              >
+                <input
+                  type="text"
+                  id="searchInput"
+                  name="search"
+                  value="<%= search || '' %>"
+                  placeholder="Search brands..."
+                  class="px-4 py-2 border border-gray-300 rounded focus:outline-none focus:border-gray-400"
+                />
+
+                <button
+                  type="submit"
+                  id="searchBtn"
+                  class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  Search
+                </button>
+
+                <button
+                  type="button"
+                  id="clearSearchBtn"
+                  class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 hidden"
+                >
+                  Clear
+                </button>
+              </form>
+
               <button
                 id="addBrandBtn"
-                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
               >
                 Add Brand
               </button>
@@ -118,21 +147,23 @@
               </span>
               <div class="flex space-x-2">
                 <a
-                  href="?page=<%= Math.max(1, currentPage - 1) %>"
+                  href="/admin/brand?page=<%= Math.max(1, currentPage - 1) %>&search=<%= search || '' %>"
                   class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage <= 1 ? 'pointer-events-none opacity-50' : '' %>"
                 >
                   <i class="fas fa-chevron-left text-sm"></i>
                 </a>
+
                 <% for (let i = 1; i <= totalPages; i++) { %>
                 <a
-                  href="?page=<%= i %>"
+                  href="/admin/brand?page=<%= i %>&search=<%= search || '' %>"
                   class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium <%= i === currentPage ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100 border border-gray-300' %>"
                 >
                   <%= i %>
                 </a>
                 <% } %>
+
                 <a
-                  href="?page=<%= Math.min(totalPages, currentPage + 1) %>"
+                  href="/admin/brand?page=<%= Math.min(totalPages, currentPage + 1) %>&search=<%= search || '' %>"
                   class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage >= totalPages ? 'pointer-events-none opacity-50' : '' %>"
                 >
                   <i class="fas fa-chevron-right text-sm"></i>
@@ -161,7 +192,6 @@
               type="text"
               name="name"
               id="brandName"
-              required
               class="w-full border rounded px-3 py-2 focus:outline-none focus:ring focus:border-blue-300"
             />
           </div>
@@ -218,6 +248,9 @@
     </div>
 
     <script>
+      const searchForm = document.getElementById("searchForm");
+      const searchInput = document.getElementById("searchInput");
+      const clearBtn = document.getElementById("clearSearchBtn");
       const addBtn = document.getElementById("addBrandBtn");
       const modal = document.getElementById("brandModal");
       const modalTitle = document.getElementById("modalTitle");
@@ -227,16 +260,49 @@
       const nameInput = document.getElementById("brandName");
       const descInput = document.getElementById("brandDescription");
       const imageInput = document.getElementById("brandImage");
-      const currentImageContainer = document.getElementById(
-        "currentImageContainer"
-      );
-      const currentImage = document.getElementById("currentImage");
-      const searchInput = document.getElementById("searchInput");
+      const currentImgContainer = document.getElementById("currentImageContainer");
+      const currentImg = document.getElementById("currentImage");
       const tbody = document.getElementById("brandTableBody");
       const table = tbody.closest("table");
 
       let editingId = null;
-      let debounceTimer;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasSearch =
+        urlParams.has("search") && urlParams.get("search").trim() !== "";
+
+      function toggleClear(show) {
+        clearBtn.classList.toggle("hidden", !show);
+      }
+      toggleClear(hasSearch);
+      searchInput.addEventListener("input", () => toggleClear(false));
+
+      searchForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const term = searchInput.value.trim();
+        const newParams = new URLSearchParams();
+
+        if (term) newParams.set("search", term);
+        if (urlParams.has("page")) newParams.set("page", urlParams.get("page"));
+
+        window.location.href = `/admin/brand?${newParams.toString()}`;
+      });
+
+      clearBtn.addEventListener("click", () => {
+        searchInput.value = "";
+
+        const newParams = new URLSearchParams();
+        if (urlParams.has("page")) {
+          newParams.set("page", urlParams.get("page"));
+        } else {
+          newParams.set("page", "1");
+        }
+        window.location.href = `/admin/brand?${newParams.toString()}`;
+      });
+
+      searchInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") searchForm.dispatchEvent(new Event("submit"));
+      });
 
       function openModal(isEdit = false, brand = {}) {
         editingId = isEdit ? brand._id : null;
@@ -248,10 +314,10 @@
         imageInput.value = "";
 
         if (isEdit && brand.brandLogo) {
-          currentImage.src = brand.brandLogo;
-          currentImageContainer.classList.remove("hidden");
+          currentImg.src = brand.brandLogo;
+          currentImgContainer.classList.remove("hidden");
         } else {
-          currentImageContainer.classList.add("hidden");
+          currentImgContainer.classList.add("hidden");
         }
 
         modal.classList.replace("hidden", "flex");
@@ -267,12 +333,37 @@
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        const formData = new FormData();
-        formData.append("name", nameInput.value.trim());
-        formData.append("description", descInput.value.trim());
-        if (imageInput.files[0]) {
-          formData.append("image", imageInput.files[0]);
+        const name = nameInput.value.trim();
+        const description = descInput.value.trim();
+
+        if (!name) {
+          return Swal.fire({
+            icon: "error",
+            title: "Validation Error",
+            text: "Brand name is required",
+          });
         }
+
+        if (name.length < 3) {
+          return Swal.fire({
+            icon: "warning",
+            title: "Invalid Name",
+            text: "Brand name must have at least 3 characters",
+          });
+        }
+
+        if (description && description.length < 5) {
+          return Swal.fire({
+            icon: "warning",
+            title: "Invalid Description",
+            text: "Description must be at least 5 characters long",
+          });
+        }
+
+        const formData = new FormData();
+        formData.append("name", name);
+        formData.append("description", description);
+        if (imageInput.files[0]) formData.append("image", imageInput.files[0]);
 
         const isEdit = !!editingId;
         const url = isEdit
@@ -286,74 +377,27 @@
             data: formData,
           });
 
-          alert(res.data.message || (isEdit ? "Brand updated" : "Brand added"));
-
-          if (isEdit) {
-            const row = table.querySelector(`tr[data-id="${editingId}"]`);
-            row.cells[1].textContent = nameInput.value.trim();
-            row.cells[2].textContent = descInput.value.trim() || "—";
-            if (imageInput.files[0]) location.reload();
-          } else {
+          Swal.fire({
+            icon: "success",
+            title: "Success",
+            text:
+              res.data.message || (isEdit ? "Brand updated" : "Brand added"),
+            confirmButtonText: "OK",
+          }).then(() => {
             location.reload();
-          }
+          });
 
           modal.classList.replace("flex", "hidden");
           form.reset();
           editingId = null;
         } catch (err) {
-          console.error(err);
-          alert(err.response?.data?.message || "Operation failed");
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: err.response?.data?.message || "Operation failed",
+          });
         }
       });
-
-      searchInput.addEventListener("input", () => {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(async () => {
-          const q = searchInput.value.trim();
-          if (!q) return location.reload();
-
-          try {
-            const { data } = await axios.get("/admin/brand/search", {
-              params: { query: q },
-            });
-            renderRows(data.brands);
-          } catch (err) {
-            alert("Search error");
-          }
-        }, 400);
-      });
-
-      function renderRows(brands) {
-        if (!brands || brands.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-gray-500">
-            No brands match "<strong>${searchInput.value}</strong>"
-          </td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = brands
-          .map(
-            (b) => `
-          <tr data-id="${b._id}">
-            <td class="px-6 py-4">
-              <img src="${
-                b.brandLogo ||
-                "https://cdn-icons-png.flaticon.com/128/711/711769.png"
-              }"
-                   alt="${b.name}" class="w-12 h-12 object-cover rounded">
-            </td>
-            <td class="px-6 py-4 font-medium text-gray-800">${b.name}</td>
-            <td class="px-6 py-4 text-gray-600">${b.description || "—"}</td>
-            <td class="px-6 py-4 flex gap-2">
-              <button class="edit-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-blue-600 hover:border-blue-400"
-                      data-id="${b._id}"><i class="fas fa-edit"></i></button>
-              <button class="delete-btn w-8 h-8 flex items-center justify-center border rounded text-gray-600 hover:text-red-600 hover:border-red-400"
-                      data-id="${b._id}"><i class="fas fa-trash"></i></button>
-            </td>
-          </tr>`
-          )
-          .join("");
-      }
 
       table.addEventListener("click", async (e) => {
         const btn = e.target.closest("button");
@@ -379,7 +423,12 @@
           try {
             await axios.delete(`/admin/deleteBrand/${id}`);
             row.remove();
-            alert("Brand deleted");
+            Swal.fire({
+              icon: "success",
+              title: "Deleted!",
+              text: "Brand deleted",
+              confirmButtonText: "OK",
+            });
           } catch (err) {
             alert(err.response?.data?.message || "Delete failed");
           }
