@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Category Management</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body class="bg-gray-100">
+    <div class="flex h-screen">
+
+      <%- include('../partials/admin/sidebar') %>
+
+      <main class="flex-1 overflow-y-auto">
+        <%- include('../partials/admin/header') %>
+
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-semibold text-gray-800">
+              Category Management
+            </h1>
+
+            <div class="flex gap-4 items-center">
+              <form method="get">
+                <input
+                  type="text"
+                  name="search"
+                  id="searchInput"
+                  value="<%= typeof search !== 'undefined' ? search : '' %>"
+                  placeholder="Search categories..."
+                  class="px-4 py-2 border border-gray-300 rounded focus:outline-none"
+                />
+
+                <button
+                  type="submit"
+                  class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  Search
+                </button>
+
+                <button
+                  type="button"
+                  id="clearSearchBtn"
+                  class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 hidden"
+                >
+                  Clear
+                </button>
+              </form>
+
+              <button
+                id="addCategoryBtn"
+                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              >
+                Add Category
+              </button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto bg-white rounded-lg shadow">
+            <table class="w-full">
+              <thead class="bg-gray-70">
+                <tr>
+                  <th class="px-6 py-3">Image</th>
+                  <th class="px-6 py-3">Name</th>
+                  <th class="px-6 py-3">Description</th>
+                  <th class="px-6 py-3">Status</th>
+                  <th class="px-6 py-3">Actions</th>
+                </tr>
+              </thead>
+
+              <tbody id="categoryTableBody" class="divide-y divide-gray-200">
+                <% if (categories && categories.length > 0) { %>
+                <% categories.forEach(category => { %>
+                <tr data-id="<%= category._id %>">
+                  <td class="px-6 py-4">
+                    <img
+                      src="<%= category.image || 'https://cdn-icons-png.flaticon.com/128/3050/3050082.png' %>"
+                      class="w-14 h-14 object-cover rounded"
+                    />
+                  </td>
+
+                  <td class="px-6 py-4 font-medium text-gray-800">
+                    <%= category.name %>
+                  </td>
+
+                  <td class="px-6 py-4 text-gray-600">
+                    <%= category.description || "—" %>
+                  </td>
+
+                  <td class="px-6 py-4">
+                    <span
+                      class="px-3 py-1 text-sm rounded-full
+                      <%= category.isListed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600' %>"
+                    >
+                      <%= category.isListed ? "Listed" : "Unlisted" %>
+                    </span>
+                  </td>
+
+                  <td class="px-6 py-4 flex gap-2">
+                    <% if (category.isListed) { %>
+                      <button class="unlist-btn bg-yellow-500 text-white px-3 py-1 rounded">
+                        Unlist
+                      </button>
+                    <% } else { %>
+                      <button class="list-btn bg-green-500 text-white px-3 py-1 rounded">
+                        List
+                      </button>
+                    <% } %>
+
+                    <button class="edit-btn border w-8 h-8 rounded flex items-center justify-center text-gray-600">
+                      <i class="fas fa-edit"></i>
+                    </button>
+
+                    <button class="delete-btn border w-8 h-8 rounded flex items-center justify-center text-gray-600">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+                <% }) %>
+                <% } else { %>
+                <tr>
+                  <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                    No categories found
+                  </td>
+                </tr>
+                <% } %>
+              </tbody>
+            </table>
+
+            <div class="flex items-center justify-between px-6 py-4 border-t bg-white">
+              <span class="text-sm text-gray-700">
+                Page <%= currentPage %> of <%= totalPages %> — Total: <%= totalCategories %>
+              </span>
+
+              <div class="flex space-x-2">
+                <a href="?page=<%= Math.max(1,currentPage-1) %>&search=<%= search || '' %>"
+                   class="w-8 h-8 flex items-center justify-center border rounded
+                   <%= currentPage <= 1 ? 'pointer-events-none opacity-50' : '' %>">
+                   <i class="fas fa-chevron-left"></i>
+                </a>
+
+                <% for(let i=1;i<=totalPages;i++){ %>
+                  <a href="?page=<%= i %>&search=<%= search || '' %>"
+                     class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium
+                     <%= i === currentPage ? 'bg-blue-500 text-white' : 'text-gray-700 border' %>">
+                     <%= i %>
+                  </a>
+                <% } %>
+
+                <a href="?page=<%= Math.min(totalPages,currentPage+1) %>&search=<%= search || '' %>"
+                   class="w-8 h-8 flex items-center justify-center border rounded
+                   <%= currentPage >= totalPages ? 'pointer-events-none opacity-50' : '' %>">
+                   <i class="fas fa-chevron-right"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+
+    <div id="addCategoryModal" class="fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center">
+      <div class="bg-white rounded-lg p-6 w-96">
+
+        <h2 class="text-xl font-semibold mb-4">Add Category</h2>
+
+        <form id="addCategoryForm">
+          <div class="mb-3">
+            <label class="block text-gray-700 mb-1">Name</label>
+            <input type="text" name="name" required class="w-full border rounded px-3 py-2">
+          </div>
+
+          <div class="mb-3">
+            <label class="block text-gray-700 mb-1">Description</label>
+            <textarea name="description" rows="3" class="w-full border rounded px-3 py-2"></textarea>
+          </div>
+
+          <div class="flex justify-end gap-2 mt-4">
+            <button type="button" id="cancelAddCategory" class="px-4 py-2 border rounded text-gray-600">
+              Cancel
+            </button>
+
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">
+              Save
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+
+    <script>
+      const addBtn = document.getElementById("addCategoryBtn");
+      const addModal = document.getElementById("addCategoryModal");
+      const cancelAdd = document.getElementById("cancelAddCategory");
+      const addForm = document.getElementById("addCategoryForm");
+      const table = document.querySelector("table");
+      const searchInput = document.getElementById("searchInput");
+      const clearBtn = document.getElementById("clearSearchBtn");
+
+      let editingId = null;
+
+      if (searchInput.value.trim().length > 0) {
+        clearBtn.classList.remove("hidden");
+      }
+clearBtn.addEventListener("click", () => {
+  window.location.href = "/admin/category";
+});
+
+
+      function openModal(isEdit = false, cat = {}) {
+        editingId = isEdit ? cat._id : null;
+
+        addModal.querySelector("h2").innerText = isEdit ? "Edit Category" : "Add Category";
+        addForm.querySelector("button[type='submit']").innerText = isEdit ? "Update" : "Save";
+
+        addForm.name.value = cat.name || "";
+        addForm.description.value = cat.description || "";
+
+        addModal.classList.replace("hidden", "flex");
+      }
+
+      addBtn.addEventListener("click", () => openModal(false));
+
+      cancelAdd.addEventListener("click", () => {
+        addModal.classList.replace("flex", "hidden");
+        addForm.reset();
+        editingId = null;
+      });
+
+
+      addForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(addForm));
+
+        try {
+          let res;
+          if (editingId) {
+            res = await axios.put(`/admin/editCategory/${editingId}`, data);
+          } else {
+            res = await axios.post(`/admin/addCategory`, data);
+          }
+
+          alert(res.data.message);
+          location.reload();
+
+        } catch (err) {
+          alert(err.response?.data?.message || "Failed");
+        }
+      });
+
+
+      table.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".delete-btn");
+        if (!btn) return;
+
+        if (!confirm("Delete this category?")) return;
+
+        const id = btn.closest("tr").dataset.id;
+
+        try {
+          await axios.delete(`/admin/deleteCategory/${id}`);
+          alert("Deleted");
+          location.reload();
+        } catch (err) {
+          alert("Failed");
+        }
+      });
+
+
+      table.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".list-btn, .unlist-btn");
+        if (!btn) return;
+
+        const id = btn.closest("tr").dataset.id;
+        const url = btn.classList.contains("list-btn")
+          ? `/admin/listCategory/${id}`
+          : `/admin/unlistCategory/${id}`;
+
+        try {
+          const { data } = await axios.patch(url);
+          alert(data.message);
+          location.reload();
+        } catch (err) {
+          alert("Failed");
+        }
+      });
+
+
+      table.addEventListener("click", (e) => {
+        const btn = e.target.closest(".edit-btn");
+        if (!btn) return;
+
+        const row = btn.closest("tr");
+
+        const cat = {
+          _id: row.dataset.id,
+          name: row.cells[1].textContent.trim(),
+          description: row.cells[2].textContent.trim() === "—"
+            ? ""
+            : row.cells[2].textContent.trim(),
+        };
+
+        openModal(true, cat);
+      });
+
+    </script>
+  </body>
+</html>
