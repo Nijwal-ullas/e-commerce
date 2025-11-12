@@ -1,4 +1,3 @@
-// helpers/multer.js
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -14,7 +13,7 @@ const storage = multer.diskStorage({
     const url = (req.originalUrl || "").toLowerCase();
 
     if (url.includes("/products/add") || url.includes("/editproduct/")) {
-      folder = "products"; // Store originals in products folder, will be resized later
+      folder = "products"; 
     } else if (url.includes("/addbrand") || url.includes("/editbrand")) {
       folder = "brands";
     }
