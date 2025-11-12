@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Products - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Cropper.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <style>
+      .fade-in {
+        animation: fadeIn 0.3s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .slide-down {
+        animation: slideDown 0.3s ease-out;
+      }
+      @keyframes slideDown {
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      .image-preview {
+        transition: all 0.3s ease;
+      }
+      .image-preview:hover {
+        transform: scale(1.05);
+      }
+      .carousel-image {
+        display: none;
+      }
+      .carousel-image.active {
+        display: block;
+      }
+
+      .cropper-container {
+        direction: ltr;
+        font-size: 0;
+        line-height: 0;
+        position: relative;
+        touch-action: none;
+        user-select: none;
+      }
+      .cropper-view-box {
+        display: block;
+        height: 100%;
+        outline: 1px solid #39f;
+        outline-color: rgba(51, 153, 255, 0.75);
+        overflow: hidden;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 flex">
+    <%- include('../partials/admin/sidebar') %>
+
+    <div class="flex-1 flex flex-col min-h-screen">
+      <%- include('../partials/admin/header') %>
+
+      <main class="flex-1 overflow-auto p-6">
+        <div class="w-full px-2 py-2">
+
+          <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-800">Products</h1>
+            <button
+              id="openModalBtn"
+              class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-medium flex items-center"
+            >
+              <i class="fas fa-plus mr-2"></i> ADD PRODUCT
+            </button>
+          </div>
+
+          <!-- Filters -->
+          <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div class="flex flex-col md:flex-row gap-4 items-end">
+              
+              <div class="flex-1">
+                <div class="relative">
+                  <input
+                    type="text"
+                    id="searchInput"
+                    placeholder="Search products..."
+                    class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition"
+                  />
+                  <i class="fas fa-search absolute left-3 top-3.5 text-gray-400"></i>
+                </div>
+              </div>
+              <div>
+                <button
+                  id="clearFilters"
+                  class="bg-gray-200 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-300 transition font-medium"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-max">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PRODUCT</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CATEGORY</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PRICE</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STOCK</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DISCOUNT</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                  <% if (productData && productData.length > 0) { %>
+                    <% productData.forEach(product => { %>
+                      <tr class="hover:bg-gray-50 transition" data-product='<%- JSON.stringify(product) %>'>
+                        <td class="px-6 py-4">
+                          <div class="text-sm font-medium text-gray-900"><%= product.productName %></div>
+                          <div class="text-xs text-gray-500 truncate max-w-xs"><%= product.description %></div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                          <%= product.category ? product.category.name : 'No Category' %>
+                        </td>
+                        <td class="px-6 py-4 text-sm">
+                          <% if (product.oldPrice && product.oldPrice > product.price) { %>
+                            <div class="flex flex-col">
+                              <span class="text-blue-600 font-semibold">₹<%= product.price.toFixed(2) %></span>
+                              <span class="text-gray-400 text-xs line-through">₹<%= product.oldPrice.toFixed(2) %></span>
+                            </div>
+                          <% } else { %>
+                            <span class="text-blue-600 font-semibold">₹<%= product.price.toFixed(2) %></span>
+                          <% } %>
+                        </td>
+                        <td class="px-6 py-4">
+                          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                            <%= product.stock > 10 ? 'bg-green-100 text-green-800' : 
+                                product.stock > 0 ? 'bg-yellow-100 text-yellow-800' : 
+                                'bg-red-100 text-red-800' %>">
+                            <%= product.stock %>
+                          </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm <%= product.discount > 0 ? 'text-green-600 font-medium' : 'text-gray-500' %>">
+                          <%= product.discount > 0 ? product.discount + '%' : 'None' %>
+                        </td>
+                        <td class="px-6 py-4 text-sm">
+                          <div class="flex space-x-3">
+                            <!-- View Button -->
+                            <button onclick="viewProduct('<%= product._id %>')" 
+                                    class="text-green-600 hover:text-green-900 transition" 
+                                    title="View Product">
+                              <i class="fas fa-eye"></i>
+                            </button>
+                            
+                            <!-- Edit Button -->
+                            <button class="edit-btn text-blue-600 hover:text-blue-900 transition" 
+                                    title="Edit Product">
+                              <i class="fas fa-edit"></i>
+                            </button>
+                            
+                            <!-- Delete Button -->
+                            <button class="delete-btn text-red-600 hover:text-red-900 transition" 
+                                    title="Delete Product">
+                              <i class="fas fa-trash"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    <% }) %>
+                  <% } else { %>
+                    <tr>
+                      <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                        <div class="flex flex-col items-center">
+                          <i class="fas fa-box-open text-4xl text-gray-300 mb-2"></i>
+                          <p class="text-lg font-medium">No products found</p>
+                        </div>
+                      </td>
+                    </tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination -->
+            <% if (totalPages > 1) { %>
+              <div class="flex items-center justify-between px-6 py-4 border-t bg-white">
+                <span class="text-sm text-gray-700">
+                  Page <%= currentPage %> of <%= totalPages %> — Total: <%= totalProducts %> products
+                </span>
+                <div class="flex space-x-2">
+                  <% if (currentPage > 1) { %>
+                    <a href="?page=<%= currentPage - 1 %><% if (search) { %>&search=<%= search %><% } %>"
+                       class="w-8 h-8 flex items-center justify-center border rounded hover:bg-gray-100 transition">
+                       <i class="fas fa-chevron-left text-gray-600"></i>
+                    </a>
+                  <% } else { %>
+                    <span class="w-8 h-8 flex items-center justify-center border rounded opacity-50 cursor-not-allowed">
+                      <i class="fas fa-chevron-left text-gray-400"></i>
+                    </span>
+                  <% } %>
+
+                  <% for(let i = 1; i <= totalPages; i++) { %>
+                    <% if (i === currentPage) { %>
+                      <span class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium bg-blue-500 text-white">
+                        <%= i %>
+                      </span>
+                    <% } else { %>
+                      <a href="?page=<%= i %><% if (search) { %>&search=<%= search %><% } %>"
+                         class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium text-gray-700 border hover:bg-gray-100 transition">
+                        <%= i %>
+                      </a>
+                    <% } %>
+                  <% } %>
+
+                  <% if (currentPage < totalPages) { %>
+                    <a href="?page=<%= currentPage + 1 %><% if (search) { %>&search=<%= search %><% } %>"
+                       class="w-8 h-8 flex items-center justify-center border rounded hover:bg-gray-100 transition">
+                       <i class="fas fa-chevron-right text-gray-600"></i>
+                    </a>
+                  <% } else { %>
+                    <span class="w-8 h-8 flex items-center justify-center border rounded opacity-50 cursor-not-allowed">
+                      <i class="fas fa-chevron-right text-gray-400"></i>
+                    </span>
+                  <% } %>
+                </div>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Add/Edit Product Modal -->
+    <div id="productModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto slide-down">
+        <div class="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+          <h2 id="modalTitle" class="text-xl font-bold text-gray-800">Add Product</h2>
+          <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600 transition">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        <div class="p-6">
+          <form id="productForm" enctype="multipart/form-data">
+            <input type="hidden" id="productId" value="">
+            
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
+              <input type="text" id="productName" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" />
+              <p id="nameError" class="text-red-500 text-xs mt-1 hidden">Product name is required</p>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <textarea id="productDescription" rows="3" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" ></textarea>
+              <p id="descriptionError" class="text-red-500 text-xs mt-1 hidden">Description is required</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <select id="productCategory" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                  <% categories.forEach(c => { %>
+                    <option value="<%= c._id %>"><%= c.name %></option>
+                  <% }) %>
+                </select>
+                <p id="categoryError" class="text-red-500 text-xs mt-1 hidden">Category is required</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Stock</label>
+                <input type="number" id="productStock" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" min="0"  />
+                <p id="stockError" class="text-red-500 text-xs mt-1 hidden">Stock must be a positive number</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Price</label>
+                <input type="number" id="productPrice" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" min="0" step="0.01" />
+                <p id="priceError" class="text-red-500 text-xs mt-1 hidden">Price must be a positive number</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Old Price</label>
+                <input type="number" id="productOldPrice" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" min="0" step="0.01" />
+                <p id="oldPriceError" class="text-red-500 text-xs mt-1 hidden">Old price must be greater than current price</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Brand</label>
+                <select id="productBrand" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                  <option value="">No Brand</option>
+                  <% brands.forEach(b => { %>
+                    <option value="<%= b._id %>"><%= b.name %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Discount (%)</label>
+                <input type="number" id="productDiscount" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" min="0" max="100" />
+                <p id="discountError" class="text-red-500 text-xs mt-1 hidden">Discount must be between 0 and 100</p>
+              </div>
+              <div class="flex items-center">
+                <input type="checkbox" id="productIsListed" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500">
+                <label for="productIsListed" class="ml-2 text-sm font-medium text-gray-700">Listed</label>
+              </div>
+            </div>
+
+            <!-- IMAGE UPLOAD WITH CROPPING -->
+            <div class="mb-6">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Product Images (Min 3, Max 5)</label>
+              <div id="imageUploadArea" class="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 cursor-pointer transition-colors bg-gray-50">
+                <i class="fas fa-cloud-upload-alt text-gray-400 text-4xl mb-2"></i>
+                <p class="text-sm text-gray-600 font-medium" id="uploadText">Click or drag images here (min 3)</p>
+                <p class="text-xs text-gray-500 mt-1">Supported formats: JPG, PNG, WebP - Images will be cropped to square</p>
+                <input type="file" name="images" id="productImages" multiple accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+              </div>
+              <div id="imageError" class="text-red-500 text-xs mt-1 hidden">Please add at least three images</div>
+              <div id="selectedImagesPreview" class="mt-4 flex flex-wrap gap-3"></div>
+              <div id="existingImagesPreview" class="mt-4 flex flex-wrap gap-3"></div>
+            </div>
+
+            <div class="flex justify-end space-x-4">
+              <button type="button" id="cancelBtn" class="bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 transition font-medium">Cancel</button>
+              <button type="submit" id="submitBtn" class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition font-medium flex items-center">
+                <i class="fas fa-plus-circle mr-2"></i> Publish Product
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Cropping Modal -->
+    <div id="cropModal" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+        <div class="flex justify-between items-center p-6 border-b border-gray-200">
+          <h2 class="text-xl font-bold text-gray-800">Crop Image</h2>
+          <button id="closeCropModalBtn" class="text-gray-400 hover:text-gray-600 transition">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        <div class="p-6">
+          <div class="mb-4">
+            <div id="cropContainer" class="max-h-96 overflow-hidden bg-gray-100 rounded-lg">
+              <img id="cropImage" src="" alt="Image to crop" class="max-w-full">
+            </div>
+          </div>
+          <div class="flex justify-end space-x-4">
+            <button type="button" id="cancelCropBtn" class="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 transition font-medium">Cancel</button>
+            <button type="button" id="confirmCropBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-medium">Apply Crop</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Product Modal -->
+    <div id="viewProductModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+          <h2 class="text-xl font-bold text-gray-800">Product Details</h2>
+          <button id="closeViewModalBtn" class="text-gray-400 hover:text-gray-600 transition">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        <div class="p-6">
+          <div id="viewProductContent">
+            <!-- Content will be loaded here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cropper.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+    <script>
+      let editingId = null;
+      let selectedFiles = [];
+      let existingImages = [];
+      let currentCropper = null;
+      let currentCropFile = null;
+
+      document.addEventListener("DOMContentLoaded", () => {
+        const form = document.getElementById("productForm");
+        const searchInput = document.getElementById("searchInput");
+        const clearFiltersBtn = document.getElementById("clearFilters");
+        const modal = document.getElementById("productModal");
+        const cropModal = document.getElementById("cropModal");
+        const viewModal = document.getElementById("viewProductModal");
+        const openBtn = document.getElementById("openModalBtn");
+        const closeBtn = document.getElementById("closeModalBtn");
+        const closeCropBtn = document.getElementById("closeCropModalBtn");
+        const closeViewBtn = document.getElementById("closeViewModalBtn");
+        const cancelBtn = document.getElementById("cancelBtn");
+        const cancelCropBtn = document.getElementById("cancelCropBtn");
+        const confirmCropBtn = document.getElementById("confirmCropBtn");
+        const fileInput = document.getElementById("productImages");
+        const uploadArea = document.getElementById("imageUploadArea");
+        const preview = document.getElementById("selectedImagesPreview");
+        const existingPreview = document.getElementById("existingImagesPreview");
+        const modalTitle = document.getElementById("modalTitle");
+        const submitBtn = document.getElementById("submitBtn");
+        const table = document.querySelector("table");
+        const uploadText = document.getElementById("uploadText");
+        const cropImage = document.getElementById("cropImage");
+        const cropContainer = document.getElementById("cropContainer");
+
+        let searchTimeout;
+
+        // Search and Filter
+        searchInput.addEventListener("input", () => {
+          clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(() => {
+            const search = searchInput.value.trim();
+            const params = new URLSearchParams();
+            if (search) params.append('search', search);
+            window.location.href = `?${params.toString()}`;
+          }, 500);
+        });
+
+        clearFiltersBtn.addEventListener("click", () => {
+          window.location.href = '?';
+        });
+
+        function openModal(isEdit = false, productData = null) {
+          modalTitle.textContent = isEdit ? 'Edit Product' : 'Add Product';
+          submitBtn.innerHTML = isEdit 
+            ? '<i class="fas fa-save mr-2"></i> Update Product'
+            : '<i class="fas fa-plus-circle mr-2"></i> Publish Product';
+          
+          if (isEdit && productData) {
+            populateForm(productData);
+          } else {
+            resetForm();
+          }
+          
+          modal.classList.remove("hidden");
+          document.body.style.overflow = "hidden"; 
+        }
+
+        function closeModal() {
+          modal.classList.add("hidden");
+          document.body.style.overflow = ""; 
+          resetForm();
+        }
+
+        function openCropModal(file) {
+          currentCropFile = file;
+          const reader = new FileReader();
+          
+          reader.onload = (e) => {
+            cropImage.src = e.target.result;
+            cropModal.classList.remove("hidden");
+            
+            if (currentCropper) {
+              currentCropper.destroy();
+            }
+            
+            currentCropper = new Cropper(cropImage, {
+              aspectRatio: 1,
+              viewMode: 1,
+              autoCropArea: 0.8,
+              movable: true,
+              zoomable: true,
+              rotatable: false,
+              scalable: false,
+            });
+          };
+          
+          reader.readAsDataURL(file);
+        }
+
+        function closeCropModal() {
+          cropModal.classList.add("hidden");
+          if (currentCropper) {
+            currentCropper.destroy();
+            currentCropper = null;
+          }
+          currentCropFile = null;
+        }
+
+        function openViewModal() {
+          viewModal.classList.remove("hidden");
+          document.body.style.overflow = "hidden";
+        }
+
+        function closeViewModal() {
+          viewModal.classList.add("hidden");
+          document.body.style.overflow = "";
+        }
+
+        function resetForm() {
+          form.reset();
+          selectedFiles = [];
+          existingImages = [];
+          preview.innerHTML = "";
+          existingPreview.innerHTML = "";
+          document.getElementById("productId").value = "";
+          document.getElementById("productIsListed").checked = true;
+          hideAllErrors();
+          submitBtn.disabled = false;
+          editingId = null;
+          updateUploadAreaText();
+        }
+
+        function populateForm(product) {
+          document.getElementById("productId").value = product._id;
+          document.getElementById("productName").value = product.productName || "";
+          document.getElementById("productDescription").value = product.description || "";
+          document.getElementById("productCategory").value = product.category?._id || "";
+          document.getElementById("productStock").value = product.stock || 0;
+          document.getElementById("productPrice").value = product.price || 0;
+          document.getElementById("productOldPrice").value = product.oldPrice || "";
+          document.getElementById("productBrand").value = product.brand?._id || "";
+          document.getElementById("productDiscount").value = product.discount || 0;
+          document.getElementById("productIsListed").checked = product.isListed !== false;
+
+          existingImages = product.images || [];
+          updateExistingImagesPreview();
+          updateUploadAreaText();
+          
+          editingId = product._id;
+        }
+
+        function updateExistingImagesPreview() {
+          existingPreview.innerHTML = "";
+          if (existingImages.length === 0) {
+            return;
+          }
+          
+          existingImages.forEach((image, i) => {
+            const div = document.createElement("div");
+            div.className = "relative w-24 h-24 bg-gray-100 rounded-lg overflow-hidden shadow image-preview";
+            div.innerHTML = `
+              <img src="${image}" class="w-full h-full object-cover" alt="Existing image ${i + 1}" />
+              <button type="button" onclick="removeExistingImage(${i})" class="absolute top-0 right-0 bg-red-500 text-white text-xs w-6 h-6 rounded-full -m-1 hover:bg-red-600 transition flex items-center justify-center">
+                <i class="fas fa-times"></i>
+              </button>
+              <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 truncate">Existing</div>
+            `;
+            existingPreview.appendChild(div);
+          });
+        }
+
+        function hideAllErrors() {
+          document.querySelectorAll('[id$="Error"]').forEach(error => error.classList.add("hidden"));
+        }
+
+        function updateUploadAreaText() {
+          const totalImages = selectedFiles.length + existingImages.length;
+          if (totalImages > 0) {
+            uploadText.textContent = `${totalImages} image(s) selected. Click or drag to add more (min 3, max 5)`;
+          } else {
+            uploadText.textContent = "Click or drag images here (min 3)";
+          }
+        }
+
+        openBtn.addEventListener("click", () => openModal(false));
+        closeBtn.addEventListener("click", closeModal);
+        closeCropBtn.addEventListener("click", closeCropModal);
+        closeViewBtn.addEventListener("click", closeViewModal);
+        cancelBtn.addEventListener("click", closeModal);
+        cancelCropBtn.addEventListener("click", closeCropModal);
+        
+        modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+        cropModal.addEventListener("click", (e) => { if (e.target === cropModal) closeCropModal(); });
+        viewModal.addEventListener("click", (e) => { if (e.target === viewModal) closeViewModal(); });
+        
+        document.addEventListener("keydown", (e) => { 
+          if (e.key === "Escape") {
+            if (!modal.classList.contains("hidden")) closeModal();
+            if (!cropModal.classList.contains("hidden")) closeCropModal();
+            if (!viewModal.classList.contains("hidden")) closeViewModal();
+          }
+        });
+
+        uploadArea.addEventListener("click", () => fileInput.click());
+        ["dragenter", "dragover", "dragleave", "drop"].forEach((ev) => {
+          uploadArea.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); }, false);
+        });
+        uploadArea.addEventListener("dragenter", () => uploadArea.classList.add("border-blue-500", "bg-blue-50"));
+        uploadArea.addEventListener("dragover", () => uploadArea.classList.add("border-blue-500", "bg-blue-50"));
+        uploadArea.addEventListener("dragleave", () => uploadArea.classList.remove("border-blue-500", "bg-blue-50"));
+        uploadArea.addEventListener("drop", (e) => {
+          uploadArea.classList.remove("border-blue-500", "bg-blue-50");
+          const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/"));
+          handleFiles(files);
+        });
+        fileInput.addEventListener("change", (e) => handleFiles(Array.from(e.target.files)));
+
+        confirmCropBtn.addEventListener("click", () => {
+          if (currentCropper && currentCropFile) {
+            const canvas = currentCropper.getCroppedCanvas({
+              width: 440,
+              height: 440,
+              fillColor: '#fff',
+              imageSmoothingEnabled: true,
+              imageSmoothingQuality: 'high'
+            });
+            
+            canvas.toBlob((blob) => {
+              const croppedFile = new File([blob], currentCropFile.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              
+              selectedFiles.push(croppedFile);
+              updatePreview();
+              updateUploadAreaText();
+              closeCropModal();
+            }, 'image/jpeg', 0.9);
+          }
+        });
+
+        function handleFiles(newFiles) {
+          const maxAllowed = 5;
+          const currentTotal = selectedFiles.length + existingImages.length;
+          
+          if (currentTotal + newFiles.length > maxAllowed) {
+            alert(`Maximum ${maxAllowed} images allowed. You can add ${maxAllowed - currentTotal} more.`); 
+            return;
+          }
+          
+          const validFiles = newFiles.filter((file) => {
+            const validTypes = ["image/jpeg","image/jpg","image/png","image/webp"];
+            const maxSize = 5 * 1024 * 1024;
+            if (!validTypes.includes(file.type)) {
+              alert(`File ${file.name} is not a supported image format`); return false;
+            }
+            if (file.size > maxSize) {
+              alert(`File ${file.name} is too large. Maximum size is 5MB`); return false;
+            }
+            return true;
+          });
+          
+          validFiles.forEach(file => {
+            openCropModal(file);
+          });
+        }
+
+        function updatePreview() {
+          preview.innerHTML = "";
+          if (selectedFiles.length === 0) {
+            return;
+          }
+          selectedFiles.forEach((file, i) => {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              const div = document.createElement("div");
+              div.className = "relative w-24 h-24 bg-gray-100 rounded-lg overflow-hidden shadow image-preview";
+              div.innerHTML = `
+                <img src="${ev.target.result}" class="w-full h-full object-cover" alt="Preview ${i + 1}" />
+                <button type="button" onclick="removeImage(${i})" class="absolute top-0 right-0 bg-red-500 text-white text-xs w-6 h-6 rounded-full -m-1 hover:bg-red-600 transition flex items-center justify-center">
+                  <i class="fas fa-times"></i>
+                </button>
+                <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 truncate">${file.name}</div>
+              `;
+              preview.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+          });
+        }
+
+        function validateForm() {
+          let isValid = true;
+          hideAllErrors();
+          const validations = [
+            { field: 'productName', error: 'nameError', test: (v) => v.trim() },
+            { field: 'productDescription', error: 'descriptionError', test: (v) => v.trim() },
+            { field: 'productCategory', error: 'categoryError', test: (v) => v },
+            { field: 'productStock', error: 'stockError', test: (v) => v && v >= 0 },
+            { field: 'productPrice', error: 'priceError', test: (v) => v && parseFloat(v) >= 0 }
+          ];
+          validations.forEach(({ field, error, test }) => {
+            const value = document.getElementById(field).value;
+            if (!test(value)) {
+              document.getElementById(error).classList.remove("hidden");
+              isValid = false;
+            }
+          });
+          const oldPrice = parseFloat(document.getElementById("productOldPrice").value) || parseFloat(document.getElementById("productPrice").value);
+          const price = parseFloat(document.getElementById("productPrice").value);
+          if (oldPrice < price) {
+            document.getElementById("oldPriceError").classList.remove("hidden");
+            isValid = false;
+          }
+          const discount = parseFloat(document.getElementById("productDiscount").value || 0);
+          if (discount < 0 || discount > 100) {
+            document.getElementById("discountError").classList.remove("hidden");
+            isValid = false;
+          }
+          const totalImages = selectedFiles.length + existingImages.length;
+          if (totalImages < 3) {
+            document.getElementById("imageError").classList.remove("hidden");
+            document.getElementById("imageError").textContent = "Please add at least three images";
+            isValid = false;
+          } else if (totalImages > 5) {
+            document.getElementById("imageError").classList.remove("hidden");
+            document.getElementById("imageError").textContent = "Maximum 5 images allowed";
+            isValid = false;
+          }
+          return isValid;
+        }
+
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          if (!validateForm()) return;
+          
+          const submitBtn = document.getElementById("submitBtn");
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>SAVING...`;
+          
+          const fd = new FormData();
+          const productId = document.getElementById("productId").value;
+          const price = parseFloat(document.getElementById("productPrice").value);
+          const oldPrice = parseFloat(document.getElementById("productOldPrice").value || price);
+          const isListed = document.getElementById("productIsListed").checked;
+          
+          fd.append("productName", document.getElementById("productName").value.trim());
+          fd.append("description", document.getElementById("productDescription").value.trim());
+          fd.append("category", document.getElementById("productCategory").value);
+          fd.append("stock", document.getElementById("productStock").value);
+          fd.append("price", price);
+          fd.append("oldPrice", oldPrice);
+          fd.append("brand", document.getElementById("productBrand").value || "");
+          fd.append("discount", document.getElementById("productDiscount").value || 0);
+          fd.append("isListed", isListed);
+          
+          existingImages.forEach((image) => {
+            fd.append("existingImages", image);
+          });
+          
+          selectedFiles.forEach((file) => {
+            fd.append("images", file);
+          });
+          
+          try {
+            let url, method;
+            if (productId) {
+              url = `/admin/editProduct/${productId}`;
+              method = "PUT";
+            } else {
+              url = "/admin/addProduct";
+              method = "POST";
+            }
+            
+            console.log("Sending request to:", url);
+            
+            const res = await axios({
+              method: method,
+              url: url,
+              data: fd,
+              headers: { "Content-Type": "multipart/form-data" }
+            });
+            
+            alert(res.data.message);
+            closeModal();
+            window.location.reload();
+          } catch (err) {
+            console.error("Operation failed:", err);
+            const errorMsg = err.response?.data?.message || 
+                            (productId ? "Failed to update product" : "Failed to add product");
+            alert(errorMsg);
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = productId 
+              ? '<i class="fas fa-save mr-2"></i> Update Product'
+              : '<i class="fas fa-plus-circle mr-2"></i> Publish Product';
+          }
+        });
+
+        table.addEventListener("click", async (e) => {
+          const deleteBtn = e.target.closest(".delete-btn");
+          if (deleteBtn) {
+            const row = deleteBtn.closest("tr");
+            const productData = JSON.parse(row.getAttribute('data-product'));
+            
+            if (confirm("Are you sure you want to delete this product?")) {
+              try {
+                const response = await axios.delete(`/admin/deleteProduct/${productData._id}`);
+                alert(response.data.message);
+                window.location.reload();
+              } catch (error) {
+                console.error("Error deleting product:", error);
+                alert("Failed to delete product");
+              }
+            }
+          }
+        });
+
+        table.addEventListener("click", (e) => {
+          const editBtn = e.target.closest(".edit-btn");
+          if (editBtn) {
+            const row = editBtn.closest("tr");
+            const productData = JSON.parse(row.getAttribute('data-product'));
+            openModal(true, productData);
+          }
+        });
+
+        window.removeImage = (i) => {
+          selectedFiles.splice(i, 1);
+          updatePreview();
+          updateUploadAreaText();
+        };
+
+        window.removeExistingImage = (i) => {
+          existingImages.splice(i, 1);
+          updateExistingImagesPreview();
+          updateUploadAreaText();
+        };
+      });
+
+      window.viewProduct = async (id) => {
+        try {
+          const response = await axios.get(`/admin/products/${id}`);
+          const product = response.data.product;
+          
+          let imagesHTML = '';
+          if (product.images && product.images.length > 0) {
+            imagesHTML = `
+              <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Product Images</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  ${product.images.map((image, index) => `
+                    <div class="relative bg-gray-100 rounded-lg overflow-hidden shadow">
+                      <img src="${image}" alt="Product Image ${index + 1}" class="w-full h-48 object-cover">
+                      <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-2 text-center">
+                        Image ${index + 1}
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `;
+          }
+
+          const content = `
+            <div class="space-y-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-800 mb-2">Basic Information</h3>
+                  <div class="space-y-3">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-600">Product Name</label>
+                      <p class="mt-1 text-gray-900">${product.productName}</p>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-600">Description</label>
+                      <p class="mt-1 text-gray-900">${product.description || 'No description'}</p>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-600">Category</label>
+                      <p class="mt-1 text-gray-900">${product.category?.name || 'No category'}</p>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-600">Brand</label>
+                      <p class="mt-1 text-gray-900">${product.brand?.name || 'No brand'}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-800 mb-2">Pricing & Stock</h3>
+                  <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-600">Current Price</label>
+                        <p class="mt-1 text-blue-600 font-semibold">₹${product.price?.toFixed(2) || '0.00'}</p>
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-600">Old Price</label>
+                        <p class="mt-1 text-gray-500 ${product.oldPrice > product.price ? 'line-through' : ''}">₹${product.oldPrice?.toFixed(2) || product.price?.toFixed(2) || '0.00'}</p>
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-600">Discount</label>
+                        <p class="mt-1 ${product.discount > 0 ? 'text-green-600 font-semibold' : 'text-gray-500'}">
+                          ${product.discount > 0 ? product.discount + '%' : 'None'}
+                        </p>
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-600">Stock</label>
+                        <p class="mt-1">
+                          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                            ${product.stock > 10 ? 'bg-green-100 text-green-800' : 
+                              product.stock > 0 ? 'bg-yellow-100 text-yellow-800' : 
+                              'bg-red-100 text-red-800'}">
+                            ${product.stock}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-600">Status</label>
+                      <p class="mt-1">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium 
+                          ${product.isListed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                          ${product.isListed ? "Listed" : "Unlisted"}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              ${imagesHTML}
+            </div>
+          `;
+          
+          document.getElementById('viewProductContent').innerHTML = content;
+          document.getElementById('viewProductModal').classList.remove('hidden');
+          document.body.style.overflow = 'hidden';
+        } catch (error) {
+          console.error('Error fetching product:', error);
+          alert('Failed to load product details');
+        }
+      };
+    </script>
+  </body>
+</html>
