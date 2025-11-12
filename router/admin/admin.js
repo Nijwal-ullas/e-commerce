@@ -1,15 +1,14 @@
     import express from "express";
     const router = express.Router();
     import adminController from "../../controller/admin/adminController.js";
-    import auth from "../../middleware/auth.js";
     import customerController from "../../controller/admin/customerController.js";
-    import catagoryController from "../../controller/admin/catagoryController.js";
+    import categoryController from "../../controller/admin/categoryController.js";
     import brandController from "../../controller/admin/brandController.js";
+    import productController from "../../controller/admin/productController.js"
+    import auth from "../../middleware/auth.js";
     import multer from "multer";
-    import storage from "../../helpers/multer.js";
+    import upload from "../../helpers/multer.js";
 
-    const upload = multer({ storage: storage });
-    // router.use(auth.adminAuth)
 
     router.get("/login", adminController.loadAdminLoginPage);
     router.post("/login", adminController.login);
@@ -22,13 +21,13 @@
     router.get('/unblockCustomer',auth.adminAuth,customerController.unblockCustomer)
 
     // Category routes
-    router.get("/catagory", auth.adminAuth, catagoryController.catagoryPage);
-    router.post('/addCatagory',auth.adminAuth,catagoryController.addCatagory)
-    router.put("/editCatagory/:id",auth.adminAuth, catagoryController.editCatagory);
-    router.delete("/deleteCatagory/:id", auth.adminAuth,catagoryController.deleteCatagory);
-    router.patch("/listCategory/:id",auth.adminAuth,catagoryController.listCatagory);
-    router.patch("/unlistCategory/:id",auth.adminAuth,catagoryController.unlistCatagory);
-    router.get("/catagory/search", auth.adminAuth, catagoryController.searchCatagory);
+    router.get("/category", auth.adminAuth, categoryController.categoryPage);
+    router.post('/addCategory',auth.adminAuth,categoryController.addCategory)
+    router.put("/editCategory/:id",auth.adminAuth, categoryController.editCategory);
+    router.delete("/deleteCategory/:id", auth.adminAuth,categoryController.deleteCategory);
+    router.patch("/listCategory/:id",auth.adminAuth,categoryController.listCategory);
+    router.patch("/unlistCategory/:id",auth.adminAuth,categoryController.unlistCategory);
+    router.get("/category/search", auth.adminAuth, categoryController.searchCategory);
 
     //Brand routes
     router.get('/brand', auth.adminAuth, brandController.brandPage);
@@ -37,6 +36,12 @@
     router.put('/editBrand/:id', auth.adminAuth, upload.single('image'), brandController.editBrand); 
     router.delete('/deleteBrand/:id', auth.adminAuth, brandController.deleteBrand);
 
+    router.get('/products', auth.adminAuth, productController.productPage);
+    router.post('/addProduct', auth.adminAuth, upload.array('images', 5), productController.addProduct);
+    router.get('/products/:id', auth.adminAuth, productController.getProduct);
+    router.put('/editProduct/:id', auth.adminAuth, upload.array('images', 5), productController.editProduct);
+    router.delete('/deleteProduct/:id', auth.adminAuth, productController.deleteProduct);
+    router.get('/productsJSON', auth.adminAuth, productController.getProductsJSON);
 
-
+ 
     export default router;
