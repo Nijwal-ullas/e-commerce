@@ -11,16 +11,16 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let folder = "others";
 
-    const url = req.originalUrl.toLowerCase();
+    const url = (req.originalUrl || "").toLowerCase();
 
-    if (url.includes("product")) {
-  folder = "products/raw";
-} else if (url.includes("brand")) {
-  folder = "re-image";
-}
+    if (url.includes("/products/add") || url.includes("/editproduct/")) {
+      folder = "products"; // Store originals in products folder, will be resized later
+    } else if (url.includes("/addbrand") || url.includes("/editbrand")) {
+      folder = "brands";
+    }
 
+    const uploadPath = path.join(__dirname, "../public/uploads", folder);
 
-    const uploadPath = path.join(__dirname, "../public/uploads/" + folder);
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
     }
@@ -35,17 +35,17 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
+  if (file.mimetype.startsWith("image/")) {
     cb(null, true);
   } else {
-    cb(new Error('Only image files are allowed!'), false);
+    cb(new Error("Only image files are allowed!"), false);
   }
 };
 
-const upload = multer({ 
+const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
 
 export default upload;
