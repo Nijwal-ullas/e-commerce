@@ -110,7 +110,7 @@
                   <td class="px-6 py-4 font-medium text-gray-800">
                     <%= brand.name %>
                   </td>
-                  <td class="px-6 py-4 text-gray-600">
+                  <td class="px-6 py-4 text-gray-600 truncate max-w-[150px]">
                     <%= brand.description || '—' %>
                   </td>
                   <td class="px-6 py-4 flex gap-2">
@@ -260,7 +260,9 @@
       const nameInput = document.getElementById("brandName");
       const descInput = document.getElementById("brandDescription");
       const imageInput = document.getElementById("brandImage");
-      const currentImgContainer = document.getElementById("currentImageContainer");
+      const currentImgContainer = document.getElementById(
+        "currentImageContainer"
+      );
       const currentImg = document.getElementById("currentImage");
       const tbody = document.getElementById("brandTableBody");
       const table = tbody.closest("table");
@@ -379,12 +381,12 @@
 
           Swal.fire({
             icon: "success",
-            title: "Success",
-            text:
-              res.data.message || (isEdit ? "Brand updated" : "Brand added"),
+            title: editingId ? "Brand updated!" : "Brand added!",
             confirmButtonText: "OK",
-          }).then(() => {
-            location.reload();
+          }).then((result) => {
+            if (result.isConfirmed) {
+              location.reload();
+            }
           });
 
           modal.classList.replace("flex", "hidden");
@@ -402,10 +404,11 @@
       table.addEventListener("click", async (e) => {
         const btn = e.target.closest("button");
         if (!btn) return;
-        const id = btn.dataset.id;
-        const row = btn.closest("tr");
 
         if (btn.classList.contains("edit-btn")) {
+          const id = btn.dataset.id;
+          const row = btn.closest("tr");
+
           const brand = {
             _id: id,
             name: row.cells[1].textContent.trim(),
@@ -415,22 +418,70 @@
                 : row.cells[2].textContent.trim(),
             brandLogo: row.querySelector("img").src,
           };
+
           openModal(true, brand);
+          return;
         }
 
         if (btn.classList.contains("delete-btn")) {
-          if (!confirm("Delete this brand?")) return;
+          e.stopPropagation();
+
+          const id = btn.dataset.id;
+          const row = btn.closest("tr");
+
+          const result = await Swal.fire({
+            title: "Are you sure?",
+            text: "You are about to delete this brand!",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#d33",
+            cancelButtonColor: "#3085d6",
+            confirmButtonText: "Yes, delete it!",
+            cancelButtonText: "Cancel",
+          });
+
+          if (!result.isConfirmed) return;
+
           try {
-            await axios.delete(`/admin/deleteBrand/${id}`);
-            row.remove();
+            const res = await axios.delete(`/admin/deleteBrand/${id}`);
+
+            if (res.data.success) {
+              Swal.fire({
+                icon: "success",
+                title: "Deleted!",
+                text: res.data.message || "Brand deleted successfully",
+                timer: 1500,
+                showConfirmButton: false,
+              });
+
+              row.remove();
+
+              const remainingRows = tbody.querySelectorAll("tr");
+              if (
+                remainingRows.length === 1 &&
+                remainingRows[0].querySelector("td[colspan]")
+              ) {
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1000);
+              }
+            } else {
+              Swal.fire({
+                icon: "error",
+                title: "Cannot Delete",
+                text: res.data.message || "Failed to delete brand",
+                confirmButtonText: "OK",
+              });
+            }
+          } catch (err) {
             Swal.fire({
-              icon: "success",
-              title: "Deleted!",
-              text: "Brand deleted",
+              icon: "error",
+              title: "Delete Failed!",
+              text:
+                err.response?.data?.message ||
+                "Failed to delete brand. Please try again.",
               confirmButtonText: "OK",
             });
-          } catch (err) {
-            alert(err.response?.data?.message || "Delete failed");
           }
         }
       });
