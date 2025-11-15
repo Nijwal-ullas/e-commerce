@@ -41,7 +41,7 @@
     router.get('/products/:id', auth.adminAuth, productController.getProduct);
     router.put('/editProduct/:id', auth.adminAuth, upload.array('images', 5), productController.editProduct);
     router.delete('/deleteProduct/:id', auth.adminAuth, productController.deleteProduct);
-    router.get('/productsJSON', auth.adminAuth, productController.getProductsJSON);
+    router.get('/productsJSON', auth.adminAuth, productController.getProduct);
 
  
     export default router;
