@@ -41,6 +41,9 @@ const addCategory = async (req, res) => {
     if (!name || name.trim() === "") {
       return res.status(400).json({ message: "Category name is required" });
     }
+    if (name.length > 12) {
+      return res.status(400).json({ message: "Name cannot be more than 12 characters" });
+    }
     const existingCategory = await category.findOne({
       name: { $regex: new RegExp(`^${name}$`, "i") },
     });
@@ -69,6 +72,9 @@ const editCategory = async (req, res) => {
     });
     if (existing) {
       return res.status(400).json({ message: "Category name already exists" });
+    }
+    if (name.length > 12) {
+      return res.status(400).json({ message: "Name cannot be more than 12 characters" });
     }
     const updated = await category.findByIdAndUpdate(
       id,
