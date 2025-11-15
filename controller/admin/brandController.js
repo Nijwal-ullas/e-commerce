@@ -58,14 +58,26 @@ const addBrand = async (req, res) => {
   try {
     const { name, description } = req.body;
     if (!name?.trim()) {
-      return res.status(400).json({ message: "Brand name is required" });
+      return res.status(400).json({ 
+        success: false,
+        message: "Brand name is required" 
+      });
     }
-
+    if (name.length > 15) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Name cannot be more than 15 characters" 
+      });
+    }
+    
     const existingBrand = await Brand.findOne({
       name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
     });
     if (existingBrand) {
-      return res.status(400).json({ message: "Brand already exists" });
+      return res.status(400).json({ 
+        success: false,
+        message: "Brand already exists" 
+      });
     }
 
     let brandLogo = "";
@@ -80,10 +92,16 @@ const addBrand = async (req, res) => {
     });
 
     await brand.save();
-    res.status(201).json({ message: "Brand added successfully" });
+    res.status(201).json({ 
+      success: true,
+      message: "Brand added successfully" 
+    });
   } catch (error) {
     console.error("addBrand error:", error.message);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ 
+      success: false,
+      message: "Server error" 
+    });
   }
 };
 
@@ -93,10 +111,23 @@ const editBrand = async (req, res) => {
     const { name, description } = req.body;
 
     const brand = await Brand.findById(id);
-    if (!brand) return res.status(404).json({ message: "Brand not found" });
+    if (!brand) return res.status(404).json({ 
+      success: false,
+      message: "Brand not found" 
+    });
+
+    if (name.length > 15) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Name cannot be more than 15 characters" 
+      });
+    }
 
     if (!name?.trim()) {
-      return res.status(400).json({ message: "Brand name is required" });
+      return res.status(400).json({ 
+        success: false,
+        message: "Brand name is required" 
+      });
     }
 
     if (req.file) {
@@ -109,33 +140,67 @@ const editBrand = async (req, res) => {
     brand.description = description?.trim() || "";
 
     await brand.save();
-    res.json({ message: "Brand updated successfully" });
+    res.json({ 
+      success: true,
+      message: "Brand updated successfully" 
+    });
   } catch (error) {
     console.error("editBrand error:", error.message);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ 
+      success: false,
+      message: "Server error" 
+    });
   }
 };
 
 const deleteBrand = async (req, res) => {
   try {
     const { id } = req.params;
-    const productCount = await Product.countDocuments({ brand: id });
-    if (productCount > 0) {
+    
+    if (!id || id === 'undefined') {
       return res.status(400).json({
-        message: "Cannot delete brand; it is associated with products",
+        success: false,
+        message: "Invalid brand ID"
       });
     }
 
-    const brand = await Brand.findByIdAndDelete(id);
-    if (!brand) return res.status(404).json({ message: "Brand not found" });
+    const brand = await Brand.findById(id);
+    if (!brand) {
+      return res.status(404).json({
+        success: false,
+        message: "Brand not found"
+      });
+    }
 
-    const logoPath = path.join(ROOT, "public", brand.brandLogo || "");
-    if (fs.existsSync(logoPath)) fs.unlinkSync(logoPath);
+    const productCount = await Product.countDocuments({ brand: id });
+    if (productCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot delete brand; it is associated with products",
+        productCount: productCount
+      });
+    }
 
-    res.json({ message: "Brand deleted successfully" });
+    if (brand.brandLogo) {
+      const logoPath = path.join(ROOT, "public", brand.brandLogo);
+      if (fs.existsSync(logoPath)) {
+        fs.unlinkSync(logoPath);
+      }
+    }
+
+    await Brand.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Brand deleted successfully"
+    });
+    
   } catch (error) {
-    console.error("deleteBrand error:", error.message);
-    res.status(500).json({ message: "Server error" });
+    console.error("Error deleting brand:", error);    
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting brand"
+    });
   }
 };
 
