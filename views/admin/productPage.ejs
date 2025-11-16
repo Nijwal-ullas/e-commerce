@@ -6,11 +6,11 @@
     <title>Products - Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
-    <!-- Cropper.js CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <style>
       .fade-in {
@@ -39,22 +39,11 @@
       .carousel-image.active {
         display: block;
       }
-
-      .cropper-container {
-        direction: ltr;
-        font-size: 0;
-        line-height: 0;
-        position: relative;
-        touch-action: none;
-        user-select: none;
+      .variant-item {
+        transition: all 0.3s ease;
       }
-      .cropper-view-box {
-        display: block;
-        height: 100%;
-        outline: 1px solid #39f;
-        outline-color: rgba(51, 153, 255, 0.75);
-        overflow: hidden;
-        width: 100%;
+      .variant-item:hover {
+        background-color: #f9fafb;
       }
     </style>
   </head>
@@ -77,33 +66,44 @@
             </button>
           </div>
 
-          <!-- Filters -->
           <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
             <div class="flex flex-col md:flex-row gap-4 items-end">
-              
               <div class="flex-1">
-                <div class="relative">
-                  <input
-                    type="text"
-                    id="searchInput"
-                    placeholder="Search products..."
-                    class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition"
-                  />
-                  <i class="fas fa-search absolute left-3 top-3.5 text-gray-400"></i>
-                </div>
-              </div>
-              <div>
-                <button
-                  id="clearFilters"
-                  class="bg-gray-200 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-300 transition font-medium"
-                >
-                  Clear Filters
-                </button>
+                <form id="searchForm" class="flex gap-2" action="/admin/products" method="GET">
+                  <div class="relative flex-1">
+                    <input
+                      type="text"
+                      id="searchInput"
+                      name="search"
+                      value="<%= search || '' %>"
+                      placeholder="Search products..."
+                      class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white transition"
+                    />
+                    <i class="fas fa-search absolute left-3 top-3.5 text-gray-400"></i>
+                  </div>
+                  
+                  <button
+                    type="submit"
+                    id="searchBtn"
+                    class="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition font-medium flex items-center"
+                  >
+                    <i class="fas fa-search mr-2"></i> Search
+                  </button>
+
+                  <% if (search) { %>
+                    <button
+                      type="button"
+                      id="clearSearchBtn"
+                      class="bg-gray-600 text-white px-6 py-2.5 rounded-lg hover:bg-gray-700 transition font-medium flex items-center"
+                    >
+                      <i class="fas fa-times mr-2"></i> Clear
+                    </button>
+                  <% } %>
+                </form>
               </div>
             </div>
           </div>
 
-          <!-- Table -->
           <div class="bg-white rounded-lg shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full min-w-max">
@@ -138,33 +138,35 @@
                             <span class="text-blue-600 font-semibold">₹<%= product.price.toFixed(2) %></span>
                           <% } %>
                         </td>
-                        <td class="px-6 py-4">
-                          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                            <%= product.stock > 10 ? 'bg-green-100 text-green-800' : 
-                                product.stock > 0 ? 'bg-yellow-100 text-yellow-800' : 
-                                'bg-red-100 text-red-800' %>">
-                            <%= product.stock %>
-                          </span>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                          <% if (product.VariantItem && product.VariantItem.length > 0) { %>
+                            <div class="space-y-1">
+                              <% product.VariantItem.forEach(variant => { %>
+                                <div class="text-xs bg-gray-100 px-2 py-1 rounded">
+                                  <%= variant.Ml %>ml - Qty: <%= variant.Quantity %>
+                                </div>
+                              <% }) %>
+                            </div>
+                          <% } else { %>
+                            <span class="text-gray-400 text-xs">No variants</span>
+                          <% } %>
                         </td>
                         <td class="px-6 py-4 text-sm <%= product.discount > 0 ? 'text-green-600 font-medium' : 'text-gray-500' %>">
                           <%= product.discount > 0 ? product.discount + '%' : 'None' %>
                         </td>
                         <td class="px-6 py-4 text-sm">
                           <div class="flex space-x-3">
-                            <!-- View Button -->
                             <button onclick="viewProduct('<%= product._id %>')" 
                                     class="text-green-600 hover:text-green-900 transition" 
                                     title="View Product">
                               <i class="fas fa-eye"></i>
                             </button>
                             
-                            <!-- Edit Button -->
                             <button class="edit-btn text-blue-600 hover:text-blue-900 transition" 
                                     title="Edit Product">
                               <i class="fas fa-edit"></i>
                             </button>
                             
-                            <!-- Delete Button -->
                             <button class="delete-btn text-red-600 hover:text-red-900 transition" 
                                     title="Delete Product">
                               <i class="fas fa-trash"></i>
@@ -179,6 +181,9 @@
                         <div class="flex flex-col items-center">
                           <i class="fas fa-box-open text-4xl text-gray-300 mb-2"></i>
                           <p class="text-lg font-medium">No products found</p>
+                          <% if (search) { %>
+                            <p class="text-sm text-gray-500 mt-1">Try a different search term</p>
+                          <% } %>
                         </div>
                       </td>
                     </tr>
@@ -187,7 +192,6 @@
               </table>
             </div>
 
-            <!-- Pagination -->
             <% if (totalPages > 1) { %>
               <div class="flex items-center justify-between px-6 py-4 border-t bg-white">
                 <span class="text-sm text-gray-700">
@@ -236,9 +240,8 @@
       </main>
     </div>
 
-    <!-- Add/Edit Product Modal -->
     <div id="productModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
-      <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto slide-down">
+      <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto slide-down">
         <div class="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
           <h2 id="modalTitle" class="text-xl font-bold text-gray-800">Add Product</h2>
           <button id="closeModalBtn" class="text-gray-400 hover:text-gray-600 transition">
@@ -260,7 +263,7 @@
               <p id="descriptionError" class="text-red-500 text-xs mt-1 hidden">Description is required</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
                 <select id="productCategory" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
@@ -269,11 +272,6 @@
                   <% }) %>
                 </select>
                 <p id="categoryError" class="text-red-500 text-xs mt-1 hidden">Category is required</p>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Stock</label>
-                <input type="number" id="productStock" class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" min="0"  />
-                <p id="stockError" class="text-red-500 text-xs mt-1 hidden">Stock must be a positive number</p>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Price</label>
@@ -308,7 +306,18 @@
               </div>
             </div>
 
-            <!-- IMAGE UPLOAD WITH CROPPING -->
+            <div class="mb-6">
+              <div class="flex justify-between items-center mb-4">
+                <label class="block text-sm font-medium text-gray-700">Stock (ML Variants)</label>
+                <button type="button" id="addVariantBtn" class="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600 transition flex items-center">
+                  <i class="fas fa-plus mr-1"></i> Add Variant
+                </button>
+              </div>
+              <div id="variantsContainer" class="space-y-3">
+              </div>
+              <p id="variantError" class="text-red-500 text-xs mt-1 hidden">At least one ML variant is required</p>
+            </div>
+
             <div class="mb-6">
               <label class="block text-sm font-medium text-gray-700 mb-2">Product Images (Min 3, Max 5)</label>
               <div id="imageUploadArea" class="relative flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 cursor-pointer transition-colors bg-gray-50">
@@ -333,7 +342,6 @@
       </div>
     </div>
 
-    <!-- Image Cropping Modal -->
     <div id="cropModal" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden flex items-center justify-center p-4">
       <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full">
         <div class="flex justify-between items-center p-6 border-b border-gray-200">
@@ -356,7 +364,6 @@
       </div>
     </div>
 
-    <!-- View Product Modal -->
     <div id="viewProductModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
       <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
@@ -367,13 +374,11 @@
         </div>
         <div class="p-6">
           <div id="viewProductContent">
-            <!-- Content will be loaded here -->
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Cropper.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
     <script>
@@ -382,11 +387,70 @@
       let existingImages = [];
       let currentCropper = null;
       let currentCropFile = null;
+      let variantCounter = 0;
+      const predefinedMlOptions = [30, 50, 75, 100, 200];
+      const MAX_VARIANTS = 4;
 
       document.addEventListener("DOMContentLoaded", () => {
-        const form = document.getElementById("productForm");
+        const searchForm = document.getElementById("searchForm");
         const searchInput = document.getElementById("searchInput");
-        const clearFiltersBtn = document.getElementById("clearFilters");
+        const searchBtn = document.getElementById("searchBtn");
+        const clearSearchBtn = document.getElementById("clearSearchBtn");
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasSearch = urlParams.has("search") && urlParams.get("search").trim() !== "";
+
+        function toggleClearButton(show) {
+          if (clearSearchBtn) {
+            clearSearchBtn.classList.toggle("hidden", !show);
+          }
+        }
+
+        toggleClearButton(hasSearch);
+
+        searchInput.addEventListener("input", () => {
+          const hasValue = searchInput.value.trim() !== "";
+          toggleClearButton(hasValue);
+        });
+
+        searchForm.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const searchTerm = searchInput.value.trim();
+          
+          const newParams = new URLSearchParams();
+          if (searchTerm) newParams.set("search", searchTerm);
+          
+          if (urlParams.has("page")) {
+            newParams.set("page", urlParams.get("page"));
+          } else {
+            newParams.set("page", "1");
+          }
+          
+          window.location.href = `/admin/products?${newParams.toString()}`;
+        });
+
+        if (clearSearchBtn) {
+          clearSearchBtn.addEventListener("click", () => {
+            searchInput.value = "";
+            
+            const newParams = new URLSearchParams();
+            if (urlParams.has("page")) {
+              newParams.set("page", urlParams.get("page"));
+            } else {
+              newParams.set("page", "1");
+            }
+            
+            window.location.href = `/admin/products?${newParams.toString()}`;
+          });
+        }
+
+        searchInput.addEventListener("keypress", (e) => {
+          if (e.key === "Enter") {
+            searchForm.dispatchEvent(new Event("submit"));
+          }
+        });
+
+        const form = document.getElementById("productForm");
         const modal = document.getElementById("productModal");
         const cropModal = document.getElementById("cropModal");
         const viewModal = document.getElementById("viewProductModal");
@@ -407,22 +471,151 @@
         const uploadText = document.getElementById("uploadText");
         const cropImage = document.getElementById("cropImage");
         const cropContainer = document.getElementById("cropContainer");
+        const addVariantBtn = document.getElementById("addVariantBtn");
+        const variantsContainer = document.getElementById("variantsContainer");
 
-        let searchTimeout;
+        function getAvailableMlOptions(usedMl = []) {
+          return predefinedMlOptions.filter(ml => !usedMl.includes(ml));
+        }
 
-        // Search and Filter
-        searchInput.addEventListener("input", () => {
-          clearTimeout(searchTimeout);
-          searchTimeout = setTimeout(() => {
-            const search = searchInput.value.trim();
-            const params = new URLSearchParams();
-            if (search) params.append('search', search);
-            window.location.href = `?${params.toString()}`;
-          }, 500);
-        });
+        function addVariantItem(ml = '', quantity = '') {
+          const currentVariantCount = variantsContainer.querySelectorAll('.variant-item').length;
+          
+          if (currentVariantCount >= MAX_VARIANTS) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Limit Reached',
+              text: `Maximum ${MAX_VARIANTS} variants allowed`,
+              confirmButtonColor: '#3085d6',
+            });
+            return;
+          }
+          
+          const variantId = `variant-${variantCounter++}`;
+          const usedMl = Array.from(variantsContainer.querySelectorAll('.variant-ml'))
+            .map(select => select.value)
+            .filter(value => value !== '' && value !== ml);
+          
+          const availableOptions = getAvailableMlOptions(usedMl);
+          
+          const variantHTML = `
+            <div class="variant-item bg-gray-50 p-4 rounded-lg border border-gray-200" data-id="${variantId}">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">ML</label>
+                  <select class="variant-ml w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                    <option value="">Select ML</option>
+                    ${availableOptions.map(mlOption => `
+                      <option value="${mlOption}" ${mlOption == ml ? 'selected' : ''}>${mlOption}ml</option>
+                    `).join('')}
+                    ${ml && !availableOptions.includes(Number(ml)) ? `<option value="${ml}" selected>${ml}ml</option>` : ''}
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
+                  <input type="number" 
+                         class="variant-quantity w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" 
+                         placeholder="Quantity" 
+                         min="0" 
+                         step="1"
+                         value="${quantity}">
+                </div>
+                <div class="flex justify-end">
+                  <button type="button" 
+                          class="remove-variant bg-red-500 text-white px-3 py-2 rounded text-sm hover:bg-red-600 transition flex items-center"
+                          onclick="removeVariant('${variantId}')">
+                    <i class="fas fa-trash mr-1"></i> Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+          variantsContainer.insertAdjacentHTML('beforeend', variantHTML);
 
-        clearFiltersBtn.addEventListener("click", () => {
-          window.location.href = '?';
+          const mlSelect = variantsContainer.querySelector(`[data-id="${variantId}"] .variant-ml`);
+          mlSelect.addEventListener('change', updateVariantDropdowns);
+          
+          updateAddVariantButtonState();
+        }
+
+        function updateVariantDropdowns() {
+          const allMlSelects = variantsContainer.querySelectorAll('.variant-ml');
+          const usedMlValues = Array.from(allMlSelects)
+            .map(select => select.value)
+            .filter(value => value !== '');
+
+          allMlSelects.forEach(select => {
+            const currentValue = select.value;
+            const options = Array.from(select.options);
+            
+            options.forEach(option => {
+              if (option.value === '' || option.value === currentValue) {
+                option.style.display = '';
+              } else {
+                option.style.display = usedMlValues.includes(option.value) ? 'none' : '';
+              }
+            });
+          });
+        }
+
+        function removeVariant(variantId) {
+          const variantElement = document.querySelector(`[data-id="${variantId}"]`);
+          if (variantElement) {
+            variantElement.remove();
+            updateVariantDropdowns();
+            updateAddVariantButtonState();
+          }
+        }
+
+        function updateAddVariantButtonState() {
+          const currentVariantCount = variantsContainer.querySelectorAll('.variant-item').length;
+          const addVariantBtn = document.getElementById('addVariantBtn');
+          
+          if (currentVariantCount >= MAX_VARIANTS) {
+            addVariantBtn.disabled = true;
+            addVariantBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            addVariantBtn.classList.remove('hover:bg-green-600');
+          } else {
+            addVariantBtn.disabled = false;
+            addVariantBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            addVariantBtn.classList.add('hover:bg-green-600');
+          }
+        }
+
+        function getVariants() {
+          const variants = [];
+          const variantElements = variantsContainer.querySelectorAll('.variant-item');
+          
+          variantElements.forEach(element => {
+            const ml = element.querySelector('.variant-ml').value;
+            const quantity = element.querySelector('.variant-quantity').value;
+            
+            if (ml && quantity !== '') {
+              variants.push({
+                ml: ml,
+                quantity: quantity
+              });
+            }
+          });
+          
+          return variants;
+        }
+
+        function populateVariants(variantItems) {
+          variantsContainer.innerHTML = '';
+          if (variantItems && variantItems.length > 0) {
+            const itemsToShow = variantItems.slice(0, MAX_VARIANTS);
+            itemsToShow.forEach(variant => {
+              addVariantItem(variant.Ml, variant.Quantity);
+            });
+          } else {
+            addVariantItem(); 
+          }
+          updateAddVariantButtonState();
+        }
+
+        addVariantBtn.addEventListener('click', () => {
+          addVariantItem();
         });
 
         function openModal(isEdit = false, productData = null) {
@@ -504,6 +697,8 @@
           submitBtn.disabled = false;
           editingId = null;
           updateUploadAreaText();
+          populateVariants([]); 
+          updateAddVariantButtonState(); 
         }
 
         function populateForm(product) {
@@ -511,7 +706,6 @@
           document.getElementById("productName").value = product.productName || "";
           document.getElementById("productDescription").value = product.description || "";
           document.getElementById("productCategory").value = product.category?._id || "";
-          document.getElementById("productStock").value = product.stock || 0;
           document.getElementById("productPrice").value = product.price || 0;
           document.getElementById("productOldPrice").value = product.oldPrice || "";
           document.getElementById("productBrand").value = product.brand?._id || "";
@@ -521,6 +715,8 @@
           existingImages = product.images || [];
           updateExistingImagesPreview();
           updateUploadAreaText();
+          
+          populateVariants(product.VariantItem || []);
           
           editingId = product._id;
         }
@@ -620,7 +816,12 @@
           const currentTotal = selectedFiles.length + existingImages.length;
           
           if (currentTotal + newFiles.length > maxAllowed) {
-            alert(`Maximum ${maxAllowed} images allowed. You can add ${maxAllowed - currentTotal} more.`); 
+            Swal.fire({
+              icon: 'warning',
+              title: 'Image Limit',
+              text: `Maximum ${maxAllowed} images allowed. You can add ${maxAllowed - currentTotal} more.`,
+              confirmButtonColor: '#3085d6',
+            });
             return;
           }
           
@@ -628,10 +829,22 @@
             const validTypes = ["image/jpeg","image/jpg","image/png","image/webp"];
             const maxSize = 5 * 1024 * 1024;
             if (!validTypes.includes(file.type)) {
-              alert(`File ${file.name} is not a supported image format`); return false;
+              Swal.fire({
+                icon: 'error',
+                title: 'Invalid Format',
+                text: `File ${file.name} is not a supported image format`,
+                confirmButtonColor: '#d33',
+              });
+              return false;
             }
             if (file.size > maxSize) {
-              alert(`File ${file.name} is too large. Maximum size is 5MB`); return false;
+              Swal.fire({
+                icon: 'error',
+                title: 'File Too Large',
+                text: `File ${file.name} is too large. Maximum size is 5MB`,
+                confirmButtonColor: '#d33',
+              });
+              return false;
             }
             return true;
           });
@@ -671,7 +884,6 @@
             { field: 'productName', error: 'nameError', test: (v) => v.trim() },
             { field: 'productDescription', error: 'descriptionError', test: (v) => v.trim() },
             { field: 'productCategory', error: 'categoryError', test: (v) => v },
-            { field: 'productStock', error: 'stockError', test: (v) => v && v >= 0 },
             { field: 'productPrice', error: 'priceError', test: (v) => v && parseFloat(v) >= 0 }
           ];
           validations.forEach(({ field, error, test }) => {
@@ -702,6 +914,31 @@
             document.getElementById("imageError").textContent = "Maximum 5 images allowed";
             isValid = false;
           }
+          const variants = getVariants();
+          if (variants.length === 0) {
+            document.getElementById("variantError").classList.remove("hidden");
+            document.getElementById("variantError").textContent = "At least one ML variant is required";
+            isValid = false;
+          }
+          const mlValues = variants.map(v => v.ml);
+          const uniqueMlValues = [...new Set(mlValues)];
+          if (mlValues.length !== uniqueMlValues.length) {
+            document.getElementById("variantError").classList.remove("hidden");
+            document.getElementById("variantError").textContent = "Duplicate ML values are not allowed";
+            isValid = false;
+          }
+          const invalidMl = variants.find(v => !predefinedMlOptions.includes(Number(v.ml)));
+          if (invalidMl) {
+            document.getElementById("variantError").classList.remove("hidden");
+            document.getElementById("variantError").textContent = `Invalid ML value: ${invalidMl.ml}. Valid options are: ${predefinedMlOptions.join(', ')}`;
+            isValid = false;
+          }
+          const variantCount = variantsContainer.querySelectorAll('.variant-item').length;
+          if (variantCount > MAX_VARIANTS) {
+            document.getElementById("variantError").classList.remove("hidden");
+            document.getElementById("variantError").textContent = `Maximum ${MAX_VARIANTS} variants allowed`;
+            isValid = false;
+          }
           return isValid;
         }
 
@@ -718,16 +955,21 @@
           const price = parseFloat(document.getElementById("productPrice").value);
           const oldPrice = parseFloat(document.getElementById("productOldPrice").value || price);
           const isListed = document.getElementById("productIsListed").checked;
+          const variants = getVariants();
           
           fd.append("productName", document.getElementById("productName").value.trim());
           fd.append("description", document.getElementById("productDescription").value.trim());
           fd.append("category", document.getElementById("productCategory").value);
-          fd.append("stock", document.getElementById("productStock").value);
           fd.append("price", price);
           fd.append("oldPrice", oldPrice);
           fd.append("brand", document.getElementById("productBrand").value || "");
           fd.append("discount", document.getElementById("productDiscount").value || 0);
           fd.append("isListed", isListed);
+          
+          variants.forEach((variant, index) => {
+            fd.append("variantMl", variant.ml);
+            fd.append("variantQuantity", variant.quantity);
+          });
           
           existingImages.forEach((image) => {
             fd.append("existingImages", image);
@@ -747,8 +989,6 @@
               method = "POST";
             }
             
-            console.log("Sending request to:", url);
-            
             const res = await axios({
               method: method,
               url: url,
@@ -756,14 +996,28 @@
               headers: { "Content-Type": "multipart/form-data" }
             });
             
-            alert(res.data.message);
+            await Swal.fire({
+              icon: 'success',
+              title: 'Success!',
+              text: res.data.message,
+              confirmButtonColor: '#3085d6',
+              confirmButtonText: 'OK'
+            });
+            
             closeModal();
             window.location.reload();
           } catch (err) {
             console.error("Operation failed:", err);
             const errorMsg = err.response?.data?.message || 
                             (productId ? "Failed to update product" : "Failed to add product");
-            alert(errorMsg);
+            
+            await Swal.fire({
+              icon: 'error',
+              title: 'Error!',
+              text: errorMsg,
+              confirmButtonColor: '#d33',
+              confirmButtonText: 'OK'
+            });
           } finally {
             submitBtn.disabled = false;
             submitBtn.innerHTML = productId 
@@ -778,14 +1032,37 @@
             const row = deleteBtn.closest("tr");
             const productData = JSON.parse(row.getAttribute('data-product'));
             
-            if (confirm("Are you sure you want to delete this product?")) {
+            const result = await Swal.fire({
+              title: 'Are you sure?',
+              text: "You won't be able to revert this!",
+              icon: 'warning',
+              showCancelButton: true,
+              confirmButtonColor: '#3085d6',
+              cancelButtonColor: '#d33',
+              confirmButtonText: 'Yes, delete it!'
+            });
+            
+            if (result.isConfirmed) {
               try {
                 const response = await axios.delete(`/admin/deleteProduct/${productData._id}`);
-                alert(response.data.message);
+                
+                await Swal.fire({
+                  title: 'Deleted!',
+                  text: response.data.message,
+                  icon: 'success',
+                  confirmButtonColor: '#3085d6'
+                });
+                
                 window.location.reload();
               } catch (error) {
                 console.error("Error deleting product:", error);
-                alert("Failed to delete product");
+                
+                await Swal.fire({
+                  title: 'Error!',
+                  text: "Failed to delete product",
+                  icon: 'error',
+                  confirmButtonColor: '#d33'
+                });
               }
             }
           }
@@ -811,6 +1088,8 @@
           updateExistingImagesPreview();
           updateUploadAreaText();
         };
+
+        window.removeVariant = removeVariant;
       });
 
       window.viewProduct = async (id) => {
@@ -829,6 +1108,33 @@
                       <img src="${image}" alt="Product Image ${index + 1}" class="w-full h-48 object-cover">
                       <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-2 text-center">
                         Image ${index + 1}
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `;
+          }
+
+          let variantsHTML = '';
+          if (product.VariantItem && product.VariantItem.length > 0) {
+            variantsHTML = `
+              <div class="mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">ML Variants</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  ${product.VariantItem.map((variant, index) => `
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <div class="flex justify-between items-center">
+                        <div>
+                          <h4 class="font-medium text-gray-800">${variant.Ml}ml</h4>
+                          <p class="text-sm text-gray-600">Quantity: ${variant.Quantity}</p>
+                        </div>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                          ${variant.Quantity > 10 ? 'bg-green-100 text-green-800' : 
+                            variant.Quantity > 0 ? 'bg-yellow-100 text-yellow-800' : 
+                            'bg-red-100 text-red-800'}">
+                          ${variant.Quantity > 0 ? 'In Stock' : 'Out of Stock'}
+                        </span>
                       </div>
                     </div>
                   `).join('')}
@@ -863,7 +1169,7 @@
                 </div>
                 
                 <div>
-                  <h3 class="text-lg font-semibold text-gray-800 mb-2">Pricing & Stock</h3>
+                  <h3 class="text-lg font-semibold text-gray-800 mb-2">Pricing</h3>
                   <div class="space-y-3">
                     <div class="grid grid-cols-2 gap-4">
                       <div>
@@ -875,24 +1181,11 @@
                         <p class="mt-1 text-gray-500 ${product.oldPrice > product.price ? 'line-through' : ''}">₹${product.oldPrice?.toFixed(2) || product.price?.toFixed(2) || '0.00'}</p>
                       </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
-                      <div>
-                        <label class="block text-sm font-medium text-gray-600">Discount</label>
-                        <p class="mt-1 ${product.discount > 0 ? 'text-green-600 font-semibold' : 'text-gray-500'}">
-                          ${product.discount > 0 ? product.discount + '%' : 'None'}
-                        </p>
-                      </div>
-                      <div>
-                        <label class="block text-sm font-medium text-gray-600">Stock</label>
-                        <p class="mt-1">
-                          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                            ${product.stock > 10 ? 'bg-green-100 text-green-800' : 
-                              product.stock > 0 ? 'bg-yellow-100 text-yellow-800' : 
-                              'bg-red-100 text-red-800'}">
-                            ${product.stock}
-                          </span>
-                        </p>
-                      </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-600">Discount</label>
+                      <p class="mt-1 ${product.discount > 0 ? 'text-green-600 font-semibold' : 'text-gray-500'}">
+                        ${product.discount > 0 ? product.discount + '%' : 'None'}
+                      </p>
                     </div>
                     <div>
                       <label class="block text-sm font-medium text-gray-600">Status</label>
@@ -907,6 +1200,7 @@
                 </div>
               </div>
               
+              ${variantsHTML}
               ${imagesHTML}
             </div>
           `;
@@ -916,7 +1210,13 @@
           document.body.style.overflow = 'hidden';
         } catch (error) {
           console.error('Error fetching product:', error);
-          alert('Failed to load product details');
+          
+          await Swal.fire({
+            icon: 'error',
+            title: 'Error!',
+            text: 'Failed to load product details',
+            confirmButtonColor: '#d33',
+          });
         }
       };
     </script>
