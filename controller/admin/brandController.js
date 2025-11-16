@@ -8,6 +8,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, "../../../");
 
+const brandNameRegex = /^[A-Za-z ]{2,20}$/;
+
 const brandPage = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -36,47 +38,38 @@ const brandPage = async (req, res) => {
   }
 };
 
-const searchBrand = async (req, res) => {
-  try {
-    const query = req.query.query?.trim();
-    if (!query) return res.json({ brands: [] });
-
-    const brands = await Brand.find({
-      name: { $regex: query, $options: "i" },
-    })
-      .sort({ createdAt: -1 })
-      .limit(30);
-
-    res.json({ brands });
-  } catch (error) {
-    console.error("searchBrand error:", error.message);
-    res.status(500).json({ message: "Search error" });
-  }
-};
-
 const addBrand = async (req, res) => {
   try {
     const { name, description } = req.body;
     if (!name?.trim()) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Brand name is required" 
+        message: "Brand name is required",
       });
     }
-    if (name.length > 15) {
-      return res.status(400).json({ 
+
+    if (!brandNameRegex.test(name.trim())) {
+      return res.status(400).json({
         success: false,
-        message: "Name cannot be more than 15 characters" 
+        message:
+          "Brand name must be 2-20 characters long and contain only letters",
       });
     }
-    
+
+    if(description && description.length > 100){
+      return res.status(400).json({
+        success: false,
+        message: "Description cannot exceed 100 characters",
+      })
+    }
+
     const existingBrand = await Brand.findOne({
       name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
     });
     if (existingBrand) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Brand already exists" 
+        message: "Brand already exists",
       });
     }
 
@@ -92,15 +85,15 @@ const addBrand = async (req, res) => {
     });
 
     await brand.save();
-    res.status(201).json({ 
+    res.status(201).json({
       success: true,
-      message: "Brand added successfully" 
+      message: "Brand added successfully",
     });
   } catch (error) {
     console.error("addBrand error:", error.message);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Server error" 
+      message: "Server error",
     });
   }
 };
@@ -110,23 +103,37 @@ const editBrand = async (req, res) => {
     const { id } = req.params;
     const { name, description } = req.body;
 
-    const brand = await Brand.findById(id);
-    if (!brand) return res.status(404).json({ 
-      success: false,
-      message: "Brand not found" 
-    });
-
-    if (name.length > 15) {
-      return res.status(400).json({ 
+    if (!name?.trim()) {
+      return res.status(400).json({
         success: false,
-        message: "Name cannot be more than 15 characters" 
+        message: "Brand name is required",
       });
     }
 
-    if (!name?.trim()) {
-      return res.status(400).json({ 
+    const brand = await Brand.findById(id);
+    if (!brand)
+      return res.status(404).json({
         success: false,
-        message: "Brand name is required" 
+        message: "Brand not found",
+      });
+
+    if (!brandNameRegex.test(name.trim())) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Brand name must be 2-20 characters long and contain only letters",
+      });
+    }
+
+    const duplicateBrand = await Brand.findOne({
+      name: { $regex: new regExp(`^${name.trim()}$`, "i") },
+      _id: { $ne: id },
+    });
+
+    if (duplicateBrand) {
+      return res.sratus(400).json({
+        success: false,
+        message: "Brand name already exists",
       });
     }
 
@@ -140,15 +147,15 @@ const editBrand = async (req, res) => {
     brand.description = description?.trim() || "";
 
     await brand.save();
-    res.json({ 
+    res.json({
       success: true,
-      message: "Brand updated successfully" 
+      message: "Brand updated successfully",
     });
   } catch (error) {
     console.error("editBrand error:", error.message);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Server error" 
+      message: "Server error",
     });
   }
 };
@@ -156,11 +163,11 @@ const editBrand = async (req, res) => {
 const deleteBrand = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    if (!id || id === 'undefined') {
+
+    if (!id || id === "undefined") {
       return res.status(400).json({
         success: false,
-        message: "Invalid brand ID"
+        message: "Invalid brand ID",
       });
     }
 
@@ -168,7 +175,7 @@ const deleteBrand = async (req, res) => {
     if (!brand) {
       return res.status(404).json({
         success: false,
-        message: "Brand not found"
+        message: "Brand not found",
       });
     }
 
@@ -177,7 +184,7 @@ const deleteBrand = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Cannot delete brand; it is associated with products",
-        productCount: productCount
+        productCount: productCount,
       });
     }
 
@@ -192,16 +199,15 @@ const deleteBrand = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Brand deleted successfully"
+      message: "Brand deleted successfully",
     });
-    
   } catch (error) {
-    console.error("Error deleting brand:", error);    
+    console.error("Error deleting brand:", error);
     res.status(500).json({
       success: false,
-      message: "Server error while deleting brand"
+      message: "Server error while deleting brand",
     });
   }
 };
 
-export default { brandPage, searchBrand, addBrand, editBrand, deleteBrand };
+export default { brandPage, addBrand, editBrand, deleteBrand };
