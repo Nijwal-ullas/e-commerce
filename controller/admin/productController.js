@@ -4,10 +4,17 @@ import Brand from "../../model/brandSchema.js";
 import fs from "fs";
 import path from "path";
 import sharp from "sharp";
-import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+
+const nameRegex = /^[A-Za-z ]{3,20}$/;
+
+const deleteUploadedFiles = (files) => {
+  files?.forEach((file) => {
+    if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+  });
+};
+
+
 
 const productPage = async (req, res) => {
   try {
@@ -22,6 +29,7 @@ const productPage = async (req, res) => {
     }
 
     const productData = await Product.find(query)
+      .sort({ createdAt: -1 })
       .limit(limit)
       .skip(skip)
       .populate("category")
@@ -37,22 +45,21 @@ const productPage = async (req, res) => {
       currentPage: page,
       totalPages: Math.ceil(count / limit),
       totalProducts: count,
-      limit,
       search,
       categories,
       brands,
     });
   } catch (err) {
     console.error("Product page error:", err);
-    res.status(500).send("Server error: " + err.message);
+    res.status(500).send("Server error");
   }
 };
 
+
+
 const addProduct = async (req, res) => {
   try {
-    console.log("=== ADD PRODUCT DEBUG ===");
-    
-    const {
+    let {
       productName,
       description,
       price,
@@ -60,128 +67,198 @@ const addProduct = async (req, res) => {
       discount,
       category: categoryId,
       brand: brandId,
-      stock,
+      variantMl,
+      variantQuantity,
     } = req.body;
 
-    if (!productName?.trim() || !price || !stock || !categoryId) {
-      req.files?.forEach((file) => fs.unlinkSync(file.path));
-      return res.status(400).json({ success: false, message: "Missing required fields" });
+    productName = productName?.trim();
+    description = description?.trim();
+
+
+    if (!productName || !price || !categoryId ||!brandId) {
+      deleteUploadedFiles(req.files);
+      return res.status(400).json({
+        success: false,
+        message: "Product name, price , brand and category are required",
+      });
+    }
+
+    if (!nameRegex.test(productName)) {
+      deleteUploadedFiles(req.files);
+      return res.status(400).json({
+        success: false,
+        message:
+          "Product name must be 3–20 characters and contain only letters",
+      });
     }
 
     const exists = await Product.findOne({
-      productName: { $regex: new RegExp(`^${productName.trim()}$`, "i") },
+      productName: { $regex: new RegExp(`^${productName}$`, "i") },
     });
     if (exists) {
-      req.files?.forEach((file) => fs.unlinkSync(file.path));
-      return res.status(400).json({ success: false, message: "Product already exists" });
+      deleteUploadedFiles(req.files);
+      return res.status(400).json({
+        success: false,
+        message: "Product with this name already exists",
+      });
     }
 
-    const cat = await Category.findById(categoryId);
-    if (!cat) {
-      req.files?.forEach((file) => fs.unlinkSync(file.path));
-      return res.status(400).json({ success: false, message: "Invalid Category" });
+    if (isNaN(price) || price <= 0) {
+      deleteUploadedFiles(req.files);
+      return res.status(400).json({
+        success: false,
+        message: "Price must be a valid positive number",
+      });
     }
 
-    if (brandId) {
-      const brandExists = await Brand.findById(brandId);
-      if (!brandExists) {
-        req.files?.forEach((file) => fs.unlinkSync(file.path));
-        return res.status(400).json({ success: false, message: "Invalid Brand" });
-      }
+    if (description?.length < 10) {
+      deleteUploadedFiles(req.files);
+      return res.status(400).json({
+        success: false,
+        message: "Description must be at least 10 characters long",
+      });
     }
 
     if (!req.files || req.files.length < 3) {
-      req.files?.forEach((file) => fs.unlinkSync(file.path));
-      return res.status(400).json({ success: false, message: "At least 3 images are required" });
+      deleteUploadedFiles(req.files);
+      return res.status(400).json({
+        success: false,
+        message: "At least 3 images are required",
+      });
     }
 
-    const RESIZED_DIR = path.join(process.cwd(), "public", "uploads", "products", "resized");
-    console.log("Resized directory path:", RESIZED_DIR);
+    const variantItems = [];
+    if (variantMl && variantQuantity) {
+      const mlArray = Array.isArray(variantMl) ? variantMl : [variantMl];
+      const qtyArray = Array.isArray(variantQuantity)
+        ? variantQuantity
+        : [variantQuantity];
 
-    if (!fs.existsSync(RESIZED_DIR)) {
-      console.log("Creating resized directory...");
+      for (let i = 0; i < mlArray.length; i++) {
+        if (!mlArray[i] || !qtyArray[i]) continue;
+
+        const Ml = Number(mlArray[i]);
+        const Quantity = Number(qtyArray[i]);
+
+        if (isNaN(Quantity) || Quantity < 0) {
+          deleteUploadedFiles(req.files);
+          return res.status(400).json({
+            success: false,
+            message: "Variant quantity must be 0 or more",
+          });
+        }
+
+        variantItems.push({ Ml, Quantity });
+      }
+    }
+
+    if (variantItems.length === 0) {
+      deleteUploadedFiles(req.files);
+      return res.status(400).json({
+        success: false,
+        message: "At least one ML variant is required",
+      });
+    }
+
+    if (variantItems.length > 4) {
+      deleteUploadedFiles(req.files);
+      return res.status(400).json({
+        success: false,
+        message: "Maximum 4 ML variants allowed",
+      });
+    }
+
+
+    const RESIZED_DIR = path.join(
+      process.cwd(),
+      "public",
+      "uploads",
+      "products",
+      "resized"
+    );
+
+    if (!fs.existsSync(RESIZED_DIR))
       fs.mkdirSync(RESIZED_DIR, { recursive: true });
-    }
 
     const imageArr = [];
 
     for (const file of req.files) {
       try {
-        console.log("Processing file:", file.filename);
-        
-        const resizedName = `resized-${file.filename}`;
+        const resizedName = `resized-${Date.now()}-${file.filename}`;
         const resizedPath = path.join(RESIZED_DIR, resizedName);
 
         await sharp(file.path)
-          .resize(440, 440, { fit: "cover", position: "center" })
+          .resize(440, 440, { fit: "cover" })
           .jpeg({ quality: 90 })
           .toFile(resizedPath);
 
-        const fullImagePath = `/uploads/products/resized/${resizedName}`;
-        imageArr.push(fullImagePath);
-
+        imageArr.push(`/uploads/products/resized/${resizedName}`);
         fs.unlinkSync(file.path);
-
       } catch (err) {
-        console.error("Error processing image:", err);
-        fs.unlinkSync(file.path);
+        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
       }
     }
 
-    if (imageArr.length === 0) {
-      return res.status(400).json({ success: false, message: "Failed to process images" });
-    }
 
     const newProduct = new Product({
-      productName: productName.trim(),
-      description: description?.trim() || "",
+      productName,
+      description,
       price: Number(price),
       oldPrice: oldPrice ? Number(oldPrice) : Number(price),
-      discount: discount ? Number(discount) : 0,
       category: categoryId,
-      brand: brandId || null,
+      brand: brandId,
       images: imageArr,
-      stock: Number(stock),
+      VariantItem: variantItems,
       isListed: true,
     });
 
     await newProduct.save();
-    res.status(201).json({ success: true, message: "Product added successfully!" });
+    res.status(201).json({
+      success: true,
+      message: "Product added successfully!",
+    });
   } catch (err) {
-    console.error("addProduct error:", err);
-    req.files?.forEach((file) => fs.unlinkSync(file.path));
-    res.status(500).json({ success: false, message: "Server error: " + err.message });
+    console.error("Add product error:", err);
+    deleteUploadedFiles(req.files);
+    res.status(500).json({
+      success: false,
+      message: "Server error while adding product",
+    });
   }
 };
+
+
 
 const getProduct = async (req, res) => {
   try {
-    const { id } = req.params;
-    
-    const product = await Product.findById(id)
-      .populate('category')
-      .populate('brand')
+    const product = await Product.findById(req.params.id)
+      .populate("category")
+      .populate("brand")
       .lean();
 
     if (!product) {
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
     }
 
-    res.json({ 
-      success: true, 
-      product 
-    });
+    res.json({ success: true, product });
   } catch (err) {
-    console.error("getProduct error:", err);
-    res.status(500).json({ success: false, message: "Server error: " + err.message });
+    console.error("Get product error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching product",
+    });
   }
 };
 
+
 const editProduct = async (req, res) => {
   try {
-    console.log("=== EDIT PRODUCT DEBUG ===");
     const { id } = req.params;
-    const {
+
+    let {
       productName,
       description,
       price,
@@ -189,56 +266,113 @@ const editProduct = async (req, res) => {
       discount,
       category: categoryId,
       brand: brandId,
-      stock,
-      isListed
+      isListed,
+      variantMl,
+      variantQuantity,
     } = req.body;
 
-    console.log("Product ID:", id);
-    console.log("Request body:", req.body);
-    console.log("Files received:", req.files?.length || 0);
+    productName = productName?.trim();
+    description = description?.trim();
 
     const product = await Product.findById(id);
     if (!product) {
-      req.files?.forEach((file) => fs.unlinkSync(file.path));
-      return res.status(404).json({ success: false, message: "Product not found" });
+      deleteUploadedFiles(req.files);
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
     }
 
-    const duplicate = await Product.findOne({
+    if (!nameRegex.test(productName)) {
+      deleteUploadedFiles(req.files);
+      return res.status(400).json({
+        success: false,
+        message:
+          "Product name must be 3–20 characters and contain only letters",
+      });
+    }
+
+    const existingProduct = await Product.findOne({
+      productName: productName,
       _id: { $ne: id },
-      productName: { $regex: new RegExp(`^${productName.trim()}$`, "i") },
     });
-    if (duplicate) {
-      req.files?.forEach((file) => fs.unlinkSync(file.path));
-      return res.status(400).json({ success: false, message: "Product name already exists" });
+    if (existingProduct) {
+      deleteUploadedFiles(req.files);
+      return res.status(400).json({
+        success: false,
+        message: "Another product with this name already exists",
+      });
     }
 
-    const cat = await Category.findById(categoryId);
-    if (!cat) {
-      req.files?.forEach((file) => fs.unlinkSync(file.path));
-      return res.status(400).json({ success: false, message: "Invalid Category" });
+
+    const variantItems = [];
+    if (variantMl && variantQuantity) {
+      const mlArray = Array.isArray(variantMl) ? variantMl : [variantMl];
+      const qtyArray = Array.isArray(variantQuantity)
+        ? variantQuantity
+        : [variantQuantity];
+
+      for (let i = 0; i < mlArray.length; i++) {
+        const Ml = Number(mlArray[i]);
+        const Quantity = Number(qtyArray[i]);
+
+        if (isNaN(Quantity) || Quantity < 0) {
+          deleteUploadedFiles(req.files);
+          return res.status(400).json({
+            success: false,
+            message: "Variant quantity must be 0 or more",
+          });
+        }
+
+        variantItems.push({ Ml, Quantity });
+      }
     }
+
+    if (variantItems.length === 0) {
+      deleteUploadedFiles(req.files);
+      return res.status(400).json({
+        success: false,
+        message: "At least one ML variant is required",
+      });
+    }
+
+    if (variantItems.length > 4) {
+      deleteUploadedFiles(req.files);
+      return res.status(400).json({
+        success: false,
+        message: "Maximum 4 ML variants allowed",
+      });
+    }
+
 
     let existingImages = [];
     if (req.body.existingImages) {
-      if (Array.isArray(req.body.existingImages)) {
-        existingImages = req.body.existingImages;
-      } else {
-        existingImages = req.body.existingImages.split(',').filter(img => img.trim() !== '');
-      }
+      existingImages = Array.isArray(req.body.existingImages)
+        ? req.body.existingImages
+        : [req.body.existingImages];
     }
-    console.log("Existing images to keep:", existingImages);
 
     let newImages = [];
+
     if (req.files && req.files.length > 0) {
-      const RESIZED_DIR = path.join(process.cwd(), "public", "uploads", "products", "resized");
-      
-      if (!fs.existsSync(RESIZED_DIR)) {
+      const RESIZED_DIR = path.join(
+        process.cwd(),
+        "public",
+        "uploads",
+        "products",
+        "resized"
+      );
+
+      if (!fs.existsSync(RESIZED_DIR))
         fs.mkdirSync(RESIZED_DIR, { recursive: true });
-      }
 
       for (const file of req.files) {
         try {
-          const resizedName = `resized-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`;
+          const resizedName =
+            `resized-${Date.now()}-${Math.round(
+              Math.random() * 1e9
+            )}` + path.extname(file.originalname);
+
           const resizedPath = path.join(RESIZED_DIR, resizedName);
 
           await sharp(file.path)
@@ -246,113 +380,83 @@ const editProduct = async (req, res) => {
             .jpeg({ quality: 90 })
             .toFile(resizedPath);
 
-          const fullImagePath = `/uploads/products/resized/${resizedName}`;
-          newImages.push(fullImagePath);
-
+          newImages.push(`/uploads/products/resized/${resizedName}`);
           fs.unlinkSync(file.path);
-          console.log("New image processed:", fullImagePath);
-
         } catch (err) {
-          console.error("Error processing new image:", err);
-          if (fs.existsSync(file.path)) {
-            fs.unlinkSync(file.path);
-          }
+          if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
         }
       }
     }
 
     const finalImages = [...existingImages, ...newImages];
-    console.log("Final images count:", finalImages.length);
-
     if (finalImages.length < 3) {
-      newImages.forEach(imagePath => {
-        const filename = path.basename(imagePath);
-        const filePath = path.join(process.cwd(), "public", "uploads", "products", "resized", filename);
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
+      return res.status(400).json({
+        success: false,
+        message: "At least 3 images are required",
       });
-      return res.status(400).json({ success: false, message: "At least 3 images are required" });
     }
 
-    const oldImages = product.images || [];
-    const imagesToDelete = oldImages.filter(oldImg => !finalImages.includes(oldImg));
-    
-    imagesToDelete.forEach(imagePath => {
-      const filename = path.basename(imagePath);
-      const filePath = path.join(process.cwd(), "public", imagePath);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        console.log("Deleted old image:", filePath);
-      }
-    });
 
-    product.productName = productName.trim();
-    product.description = description?.trim() || "";
+    product.productName = productName;
+    product.description = description;
     product.price = Number(price);
     product.oldPrice = oldPrice ? Number(oldPrice) : Number(price);
     product.discount = discount ? Number(discount) : 0;
     product.category = categoryId;
     product.brand = brandId || null;
-    product.stock = Number(stock);
     product.images = finalImages;
-    product.isListed = isListed === 'true' || isListed === true;
+    product.VariantItem = variantItems;
+    product.isListed = isListed === "true";
 
     await product.save();
-    console.log("Product updated successfully");
 
-    res.status(200).json({ success: true, message: "Product updated successfully!" });
-  } catch (err) {
-    console.error("editProduct error:", err);
-    req.files?.forEach((file) => {
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
+    res.status(200).json({
+      success: true,
+      message: "Product updated successfully!",
     });
-    res.status(500).json({ success: false, message: "Server error: " + err.message });
+  } catch (err) {
+    console.error("Edit product error:", err);
+    deleteUploadedFiles(req.files);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating product",
+    });
   }
 };
 
 
 const deleteProduct = async (req, res) => {
   try {
-    const { id } = req.params;
+    const product = await Product.findById(req.params.id);
 
-    const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({ success: false, message: "Product not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
     }
 
-    product.images.forEach((imagePath) => {
-      const filename = path.basename(imagePath);
-      const filePath = path.join(process.cwd(), "public", imagePath);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+    await Product.findByIdAndDelete(req.params.id);
+
+    res.json({
+      success: true,
+      message: "Product deleted successfully",
     });
-
-    await Product.findByIdAndDelete(id);
-
-    res.json({ success: true, message: "Product deleted successfully" });
   } catch (err) {
-    console.error("deleteProduct error:", err);
-    res.status(500).json({ success: false, message: "Server error: " + err.message });
-  }
-};
-
-const getProductsJSON = async (req, res) => {
-  try {
-    const products = await Product.find()
-      .populate("category")
-      .populate("brand")
-      .lean();
-
-    res.json({ products });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    console.error("Delete product error:", err);
+    res.status(500).json({
+      success: false,
+      message: "Server error while deleting product",
+    });
   }
 };
 
 
-export default { productPage, addProduct, editProduct, getProductsJSON, getProduct, deleteProduct };
+
+export default {
+  productPage,
+  addProduct,
+  editProduct,
+  getProduct,
+  deleteProduct,
+};
