@@ -1,5 +1,7 @@
 import category from "../../model/categorySchema.js";
 
+const categoryNameRegex = /^[A-Za-z ]{2,20}$/;
+
 const categoryPage = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -8,9 +10,7 @@ const categoryPage = async (req, res) => {
 
     const search = req.query.search?.trim() || "";
 
-    const query = search
-      ? { name: { $regex: search, $options: "i" } }
-      : {};
+    const query = search ? { name: { $regex: search, $options: "i" } } : {};
 
     const totalCategories = await category.countDocuments(query);
 
@@ -25,7 +25,7 @@ const categoryPage = async (req, res) => {
       currentPage: page,
       totalPages: Math.ceil(totalCategories / limit),
       totalCategories,
-      search, 
+      search,
     });
   } catch (error) {
     console.error(error.message);
@@ -33,28 +33,47 @@ const categoryPage = async (req, res) => {
   }
 };
 
-
-
 const addCategory = async (req, res) => {
   const { name, description } = req.body;
   try {
     if (!name || name.trim() === "") {
-      return res.status(400).json({ message: "Category name is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Category name is required",
+      });
     }
-    if (name.length > 12) {
-      return res.status(400).json({ message: "Name cannot be more than 12 characters" });
+
+    if (!categoryNameRegex.test(name.trim())) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Category name must be 2-20 characters long and contain only letters",
+      });
     }
+
+    if (description && description.length > 200) {
+      return res.status(400).json({
+        success: false,
+        message: "Description cannot exceed 200 characters",
+      });
+    }
+
     const existingCategory = await category.findOne({
-      name: { $regex: new RegExp(`^${name}$`, "i") },
+      name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
     });
     if (existingCategory) {
-      return res.status(400).json({ message: "Category already exists" });
+      return res.status(400).json({
+        success: false,
+        message: "Category already exists",
+      });
     }
     const newCategory = new category({ name: name.trim(), description });
     await newCategory.save();
-    res
-      .status(201)
-      .json({ message: "Category added successfully", category: newCategory });
+    res.status(201).json({
+      success: true,
+      message: "Category added successfully",
+      category: newCategory,
+    });
   } catch (error) {
     console.error("Error adding category:", error);
     res.status(500).json({ message: "Server Error" });
@@ -67,23 +86,35 @@ const editCategory = async (req, res) => {
     const id = req.params.id;
 
     const existing = await category.findOne({
-      name: { $regex: new RegExp(`^${name}$`, "i") },
+      name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
       _id: { $ne: id },
     });
     if (existing) {
-      return res.status(400).json({ message: "Category name already exists" });
+      return res.status(400).json({
+        success: false,
+        message: "Category name already exists",
+      });
     }
-    if (name.length > 12) {
-      return res.status(400).json({ message: "Name cannot be more than 12 characters" });
+
+    if (!categoryNameRegex.test(name.trim())) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Category name must be 2-20 characters long and contain only letters",
+      });
     }
-    const updated = await category.findByIdAndUpdate(
-      id,
-      { name, description },
-      { new: true }
-    );
-    if (!updated) {
-      return res.status(404).json({ message: "Category not found" });
+
+    if (description && description.length > 200) {
+      return res.status(400).json({
+        success: false,
+        message: "Description cannot exceed 200 characters",
+      });
     }
+
+    category.name = name.trim();
+    category.description = description?.trim() || "";
+
+    await category.save();
     res
       .status(200)
       .json({ message: "Category updated successfully", category: updated });
@@ -98,9 +129,16 @@ const deleteCategory = async (req, res) => {
     const id = req.params.id;
     const deleted = await category.findByIdAndDelete(id);
     if (!deleted) {
-      return res.status(404).json({ message: "Category not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
     }
-    res.status(200).json({ message: "Category deleted successfully" });
+
+    res.status(200).json({
+      success: true,
+      message: "Category deleted successfully",
+    });
   } catch (error) {
     console.error("Error deleting category:", error);
     res.status(500).json({ message: "Server Error" });
@@ -147,26 +185,4 @@ const unlistCategory = async (req, res) => {
   }
 };
 
-const searchCategory = async (req, res) => {
-  try {
-    const query = req.query.query?.trim();
-    if (!query) {
-      return res.status(400).json({ message: "Search query is required" });
-    }
-
-    const categories = await category
-      .find({
-        name: { $regex: query, $options: "i" },
-      })
-      .sort({ createdAt: -1 })
-      .limit(20);
-
-    res.status(200).json({ categories });
-  } catch (error) {
-    console.error("Search error:", error);
-    res.status(500).json({ message: "Server error during search" });
-  }
-};
-
-
-export default { categoryPage, addCategory, editCategory, deleteCategory, listCategory, unlistCategory, searchCategory, };
+export default { categoryPage, addCategory, editCategory, deleteCategory, listCategory, unlistCategory};
