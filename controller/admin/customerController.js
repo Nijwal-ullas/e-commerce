@@ -1,34 +1,38 @@
 import user from "../../model/userSchema.js";
 
+
 const customerInfo = async (req, res) => {
   try {
-    let search = req.query.search || "";
-    let page = parseInt(req.query.page) || 1;
+    const page = parseInt(req.query.page) || 1;
     const limit = 5;
+    const skip = (page - 1) * limit;
+
+    const search = req.query.search?.trim() || "";
+
+    let query = {};
+
+    if (search) {
+      const regex = new RegExp(search, "i");
+      query = {
+        $or: [{ name: regex }, { email: regex }],
+      };
+    }
+
+    const totalUsers = await user.countDocuments(query);
+
     const users = await user
-      .find({
-        $or: [
-          { name: { $regex: ".*" + search + ".*", $options: "i" } },
-          { email: { $regex: ".*" + search + ".*", $options: "i" } },
-        ],
-      })
-      .sort({createdAt : -1})
-      .limit(limit)
-      .skip((page - 1) * limit)
-      .exec();
-    const count = await user.countDocuments({
-      $or: [
-        { name: { $regex: ".*" + search + ".*", $options: "i" } },
-        { email: { $regex: ".*" + search + ".*", $options: "i" } },
-      ],
-    });
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
     res.render("admin/customers", {
       users,
-      totalUsers: count,
+      totalUsers,
       currentPage: page,
-      totalPages: Math.ceil(count / limit),
-      limit,
+      totalPages: Math.ceil(totalUsers / limit),
       search,
+      limit,
     });
   } catch (error) {
     console.error("Error loading customers:", error);
@@ -38,14 +42,19 @@ const customerInfo = async (req, res) => {
 
 
 
+
 const blockCustomer = async (req, res) => {
   try {
     const userId = req.query.id;
-    const { page = 1, search = "" } = req.query; 
 
-    await user.updateOne({ _id: userId }, { $set: { isBlocked: true } });
+    await user.updateOne(
+      { _id: userId },
+      { $set: { isBlocked: true } }
+    );
 
-    res.redirect(`/admin/users?page=${page}&search=${encodeURIComponent(search)}`);
+    const backURL = req.headers.referer || "/admin/users";
+    return res.redirect(backURL);
+
   } catch (error) {
     console.error("Error blocking user:", error);
     res.status(500).send("Server Error");
@@ -53,19 +62,24 @@ const blockCustomer = async (req, res) => {
 };
 
 
+
 const unblockCustomer = async (req, res) => {
   try {
     const userId = req.query.id;
-    const { page = 1, search = "" } = req.query;
 
-    await user.updateOne({ _id: userId }, { $set: { isBlocked: false } });
+    await user.updateOne(
+      { _id: userId },
+      { $set: { isBlocked: false } }
+    );
+    const backURL = req.headers.referer || "/admin/users";
+    return res.redirect(backURL);
 
-    res.redirect(`/admin/users?page=${page}&search=${encodeURIComponent(search)}`);
   } catch (error) {
     console.error("Error unblocking user:", error);
     res.status(500).send("Server Error");
   }
 };
+
 
 
 
