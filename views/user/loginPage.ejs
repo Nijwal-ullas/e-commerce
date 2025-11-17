@@ -112,6 +112,12 @@
     <%- include('../partials/user/footer') %>
 
     <script>
+
+            function togglePassword() {
+        const input = document.getElementById("password");
+        input.type = input.type === "password" ? "text" : "password";
+      }
+
       const loginForm = document.getElementById("loginForm");
       const emailInput = document.getElementById("email");
       const passwordInput = document.getElementById("password");
