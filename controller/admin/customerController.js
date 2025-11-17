@@ -46,15 +46,11 @@ const customerInfo = async (req, res) => {
 const blockCustomer = async (req, res) => {
   try {
     const userId = req.query.id;
+    const { page = 1, search = "" } = req.query; 
 
-    await user.updateOne(
-      { _id: userId },
-      { $set: { isBlocked: true } }
-    );
+    await user.updateOne({ _id: userId }, { $set: { isBlocked: true } });
 
-    const backURL = req.headers.referer || "/admin/users";
-    return res.redirect(backURL);
-
+    res.redirect(`/admin/users?page=${page}&search=${encodeURIComponent(search)}`);
   } catch (error) {
     console.error("Error blocking user:", error);
     res.status(500).send("Server Error");
@@ -62,24 +58,19 @@ const blockCustomer = async (req, res) => {
 };
 
 
-
 const unblockCustomer = async (req, res) => {
   try {
     const userId = req.query.id;
+    const { page = 1, search = "" } = req.query;
 
-    await user.updateOne(
-      { _id: userId },
-      { $set: { isBlocked: false } }
-    );
-    const backURL = req.headers.referer || "/admin/users";
-    return res.redirect(backURL);
+    await user.updateOne({ _id: userId }, { $set: { isBlocked: false } });
 
+    res.redirect(`/admin/users?page=${page}&search=${encodeURIComponent(search)}`);
   } catch (error) {
     console.error("Error unblocking user:", error);
     res.status(500).send("Server Error");
   }
 };
-
 
 
 
