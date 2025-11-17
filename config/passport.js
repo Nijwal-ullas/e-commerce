@@ -10,23 +10,33 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "http://localhost:3050/auth/google/callback",
+      callbackURL: "http://localhost:3056/auth/google/callback",
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        let user = await User.findOne({ googleId: profile.id });
+        let email = profile.emails?.[0]?.value;
+
+        let user = await User.findOne({
+          $or: [{ googleId: profile.id }, { email }],
+        });
 
         if (user) {
-          return done(null, user);
-        } else {
-          user = new User({
-            name: profile.displayName,
-            email: profile.emails?.[0]?.value || "noemail@example.com",
-            googleId: profile.id,
-          });
-          await user.save();
+          if (user.isBlocked) {
+            return done(null, false, { message: "blocked" });
+          }
+
           return done(null, user);
         }
+
+        user = new User({
+          name: profile.displayName,
+          email,
+          googleId: profile.id,
+        });
+        await user.save();
+
+        return done(null, user);
+
       } catch (error) {
         return done(error, null);
       }
@@ -38,10 +48,21 @@ passport.serializeUser((user, done) => {
   done(null, user.id);
 });
 
-passport.deserializeUser((id, done) => {
-  User.findById(id)
-    .then((user) => done(null, user))
-    .catch((err) => done(err, null));
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findById(id);
+
+    if (!user) return done(null, false);
+
+    if (user.isBlocked) {
+      return done(null, false);  
+    }
+
+    return done(null, user);
+  } catch (err) {
+    return done(err, null);
+  }
 });
+
 
 export default passport;
