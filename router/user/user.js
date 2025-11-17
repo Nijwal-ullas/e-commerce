@@ -2,9 +2,11 @@ import express from "express";
 import userController from "../../controller/user/userController.js";
 import productController from "../../controller/user/productController.js";
 import auth from "../../middleware/auth.js";
-import passport from "passport";
+import passport from "../../config/passport.js";
+
 const router = express.Router();
-router.use(auth.isBlocked)
+
+router.use(auth.isBlocked);
 
 router.get("/", userController.loadHomePage);
 router.get("/login", userController.loadLoginPage);
@@ -23,11 +25,11 @@ router.get("/reset-password", userController.loadResetPasswordPage);
 router.post("/reset-password", userController.resetPassword);
 router.post("/resend-forgot-otp", userController.resendForgotOtp);
 
-
 router.get(
-    '/auth/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
+  '/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
 );
+
 router.get(
   '/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
@@ -42,11 +44,8 @@ router.get(
   }
 );
 
-
-//product
-router.get("/product", productController.productPage); 
+router.get("/product", productController.productPage);
 router.get("/products/filter", productController.getProducts);
 router.get("/product/:id", productController.getProductDetails);
-
 
 export default router;
