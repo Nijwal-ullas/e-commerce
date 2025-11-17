@@ -1,17 +1,52 @@
 import user from "../../model/userSchema.js";
+import category from "../../model/categorySchema.js";
+import product from "../../model/productSchema.js";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import { otp as generateOtp } from "../../utilities/otpGenerator.js";
 dotenv.config();
 
+const setCacheHeaders = (res) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+};
+
 const loadHomePage = async (req, res) => {
   try {
+    setCacheHeaders(res);
+
+    const categories = await category.find({ isListed: true });
+
+    let newArrivalProducts = await product
+      .find({
+        isListed: true,
+      })
+      .sort({
+        createdAt: -1,
+        updatedAt: -1,
+      })
+      .limit(4)
+      .populate("brand")
+      .lean();
+
+    newArrivalProducts.forEach((prod, index) => {
+      console.log(`${index + 1}. ${prod.productName} - ID: ${prod._id}`);
+    });
+
     if (req.session.user) {
       const userData = await user.findById(req.session.user._id);
-      return res.render("user/home", { user: userData });
+      return res.render("user/home", {
+        user: userData,
+        products: newArrivalProducts,
+        categories,
+      });
     }
-    return res.render("user/home");
+    return res.render("user/home", {
+      products: newArrivalProducts,
+      categories,
+    });
   } catch (error) {
     console.log("Error loading homepage:", error.message);
     return res.status(500).send("Internal Server Error");
@@ -20,6 +55,11 @@ const loadHomePage = async (req, res) => {
 
 const loadLoginPage = async (req, res) => {
   try {
+    setCacheHeaders(res);
+
+    if (req.session.user) {
+      return res.redirect("/");
+    }
     res.render("user/loginPage");
   } catch (error) {
     console.log(error.message);
@@ -30,12 +70,21 @@ const loadLoginPage = async (req, res) => {
 const login = async (req, res) => {
   const { email, password } = req.body;
   try {
+    if (req.session.user) {
+      return res.status(200).json({
+        success: true,
+        message: "Already logged in",
+        redirect: "/",
+      });
+    }
+
     if (!email || !password) {
       return res.status(400).json({
         success: false,
         message: "Please fill in both email and password.",
       });
     }
+
     const existingUser = await user.findOne({ email });
     if (!existingUser) {
       return res.status(404).json({
@@ -43,12 +92,14 @@ const login = async (req, res) => {
         message: "User not found. Please register first.",
       });
     }
+
     if (existingUser.isBlocked) {
       return res.status(403).json({
         success: false,
         message: "You are blocked by admin.",
       });
     }
+
     const passwordMatch = await bcrypt.compare(password, existingUser.password);
     if (!passwordMatch) {
       return res.status(401).json({
@@ -56,6 +107,7 @@ const login = async (req, res) => {
         message: "Incorrect password.",
       });
     }
+
     req.session.user = {
       _id: existingUser._id,
       name: existingUser.name,
@@ -67,6 +119,7 @@ const login = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Login successful!",
+      redirect: "/",
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -79,37 +132,61 @@ const login = async (req, res) => {
 
 const loadRegisterPage = async (req, res) => {
   try {
+    setCacheHeaders(res);
+
+    if (req.session.user) {
+      return res.redirect("/");
+    }
     res.render("user/registerPage");
   } catch (error) {
     console.log(error.message);
+    res.status(500).send("Internal Server Error");
   }
 };
 
 const register = async (req, res) => {
   try {
+    if (req.session.user) {
+      return res.status(200).json({
+        success: true,
+        message: "Already logged in",
+        redirect: "/",
+      });
+    }
+
     const { name, email, phone, password, confirmPassword } = req.body;
+
     if (!email || !password || !name || !phone) {
-      return res
-        .status(400)
-        .json({ success: false, message: "All fields required" });
+      return res.status(400).json({
+        success: false,
+        message: "All fields required",
+      });
     }
+
     if (password !== confirmPassword) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Passwords do not match" });
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
     }
+
     const existingUser = await user.findOne({ email });
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ success: false, message: "User already exists" });
+      return res.status(400).json({
+        success: false,
+        message: "User already exists",
+      });
     }
+
     const otp = generateOtp();
     console.log("Sending OTP to:", email, " | OTP:", otp);
+
     req.session.userOtp = otp;
     req.session.otpExpire = Date.now() + 1 * 60 * 1000;
     req.session.userData = { name, email, phone, password };
+
     await sendOtpEmail(email, otp);
+
     return res.status(200).json({
       success: true,
       message: "OTP sent to email.",
@@ -117,9 +194,10 @@ const register = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
 
@@ -153,10 +231,20 @@ async function sendOtpEmail(email, otp) {
 
 const loadRegisterOtpPage = async (req, res) => {
   try {
+    setCacheHeaders(res);
+
+    if (req.session.user) {
+      return res.redirect("/");
+    }
+
     const email = req.session?.userData?.email;
+    if (!email) {
+      return res.redirect("/register");
+    }
     res.render("user/registerOtpPage", { email });
   } catch (error) {
     console.log(error.message);
+    res.status(500).send("Internal Server Error");
   }
 };
 
@@ -167,11 +255,19 @@ const registerOtpPage = async (req, res) => {
     const { otp } = req.body;
 
     if (!req.session.userOtp || Date.now() > req.session.otpExpire) {
-      return res.status(400).json({ success: false, message: "OTP expired" });
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired",
+      });
     }
+
     if (String(req.session.userOtp) !== String(otp)) {
-      return res.status(400).json({ success: false, message: "Invalid OTP" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP",
+      });
     }
+
     const userData = req.session.userData;
     if (!userData) {
       return res.status(400).json({
@@ -179,6 +275,7 @@ const registerOtpPage = async (req, res) => {
         message: "Session expired, register again",
       });
     }
+
     const hashedPassword = await securePassword(userData.password);
     const newUser = new user({
       name: userData.name,
@@ -193,17 +290,16 @@ const registerOtpPage = async (req, res) => {
     req.session.userData = null;
     req.session.otpExpire = null;
 
-    // req.session.user = {
-    //   _id: newUser._id,
-    //   name: newUser.name,
-    //   email: newUser.email,
-    // };
-    return res.status(200).json({ success: true, redirectUrl: "/login" });
+    return res.status(200).json({
+      success: true,
+      redirectUrl: "/login",
+    });
   } catch (error) {
     console.log(error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
 
@@ -216,13 +312,16 @@ const resendOtp = async (req, res) => {
         message: "Session expired. Please register again.",
       });
     }
+
     const email = userData.email;
     const otp = generateOtp();
     console.log(`New OTP for ${email}: ${otp}`);
+
     req.session.userOtp = otp;
     req.session.otpExpire = Date.now() + 1 * 60 * 1000;
 
     await sendOtpEmail(email, otp);
+
     return res.status(200).json({
       success: true,
       message: "OTP resent successfully. Please check your email.",
@@ -236,15 +335,34 @@ const resendOtp = async (req, res) => {
   }
 };
 
-const logout = (req, res) => {
-  res.clearCookie("user-session");
-  req.session.destroy(() => {
-    res.redirect("/");
-  });
+const logout = async (req, res) => {
+  try {
+    res.clearCookie("user-session");
+
+    req.session.user = null;
+
+    req.session.save((err) => {
+      if (err) {
+        console.log("Error saving session:", err);
+        return res.status(500).send("Internal Server Error");
+      }
+
+      setCacheHeaders(res);
+      res.redirect("/");
+    });
+  } catch (error) {
+    console.log(error.message);
+    res.status(500).send("Internal Server Error");
+  }
 };
 
 const loadForgotPasswordPage = async (req, res) => {
   try {
+    setCacheHeaders(res);
+
+    if (req.session.user) {
+      return res.redirect("/");
+    }
     res.render("user/forgotPasswordPage");
   } catch (error) {
     console.log(error.message);
@@ -252,8 +370,16 @@ const loadForgotPasswordPage = async (req, res) => {
   }
 };
 
-export const forgotPassword = async (req, res) => {
+const forgotPassword = async (req, res) => {
   try {
+    if (req.session.user) {
+      return res.status(200).json({
+        success: true,
+        message: "Already logged in",
+        redirect: "/",
+      });
+    }
+
     const { email } = req.body;
 
     const userExist = await user.findOne({ email });
@@ -289,8 +415,14 @@ export const forgotPassword = async (req, res) => {
 
 const loadForgotOtpPage = async (req, res) => {
   try {
+    setCacheHeaders(res);
+
+    if (req.session.user) {
+      return res.redirect("/");
+    }
+
     const email = req.session?.forgotEmail;
-    if (!email) return res.redirect("/forgotPasswordPage");
+    if (!email) return res.redirect("/forgot-password");
 
     res.render("user/forgotOtpPage", { email });
   } catch (error) {
@@ -332,6 +464,12 @@ const forgotOtpVerify = async (req, res) => {
 };
 
 const loadResetPasswordPage = (req, res) => {
+  setCacheHeaders(res);
+
+  if (req.session.user) {
+    return res.redirect("/");
+  }
+
   const email = req.session.forgotEmail;
   if (!email) return res.redirect("/forgot-password");
   res.render("user/resetPasswordPage", { email });
@@ -377,10 +515,12 @@ const resetPassword = async (req, res) => {
 const resendForgotOtp = async (req, res) => {
   try {
     const email = req.session.forgotEmail;
-    if (!email)
-      return res
-        .status(400)
-        .json({ success: false, message: "Session expired" });
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Session expired",
+      });
+    }
 
     const otp = generateOtp();
     req.session.forgotOtp = otp;
@@ -388,9 +528,15 @@ const resendForgotOtp = async (req, res) => {
 
     await sendOtpEmail(email, otp);
 
-    res.json({ success: true, message: "OTP resent!" });
+    res.json({
+      success: true,
+      message: "OTP resent!",
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
