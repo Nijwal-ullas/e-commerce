@@ -11,6 +11,9 @@
         .logo { font-family: 'Playfair Display', serif; }
         .out-of-stock-btn { opacity: 0.5; cursor: not-allowed; }
     </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/elevatezoom/3.0.8/jquery.elevatezoom.min.js"></script>
+
 </head>
 <body class="bg-white text-gray-800">
     <%- include('../partials/user/header') %>
@@ -523,10 +526,20 @@
             
             document.body.appendChild(toast);
             
-            setTimeout(() => {
+            setTimeout(() => {  console.log(`Server is running on port ${port}`);
+
                 toast.remove();
             }, 3000);
         }
+
+        $(document).ready(function () {
+    $("#mainImage").elevateZoom({
+        zoomType: "lens",
+        lensShape: "round",
+        lensSize: 200
+    });
+});
+
     </script>
 </body>
 </html>
