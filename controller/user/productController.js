@@ -32,15 +32,9 @@ const productPage = async (req, res) => {
 
 const getProducts = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 12;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit) || 12), 100);
     const skip = (page - 1) * limit;
-
-    if (page < 1 || limit < 1 || limit > 100) {
-      return res.status(400).json({
-        message: "Invalid pagination parameters",
-      });
-    }
 
     let filterQuery = {
       isListed: true,
@@ -48,8 +42,12 @@ const getProducts = async (req, res) => {
 
     if (req.query.categories) {
       try {
-        const categoryIds = req.query.categories.split(",");
-        filterQuery.category = { $in: categoryIds };
+        const categoryIds = req.query.categories.split(",").filter(id => 
+          id && id.length === 24 && /^[0-9a-fA-F]{24}$/.test(id)
+        );
+        if (categoryIds.length > 0) {
+          filterQuery.category = { $in: categoryIds };
+        }
       } catch (error) {
         console.error("Invalid category IDs:", error);
       }
@@ -57,18 +55,22 @@ const getProducts = async (req, res) => {
 
     if (req.query.brands) {
       try {
-        const brandIds = req.query.brands.split(",");
-        filterQuery.brand = { $in: brandIds };
+        const brandIds = req.query.brands.split(",").filter(id => 
+          id && id.length === 24 && /^[0-9a-fA-F]{24}$/.test(id)
+        );
+        if (brandIds.length > 0) {
+          filterQuery.brand = { $in: brandIds };
+        }
       } catch (error) {
         console.error("Invalid brand IDs:", error);
       }
     }
 
     if (req.query.minPrice || req.query.maxPrice) {
-      const minPrice = parseFloat(req.query.minPrice) || 0;
-      const maxPrice = parseFloat(req.query.maxPrice) || 10000;
-
-      if (minPrice >= 0 && maxPrice >= minPrice && maxPrice <= 100000) {
+      const minPrice = Math.max(0, parseFloat(req.query.minPrice) || 0);
+      const maxPrice = Math.min(100000, parseFloat(req.query.maxPrice) || 10000);
+      
+      if (maxPrice >= minPrice) {
         filterQuery.price = {
           $gte: minPrice,
           $lte: maxPrice,
@@ -78,24 +80,24 @@ const getProducts = async (req, res) => {
 
     if (req.query.search) {
       const searchTerm = req.query.search.trim();
-      if (searchTerm.length > 0 && searchTerm.length <= 100) {
-        const sanitizedSearchTerm = searchTerm.replace(
+      if (searchTerm.length > 0) {
+        const limitedSearchTerm = searchTerm.substring(0, 100);
+        const sanitizedSearchTerm = limitedSearchTerm.replace(
           /[.*+?^${}()|[\]\\]/g,
           "\\$&"
         );
 
-        filterQuery.productName = {
-          $regex: sanitizedSearchTerm,
-          $options: "i",
-        };
-
+        filterQuery.$or = [
+          { productName: { $regex: sanitizedSearchTerm, $options: "i" } },
+          { description: { $regex: sanitizedSearchTerm, $options: "i" } },
+        ];
       }
     }
 
     if (req.query.size) {
       const size = parseInt(req.query.size);
       const validSizes = [30, 50, 75, 100, 200];
-      if (validSizes.includes(size)) {
+      if (!isNaN(size) && validSizes.includes(size)) {
         filterQuery["VariantItem.Ml"] = size;
       }
     }
@@ -105,8 +107,8 @@ const getProducts = async (req, res) => {
       const validSortOptions = {
         "price-low": { price: 1 },
         "price-high": { price: -1 },
-        latest: { createdAt: -1 },
-        name: { productName: 1 },
+        "latest": { createdAt: -1 },
+        "name": { productName: 1 },
       };
 
       if (validSortOptions[req.query.sortBy]) {
@@ -155,6 +157,11 @@ const getProductDetails = async (req, res) => {
     res.setHeader("Expires", "0");
 
     const productId = req.params.id;
+    
+    if (!productId || productId.length !== 24 || !/^[0-9a-fA-F]{24}$/.test(productId)) {
+      return res.redirect("/product");
+    }
+
     const productData = await product
       .findById(productId)
       .populate("brand")
@@ -203,10 +210,13 @@ const searchProducts = async (req, res) => {
     }
 
     const searchTerm = query.trim();
-    const sanitizedSearchTerm = searchTerm.replace(
+    const limitedSearchTerm = searchTerm.substring(0, 100);
+    const sanitizedSearchTerm = limitedSearchTerm.replace(
       /[.*+?^${}()|[\]\\]/g,
       "\\$&"
     );
+
+    const parsedLimit = Math.min(Math.max(1, parseInt(limit)), 50);
 
     const products = await product
       .find({
@@ -219,7 +229,7 @@ const searchProducts = async (req, res) => {
       })
       .select("productName brand price images")
       .populate("brand", "name")
-      .limit(parseInt(limit))
+      .limit(parsedLimit)
       .lean();
 
     const suggestions = [
@@ -232,7 +242,7 @@ const searchProducts = async (req, res) => {
       success: true,
       products,
       suggestions,
-      searchTerm,
+      searchTerm: limitedSearchTerm,
     });
   } catch (error) {
     console.error("Search error:", error);
