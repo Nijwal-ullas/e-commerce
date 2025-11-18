@@ -190,8 +190,8 @@
               <input 
                 type="range" 
                 id="price-range"
-                min="500" 
-                max="5000" 
+                min="0" 
+                max="10000" 
                 value="5000"
                 step="100"
                 class="w-full mb-4 accent-red-600 cursor-pointer"
@@ -290,18 +290,16 @@ document.addEventListener('DOMContentLoaded', function() {
   sizeButtons.forEach(button => {
     button.addEventListener('click', function(e) {
       e.preventDefault();
-      const size = parseInt(this.dataset.size);
-      const validSizes = [30, 50, 75, 100, 200];
+      const size = this.dataset.size;
       
-      if (validSizes.includes(size)) {
-        if (this.classList.contains('active')) {
-          this.classList.remove('active');
-        } else {
-          sizeButtons.forEach(btn => btn.classList.remove('active'));
-          this.classList.add('active');
-        }
-        filterProducts();
+      // NO VALIDATION - backend will handle it
+      if (this.classList.contains('active')) {
+        this.classList.remove('active');
+      } else {
+        sizeButtons.forEach(btn => btn.classList.remove('active'));
+        this.classList.add('active');
       }
+      filterProducts();
     });
   });
 
@@ -313,17 +311,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let priceTimeout;
     priceRange.addEventListener('change', function() {
-      const value = parseInt(this.value);
-      if (value >= 500 && value <= 5000) {
-        clearTimeout(priceTimeout);
-        priceTimeout = setTimeout(filterProducts, 500);
-      }
+      // NO VALIDATION - backend will handle it
+      clearTimeout(priceTimeout);
+      priceTimeout = setTimeout(filterProducts, 500);
     });
   }
 
   let filterTimeout;
   document.querySelectorAll('.brand-filter, .category-filter').forEach(filter => {
     filter.addEventListener('change', function() {
+      // NO VALIDATION - backend will handle it
       clearTimeout(filterTimeout);
       filterTimeout = setTimeout(filterProducts, 300);
     });
@@ -349,19 +346,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     toggleClearButton();
     
+    // NO VALIDATION - backend will handle it
     searchInput.addEventListener('input', function() {
-      const searchTerm = this.value.trim();
-      
       toggleClearButton();
-      
-      if (searchTerm.length <= 100) {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(filterProducts, 500);
-      } else if (searchTerm.length > 100) {
-        showToast('Search term too long', 'error');
-        this.value = searchTerm.substring(0, 100);
-        toggleClearButton();
-      }
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(filterProducts, 500);
     });
     
     clearSearchBtn.addEventListener('click', function(e) {
@@ -384,7 +373,8 @@ document.addEventListener('DOMContentLoaded', function() {
       e.stopPropagation();
       
       const searchTerm = searchInput.value.trim();
-      if (searchTerm.length > 0 && searchTerm.length <= 100) {
+      // NO VALIDATION - backend will handle it
+      if (searchTerm.length > 0) {
         filterProducts();
         
         this.classList.add('scale-110');
@@ -398,7 +388,8 @@ document.addEventListener('DOMContentLoaded', function() {
       if (e.key === 'Enter') {
         e.preventDefault();
         const searchTerm = this.value.trim();
-        if (searchTerm.length > 0 && searchTerm.length <= 100) {
+        // NO VALIDATION - backend will handle it
+        if (searchTerm.length > 0) {
           filterProducts();
         }
       }
@@ -417,10 +408,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const sortSelect = document.getElementById('sort-select');
   if (sortSelect) {
     sortSelect.addEventListener('change', function() {
-      const validSortOptions = ['price-low', 'price-high', 'latest', 'name'];
-      if (validSortOptions.includes(this.value)) {
-        filterProducts();
-      }
+      // NO VALIDATION - backend will handle it
+      filterProducts();
     });
   }
 
@@ -433,14 +422,13 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   async function filterProducts() {
+    // NO VALIDATION - just collect raw data
     const searchTerm = document.getElementById('search-input').value.trim();
     const selectedBrands = Array.from(document.querySelectorAll('.brand-filter:checked'))
-      .map(cb => cb.value)
-      .filter(id => id && id.length === 24);
+      .map(cb => cb.value); // NO ID validation
     
     const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked'))
-      .map(cb => cb.value)
-      .filter(id => id && id.length === 24);
+      .map(cb => cb.value); // NO ID validation
     
     const selectedSize = document.querySelector('.size-btn.active')?.dataset.size;
     const maxPrice = document.getElementById('price-range').value;
@@ -448,7 +436,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const filters = {};
     
-    if (searchTerm && searchTerm.length > 0) {
+    // NO VALIDATION - backend will handle everything
+    if (searchTerm) {
       filters.search = searchTerm;
     }
     
@@ -461,23 +450,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     if (selectedSize) {
-      const size = parseInt(selectedSize);
-      const validSizes = [30, 50, 75, 100, 200];
-      if (validSizes.includes(size)) {
-        filters.size = size;
-      }
+      filters.size = selectedSize;
     }
     
-    const priceValue = parseInt(maxPrice);
-    if (priceValue >= 500 && priceValue <= 5000) {
-      filters.minPrice = 500;
-      filters.maxPrice = priceValue;
+    if (maxPrice) {
+      filters.maxPrice = maxPrice;
     }
     
-    const validSortOptions = ['price-low', 'price-high', 'latest', 'name'];
-    if (validSortOptions.includes(sortBy)) {
-      filters.sortBy = sortBy;
-    }
+    filters.sortBy = sortBy;
 
     console.log('Applying filters:', filters);
     currentFilters = filters;
@@ -495,9 +475,6 @@ document.addEventListener('DOMContentLoaded', function() {
         ...filters
       }).toString();
 
-      console.log('=== FRONTEND DEBUG ===');
-      console.log('Sending filters:', filters);
-      
       const response = await fetch(`/products/filter?${queryParams}`);
       
       if (!response.ok) {
@@ -505,10 +482,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       
       const data = await response.json();
-      
-      console.log('=== BACKEND RESPONSE ===');
-      console.log('Debug info:', data.debug);
-      console.log('Products received:', data.products?.length);
       
       if (!data.success) {
         throw new Error(data.message || 'Failed to load products');
