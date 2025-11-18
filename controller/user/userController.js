@@ -1,21 +1,37 @@
 import user from "../../model/userSchema.js";
 import category from "../../model/categorySchema.js";
 import product from "../../model/productSchema.js";
-import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
-import { otp as generateOtp } from "../../utilities/otpGenerator.js";
+import { otp as generateOtp, emailer } from "../../utilities/otpGenerator.js";
 dotenv.config();
 
-const setCacheHeaders = (res) => {
-  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  res.setHeader("Pragma", "no-cache");
-  res.setHeader("Expires", "0");
-};
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{6,}$/;
+const nameRegex =/^[A-Za-z]{6,20}$/;
+
+
+const aboutPage =async (req, res) =>{
+  try {
+      return res.render("user/aboutPage")
+  } catch (error) {
+    console.log("Error loading homepage:", error.message);
+    return res.status(500).send("Internal Server Error");
+  }
+}
+
+
+const contactPage= async(req,res)=>{
+  try {
+    return res.render("user/contact")
+  } catch (error) {
+    console.log("Error loading homepage:", error.message);
+    return res.status(500).send("Internal Server Error");
+  }
+}
 
 const loadHomePage = async (req, res) => {
   try {
-    setCacheHeaders(res);
 
     const categories = await category.find({ isListed: true });
 
@@ -30,10 +46,6 @@ const loadHomePage = async (req, res) => {
       .limit(4)
       .populate("brand")
       .lean();
-
-    newArrivalProducts.forEach((prod, index) => {
-      console.log(`${index + 1}. ${prod.productName} - ID: ${prod._id}`);
-    });
 
     if (req.session.user) {
       const userData = await user.findById(req.session.user._id);
@@ -55,7 +67,6 @@ const loadHomePage = async (req, res) => {
 
 const loadLoginPage = async (req, res) => {
   try {
-    setCacheHeaders(res);
 
     if (req.session.user) {
       return res.redirect("/");
@@ -114,7 +125,6 @@ const login = async (req, res) => {
       email: existingUser.email,
     };
 
-    console.log("User logged in successfully:", req.session.user);
 
     return res.status(200).json({
       success: true,
@@ -130,9 +140,9 @@ const login = async (req, res) => {
   }
 };
 
+
 const loadRegisterPage = async (req, res) => {
   try {
-    setCacheHeaders(res);
 
     if (req.session.user) {
       return res.redirect("/");
@@ -163,14 +173,29 @@ const register = async (req, res) => {
       });
     }
 
-    if (password !== confirmPassword) {
+    if(!emailRegex.test(email.trim())){
       return res.status(400).json({
-        success: false,
-        message: "Passwords do not match",
-      });
+        success : false,
+        message : "Please enter a valid email address."
+      })
     }
 
-    const existingUser = await user.findOne({ email });
+    if(!nameRegex.test(name.trim())){
+      return res.status(400).json({
+        success : false,
+        message : "Name must be 6–20 letters long and contain only alphabets"
+      })
+    }
+
+
+    if(phone.length!==10){
+      return res.status(400).json({
+        success : false,
+        message : "number must 10 digit"
+      })
+    }
+
+    const existingUser = await user.findOne({ email : {$regex : new RegExp(`^${email.trim()}$`,"i") } });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -178,14 +203,29 @@ const register = async (req, res) => {
       });
     }
 
+    if(!passwordRegex.test(password.trim())){
+      return res.status(400).json({
+        success : false,
+        message : "please enter valid password"
+      })
+    }
+
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match",
+      });
+    }
+
     const otp = generateOtp();
-    console.log("Sending OTP to:", email, " | OTP:", otp);
+    console.log(`${email} otp : ${otp}`);
 
     req.session.userOtp = otp;
     req.session.otpExpire = Date.now() + 1 * 60 * 1000;
     req.session.userData = { name, email, phone, password };
 
-    await sendOtpEmail(email, otp);
+    await emailer(email, otp);
 
     return res.status(200).json({
       success: true,
@@ -201,37 +241,10 @@ const register = async (req, res) => {
   }
 };
 
-async function sendOtpEmail(email, otp) {
-  if (!email) {
-    console.error("Error: No email provided.");
-    return false;
-  }
-  try {
-    const transporter = nodemailer.createTransport({
-      service: "Gmail",
-      auth: {
-        user: process.env.NODEMAILER_EMAIL,
-        pass: process.env.NODEMAILER_PASSWORD,
-      },
-    });
 
-    await transporter.sendMail({
-      from: process.env.NODEMAILER_EMAIL,
-      to: email,
-      subject: "Your OTP Code",
-      html: `<p>Your OTP code is <b>${otp}</b>. It is valid for 1 minute.</p>`,
-    });
-
-    return true;
-  } catch (error) {
-    console.log("Error sending OTP email:", error);
-    return false;
-  }
-}
 
 const loadRegisterOtpPage = async (req, res) => {
   try {
-    setCacheHeaders(res);
 
     if (req.session.user) {
       return res.redirect("/");
@@ -315,12 +328,12 @@ const resendOtp = async (req, res) => {
 
     const email = userData.email;
     const otp = generateOtp();
-    console.log(`New OTP for ${email}: ${otp}`);
+    console.log(`New otp for ${email} : ${otp}`);
 
     req.session.userOtp = otp;
     req.session.otpExpire = Date.now() + 1 * 60 * 1000;
 
-    await sendOtpEmail(email, otp);
+    await emailer(email, otp);
 
     return res.status(200).json({
       success: true,
@@ -347,7 +360,6 @@ const logout = async (req, res) => {
         return res.status(500).send("Internal Server Error");
       }
 
-      setCacheHeaders(res);
       res.redirect("/");
     });
   } catch (error) {
@@ -358,7 +370,6 @@ const logout = async (req, res) => {
 
 const loadForgotPasswordPage = async (req, res) => {
   try {
-    setCacheHeaders(res);
 
     if (req.session.user) {
       return res.redirect("/");
@@ -390,14 +401,14 @@ const forgotPassword = async (req, res) => {
       });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000);
-    console.log("FORGOT OTP:", otp);
+    const otp = generateOtp();
+    console.log(`Forgot otp : ${otp}`);
 
     req.session.forgotOtp = otp;
     req.session.forgotEmail = email;
     req.session.forgotOtpExpire = Date.now() + 1 * 60 * 1000;
 
-    await sendOtpEmail(email, otp);
+    await emailer(email, otp);
 
     return res.json({
       success: true,
@@ -415,7 +426,6 @@ const forgotPassword = async (req, res) => {
 
 const loadForgotOtpPage = async (req, res) => {
   try {
-    setCacheHeaders(res);
 
     if (req.session.user) {
       return res.redirect("/");
@@ -464,7 +474,6 @@ const forgotOtpVerify = async (req, res) => {
 };
 
 const loadResetPasswordPage = (req, res) => {
-  setCacheHeaders(res);
 
   if (req.session.user) {
     return res.redirect("/");
@@ -526,7 +535,7 @@ const resendForgotOtp = async (req, res) => {
     req.session.forgotOtp = otp;
     req.session.forgotOtpExpire = Date.now() + 60000;
 
-    await sendOtpEmail(email, otp);
+    await emailer(email, otp);
 
     res.json({
       success: true,
@@ -541,6 +550,8 @@ const resendForgotOtp = async (req, res) => {
 };
 
 export default {
+  aboutPage,
+  contactPage,
   loadHomePage,
   loadLoginPage,
   loadRegisterPage,
