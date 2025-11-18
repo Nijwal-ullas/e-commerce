@@ -48,4 +48,7 @@ router.get("/product", productController.productPage);
 router.get("/products/filter", productController.getProducts);
 router.get("/product/:id", productController.getProductDetails);
 
+router.get("/aboutPage",userController.aboutPage);
+router.get("/contactPage",userController.contactPage);
+
 export default router;
