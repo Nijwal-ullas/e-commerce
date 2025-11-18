@@ -293,7 +293,7 @@ const editProduct = async (req, res) => {
     }
 
     const existingProduct = await Product.findOne({
-      productName: productName,
+      productName: { $regex: new RegExp(`^${productName}$`, "i") },
       _id: { $ne: id },
     });
     if (existingProduct) {
