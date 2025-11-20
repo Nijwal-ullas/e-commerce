@@ -369,8 +369,8 @@
 
         const isEdit = !!editingId;
         const url = isEdit
-          ? `/admin/editBrand/${editingId}`
-          : "/admin/addBrand";
+          ? `/admin/Brand/${editingId}`
+          : "/admin/Brand";
 
         try {
           const res = await axios({
@@ -443,7 +443,7 @@
           if (!result.isConfirmed) return;
 
           try {
-            const res = await axios.delete(`/admin/deleteBrand/${id}`);
+            const res = await axios.delete(`/admin/Brand/${id}`);
 
             if (res.data.success) {
               Swal.fire({

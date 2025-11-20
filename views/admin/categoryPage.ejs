@@ -371,9 +371,9 @@
           let res;
 
           if (editingId) {
-            res = await axios.put(`/admin/editCategory/${editingId}`, data);
+            res = await axios.put(`/admin/Category/${editingId}`, data);
           } else {
-            res = await axios.post(`/admin/addCategory`, data);
+            res = await axios.post(`/admin/Category`, data);
           }
 
           Swal.fire({
@@ -422,7 +422,7 @@
             if (!result.isConfirmed) return;
 
             try {
-              await axios.delete(`/admin/deleteCategory/${id}`);
+              await axios.delete(`/admin/Category/${id}`);
               Swal.fire({
                 icon: "success",
                 title: "Category deleted!",
@@ -455,8 +455,8 @@
 
             try {
               const url = isList
-                ? `/admin/listCategory/${id}`
-                : `/admin/unlistCategory/${id}`;
+                ? `/admin/Category/${id}/list`
+                : `/admin/Category/${id}/unlist`;
 
               const res = await axios.patch(url);
 
