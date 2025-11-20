@@ -1,6 +1,5 @@
 import express from "express";
 import userController from "../../controller/user/userController.js";
-import productController from "../../controller/user/productController.js";
 import auth from "../../middleware/auth.js";
 import passport from "../../config/passport.js";
 
@@ -44,9 +43,6 @@ router.get(
   }
 );
 
-router.get("/product", productController.productPage);
-router.get("/products/filter", productController.getProducts);
-router.get("/product/:id", productController.getProductDetails);
 
 router.get("/aboutPage",userController.aboutPage);
 router.get("/contactPage",userController.contactPage);
