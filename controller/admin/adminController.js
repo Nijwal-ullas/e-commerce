@@ -3,9 +3,6 @@ import admin from "../../model/adminSchema.js";
 
 const loadAdminLoginPage = async (req, res) => {
   try {
-    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
 
     if (req.session.adminId) {
       return res.redirect("/admin/dashboard");
@@ -71,10 +68,7 @@ const login = async (req, res) => {
 
 const loadDashboardPage = async (req, res) => {
   try {
-    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
-
+   
     if (req.session.adminId) {
       const adminData = await admin.findById(req.session.adminId);
       const adminName = adminData ? adminData.email : "Admin";
@@ -100,11 +94,6 @@ const logout = async (req, res) => {
         console.log("Error saving session:", err);
         return res.status(500).send("Internal Server Error");
       }
-
-      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-      res.setHeader("Pragma", "no-cache");
-      res.setHeader("Expires", "0");
-
       res.redirect("/admin/login");
     });
   } catch (error) {
