@@ -5,10 +5,7 @@ import user from "../../model/userSchema.js";
 
 const productPage = async (req, res) => {
   try {
-    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
-
+  
     let userData = null;
     if (req.session.user) {
       userData = await user.findById(req.session.user._id);
@@ -36,48 +33,51 @@ const getProducts = async (req, res) => {
     const limit = Math.min(Math.max(1, parseInt(req.query.limit) || 12), 100);
     const skip = (page - 1) * limit;
 
+    const listedCategories = await category.find({ isListed: true });
+    const listedCategoryIds = listedCategories.map(cat => cat._id.toString());
+
     let filterQuery = {
       isListed: true,
+      category: { $in: listedCategoryIds } 
     };
 
     if (req.query.categories) {
-      try {
-        const categoryIds = req.query.categories.split(",").filter(id => 
-          id && id.length === 24 && /^[0-9a-fA-F]{24}$/.test(id)
+      const categoryIds = req.query.categories
+        .split(",")
+        .filter((id) => id && id.trim() !== "");
+      
+      if (categoryIds.length > 0) {
+        const validCategoryIds = categoryIds.filter(id => 
+          listedCategoryIds.includes(id)
         );
-        if (categoryIds.length > 0) {
-          filterQuery.category = { $in: categoryIds };
+        
+        if (validCategoryIds.length > 0) {
+          filterQuery.category = { $in: validCategoryIds };
+        } else {
+          filterQuery.category = { $in: listedCategoryIds };
         }
-      } catch (error) {
-        console.error("Invalid category IDs:", error);
       }
     }
 
     if (req.query.brands) {
-      try {
-        const brandIds = req.query.brands.split(",").filter(id => 
-          id && id.length === 24 && /^[0-9a-fA-F]{24}$/.test(id)
-        );
-        if (brandIds.length > 0) {
-          filterQuery.brand = { $in: brandIds };
-        }
-      } catch (error) {
-        console.error("Invalid brand IDs:", error);
+      const brandIds = req.query.brands
+        .split(",")
+        .filter((id) => id && id.trim() !== "");
+      if (brandIds.length > 0) {
+        filterQuery.brand = { $in: brandIds };
       }
     }
-
     if (req.query.minPrice || req.query.maxPrice) {
       const minPrice = Math.max(0, parseFloat(req.query.minPrice) || 0);
-      const maxPrice = Math.min(100000, parseFloat(req.query.maxPrice) || 10000);
-      
+      const maxPrice = Math.min(
+        100000,
+        parseFloat(req.query.maxPrice) || 100000
+      );
+
       if (maxPrice >= minPrice) {
-        filterQuery.price = {
-          $gte: minPrice,
-          $lte: maxPrice,
-        };
+        filterQuery.price = { $gte: minPrice, $lte: maxPrice };
       }
     }
-
     if (req.query.search) {
       const searchTerm = req.query.search.trim();
       if (searchTerm.length > 0) {
@@ -87,10 +87,10 @@ const getProducts = async (req, res) => {
           "\\$&"
         );
 
-        filterQuery.$or = [
-          { productName: { $regex: sanitizedSearchTerm, $options: "i" } },
-          { description: { $regex: sanitizedSearchTerm, $options: "i" } },
-        ];
+        filterQuery.productName = {
+          $regex: sanitizedSearchTerm,
+          $options: "i",
+        };
       }
     }
 
@@ -107,8 +107,8 @@ const getProducts = async (req, res) => {
       const validSortOptions = {
         "price-low": { price: 1 },
         "price-high": { price: -1 },
-        "latest": { createdAt: -1 },
-        "name": { productName: 1 },
+        latest: { createdAt: -1 },
+        name: { productName: 1 },
       };
 
       if (validSortOptions[req.query.sortBy]) {
@@ -127,13 +127,12 @@ const getProducts = async (req, res) => {
     const totalProducts = await product.countDocuments(filterQuery);
     const totalPages = Math.ceil(totalProducts / limit);
 
-    const categories = await category.find({ isListed: true });
     const brands = await brand.find();
 
     res.json({
       success: true,
       products,
-      categories,
+      categories : listedCategories,
       brands,
       currentPage: page,
       totalPages,
@@ -152,13 +151,14 @@ const getProducts = async (req, res) => {
 
 const getProductDetails = async (req, res) => {
   try {
-    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
-
-    const productId = req.params.id;
     
-    if (!productId || productId.length !== 24 || !/^[0-9a-fA-F]{24}$/.test(productId)) {
+    const productId = req.params.id;
+
+    if (
+      !productId ||
+      productId.length !== 24 ||
+      !/^[0-9a-fA-F]{24}$/.test(productId)
+    ) {
       return res.redirect("/product");
     }
 
@@ -197,60 +197,4 @@ const getProductDetails = async (req, res) => {
   }
 };
 
-const searchProducts = async (req, res) => {
-  try {
-    const { q: query, limit = 10 } = req.query;
-
-    if (!query || query.trim().length === 0) {
-      return res.json({
-        success: true,
-        products: [],
-        suggestions: [],
-      });
-    }
-
-    const searchTerm = query.trim();
-    const limitedSearchTerm = searchTerm.substring(0, 100);
-    const sanitizedSearchTerm = limitedSearchTerm.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      "\\$&"
-    );
-
-    const parsedLimit = Math.min(Math.max(1, parseInt(limit)), 50);
-
-    const products = await product
-      .find({
-        isListed: true,
-        $or: [
-          { productName: { $regex: sanitizedSearchTerm, $options: "i" } },
-          { description: { $regex: sanitizedSearchTerm, $options: "i" } },
-          { "brand.name": { $regex: sanitizedSearchTerm, $options: "i" } },
-        ],
-      })
-      .select("productName brand price images")
-      .populate("brand", "name")
-      .limit(parsedLimit)
-      .lean();
-
-    const suggestions = [
-      ...new Set(
-        products.flatMap((p) => [p.productName, p.brand?.name]).filter(Boolean)
-      ),
-    ].slice(0, 5);
-
-    res.json({
-      success: true,
-      products,
-      suggestions,
-      searchTerm: limitedSearchTerm,
-    });
-  } catch (error) {
-    console.error("Search error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Search failed",
-    });
-  }
-};
-
-export default { productPage, getProducts, getProductDetails, searchProducts };
+export default { productPage, getProducts, getProductDetails };
