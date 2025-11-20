@@ -297,8 +297,17 @@
         let selectedVariant = null;
         let selectedQuantity = 1;
 
-        function changeImage(src) {
-            document.getElementById('mainImage').src = src;
+            function changeImage(src) {
+            $('.zoomContainer').remove(); 
+            $("#mainImage").removeData('elevateZoom');
+
+            $('#mainImage').attr('src', src);
+
+            $("#mainImage").elevateZoom({
+                zoomType: "lens",
+                lensShape: "round",
+                lensSize: 200
+            });
         }
 
         function increaseQty() {
