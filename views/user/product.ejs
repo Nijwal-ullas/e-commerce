@@ -292,7 +292,6 @@ document.addEventListener('DOMContentLoaded', function() {
       e.preventDefault();
       const size = this.dataset.size;
       
-      // NO VALIDATION - backend will handle it
       if (this.classList.contains('active')) {
         this.classList.remove('active');
       } else {
@@ -311,7 +310,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let priceTimeout;
     priceRange.addEventListener('change', function() {
-      // NO VALIDATION - backend will handle it
       clearTimeout(priceTimeout);
       priceTimeout = setTimeout(filterProducts, 500);
     });
@@ -320,7 +318,6 @@ document.addEventListener('DOMContentLoaded', function() {
   let filterTimeout;
   document.querySelectorAll('.brand-filter, .category-filter').forEach(filter => {
     filter.addEventListener('change', function() {
-      // NO VALIDATION - backend will handle it
       clearTimeout(filterTimeout);
       filterTimeout = setTimeout(filterProducts, 300);
     });
@@ -346,7 +343,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     toggleClearButton();
     
-    // NO VALIDATION - backend will handle it
     searchInput.addEventListener('input', function() {
       toggleClearButton();
       clearTimeout(searchTimeout);
@@ -373,7 +369,6 @@ document.addEventListener('DOMContentLoaded', function() {
       e.stopPropagation();
       
       const searchTerm = searchInput.value.trim();
-      // NO VALIDATION - backend will handle it
       if (searchTerm.length > 0) {
         filterProducts();
         
@@ -388,7 +383,6 @@ document.addEventListener('DOMContentLoaded', function() {
       if (e.key === 'Enter') {
         e.preventDefault();
         const searchTerm = this.value.trim();
-        // NO VALIDATION - backend will handle it
         if (searchTerm.length > 0) {
           filterProducts();
         }
@@ -408,7 +402,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const sortSelect = document.getElementById('sort-select');
   if (sortSelect) {
     sortSelect.addEventListener('change', function() {
-      // NO VALIDATION - backend will handle it
       filterProducts();
     });
   }
@@ -422,13 +415,12 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   async function filterProducts() {
-    // NO VALIDATION - just collect raw data
     const searchTerm = document.getElementById('search-input').value.trim();
     const selectedBrands = Array.from(document.querySelectorAll('.brand-filter:checked'))
-      .map(cb => cb.value); // NO ID validation
+      .map(cb => cb.value);
     
     const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked'))
-      .map(cb => cb.value); // NO ID validation
+      .map(cb => cb.value);
     
     const selectedSize = document.querySelector('.size-btn.active')?.dataset.size;
     const maxPrice = document.getElementById('price-range').value;
@@ -436,7 +428,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const filters = {};
     
-    // NO VALIDATION - backend will handle everything
     if (searchTerm) {
       filters.search = searchTerm;
     }
@@ -530,14 +521,14 @@ document.addEventListener('DOMContentLoaded', function() {
       
       const selectedSize = document.querySelector('.size-btn.active')?.dataset.size;
       const hasStock = product.VariantItem && 
-                      Array.isArray(product.VariantItem) &&
-                      product.VariantItem.some(variant => {
-                        const hasQuantity = variant.Quantity > 0;
-                        if (selectedSize) {
-                          return hasQuantity && variant.Ml === parseInt(selectedSize);
-                        }
-                        return hasQuantity;
-                      });
+                        Array.isArray(product.VariantItem) &&
+                        product.VariantItem.some(variant => {
+                          const hasQuantity = variant.Quantity > 0;
+                          if (selectedSize) {
+                            return hasQuantity && variant.Ml === parseInt(selectedSize);
+                          }
+                          return hasQuantity;
+                        });
       
       const inStock = hasStock && product.isListed !== false;
       
