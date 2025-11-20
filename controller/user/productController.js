@@ -186,10 +186,18 @@ const getProductDetails = async (req, res) => {
       .populate("brand")
       .populate("category");
 
+
+      const breadcrumb = [
+      { name: "Home", url: "/" },
+      { name: "Products", url: "/product" },
+      { name: productData.productName, url: null }, 
+    ];
+
     res.render("user/productDetails", {
       product: productData,
       relatedProducts: relatedProducts,
       user: userData,
+      breadcrumb
     });
   } catch (error) {
     console.error("Error:", error);
