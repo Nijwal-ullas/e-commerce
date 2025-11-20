@@ -1,45 +1,9 @@
 import user from "../model/userSchema.js";
 import admin from "../model/adminSchema.js";
 
-const userAuth = async (req, res, next) => {
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
 
-  if (req.originalUrl.startsWith('/admin')) {
-    return next();
-  }
-
-  if (req.session.user) {
-    try {
-      const currentUser = await user.findById(req.session.user._id || req.session.user);
-
-      if (currentUser && !currentUser.isBlocked) {
-        res.locals.user = currentUser;
-        next();
-      } else {
-        delete req.session.user;
-        res.locals.user = null;
-        res.redirect("/login");
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send("Internal Server Error");
-    }
-  } else {
-    res.redirect("/login");
-  }
-};
 
 const adminAuth = async (req, res, next) => {
-  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-
-
-  if (req.originalUrl === '/admin/login' || req.originalUrl === '/admin/auth') {
-    return next();
-  }
 
   if (req.session.adminId) {
     try {
@@ -60,10 +24,9 @@ const adminAuth = async (req, res, next) => {
 };
 
 const isBlocked = async (req, res, next) => {
-  if (req.originalUrl.startsWith('/admin')) {
+    if (req.originalUrl.startsWith('/admin')) {
     return next();
   }
-
   if (req.session.user?._id || req.session.user) {
     try {
       const userId = req.session.user._id || req.session.user;
@@ -92,4 +55,4 @@ const setUser = (req, res, next) => {
   next();
 };
 
-export default { userAuth, adminAuth, isBlocked, setUser };
+export default {  adminAuth, isBlocked, setUser };
