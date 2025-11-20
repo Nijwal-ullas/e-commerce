@@ -6,7 +6,14 @@ import MongoStore from "connect-mongo";
 import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
 import userRouter from "./router/user/user.js";
+import userProductRouter from "./router/user/productRouter.js"
+
 import adminRouter from "./router/admin/admin.js";
+import brandRouter from "./router/admin/brandRoutes.js"
+import categoryRouter from "./router/admin/categoryRoutes.js"
+import customerRouter from "./router/admin/customerRoutes.js"
+import productRouter from "./router/admin/productRoutes.js"
+
 import auth from "./middleware/auth.js";
 import passport from "./config/passport.js";
 import morgan from "morgan";
@@ -74,7 +81,13 @@ app.use(auth.setUser);
 
 
 app.use("/", userRouter);
+app.use("/",userProductRouter);
+
 app.use("/admin", adminRouter); 
+app.use("/admin",brandRouter);
+app.use("/admin",categoryRouter);
+app.use("/admin",customerRouter);
+app.use("/admin",productRouter);
 
 app.use((req, res) => {
   res.status(404).render("error");
