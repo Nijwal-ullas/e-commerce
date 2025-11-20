@@ -387,6 +387,7 @@
       let existingImages = [];
       let currentCropper = null;
       let currentCropFile = null;
+      let currentCropModalOnComplete = null;
       let variantCounter = 0;
       const predefinedMlOptions = [30, 50, 75, 100, 200];
       const MAX_VARIANTS = 4;
@@ -640,8 +641,14 @@
           resetForm();
         }
 
-        function openCropModal(file) {
+        function openCropModal(file, onComplete = null) {
+          // Prevent opening multiple cropping modals
+          if (!cropModal.classList.contains('hidden')) {
+            return;
+          }
+          
           currentCropFile = file;
+          currentCropModalOnComplete = onComplete;
           const reader = new FileReader();
           
           reader.onload = (e) => {
@@ -673,6 +680,7 @@
             currentCropper = null;
           }
           currentCropFile = null;
+          currentCropModalOnComplete = null;
         }
 
         function openViewModal() {
@@ -699,6 +707,9 @@
           updateUploadAreaText();
           populateVariants([]); 
           updateAddVariantButtonState(); 
+          
+          // Reset file input
+          fileInput.value = '';
         }
 
         function populateForm(product) {
@@ -751,6 +762,70 @@
             uploadText.textContent = `${totalImages} image(s) selected. Click or drag to add more (min 3, max 5)`;
           } else {
             uploadText.textContent = "Click or drag images here (min 3)";
+          }
+        }
+
+        // NEW FUNCTION: Process files sequentially
+        function processFilesSequentially(files, index = 0) {
+          if (index >= files.length) {
+            fileInput.value = ''; // Reset file input after all files are processed
+            return;
+          }
+          
+          const file = files[index];
+          openCropModal(file, () => {
+            // Process next file after current one is done
+            setTimeout(() => {
+              processFilesSequentially(files, index + 1);
+            }, 100);
+          });
+        }
+
+        // UPDATED FUNCTION: Handle file selection
+        function handleFiles(newFiles) {
+          const maxAllowed = 5;
+          const currentTotal = selectedFiles.length + existingImages.length;
+          
+          if (currentTotal + newFiles.length > maxAllowed) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Image Limit',
+              text: `Maximum ${maxAllowed} images allowed. You can add ${maxAllowed - currentTotal} more.`,
+              confirmButtonColor: '#3085d6',
+            });
+            fileInput.value = ''; // Reset input
+            return;
+          }
+          
+          const validFiles = newFiles.filter((file) => {
+            const validTypes = ["image/jpeg","image/jpg","image/png","image/webp"];
+            const maxSize = 5 * 1024 * 1024;
+            if (!validTypes.includes(file.type)) {
+              Swal.fire({
+                icon: 'error',
+                title: 'Invalid Format',
+                text: `File ${file.name} is not a supported image format`,
+                confirmButtonColor: '#d33',
+              });
+              return false;
+            }
+            if (file.size > maxSize) {
+              Swal.fire({
+                icon: 'error',
+                title: 'File Too Large',
+                text: `File ${file.name} is too large. Maximum size is 5MB`,
+                confirmButtonColor: '#d33',
+              });
+              return false;
+            }
+            return true;
+          });
+          
+          // Process files sequentially instead of all at once
+          if (validFiles.length > 0) {
+            processFilesSequentially(validFiles);
+          } else {
+            fileInput.value = ''; // Reset input if no valid files
           }
         }
 
@@ -807,52 +882,14 @@
               updatePreview();
               updateUploadAreaText();
               closeCropModal();
+              
+              // Call completion callback if it exists
+              if (currentCropModalOnComplete) {
+                currentCropModalOnComplete();
+              }
             }, 'image/jpeg', 0.9);
           }
         });
-
-        function handleFiles(newFiles) {
-          const maxAllowed = 5;
-          const currentTotal = selectedFiles.length + existingImages.length;
-          
-          if (currentTotal + newFiles.length > maxAllowed) {
-            Swal.fire({
-              icon: 'warning',
-              title: 'Image Limit',
-              text: `Maximum ${maxAllowed} images allowed. You can add ${maxAllowed - currentTotal} more.`,
-              confirmButtonColor: '#3085d6',
-            });
-            return;
-          }
-          
-          const validFiles = newFiles.filter((file) => {
-            const validTypes = ["image/jpeg","image/jpg","image/png","image/webp"];
-            const maxSize = 5 * 1024 * 1024;
-            if (!validTypes.includes(file.type)) {
-              Swal.fire({
-                icon: 'error',
-                title: 'Invalid Format',
-                text: `File ${file.name} is not a supported image format`,
-                confirmButtonColor: '#d33',
-              });
-              return false;
-            }
-            if (file.size > maxSize) {
-              Swal.fire({
-                icon: 'error',
-                title: 'File Too Large',
-                text: `File ${file.name} is too large. Maximum size is 5MB`,
-                confirmButtonColor: '#d33',
-              });
-              return false;
-            }
-            return true;
-          });
-          
-          validFiles.forEach(file => {
-            openCropModal(file);
-          });
-        }
 
         function updatePreview() {
           preview.innerHTML = "";
