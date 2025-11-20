@@ -74,7 +74,7 @@ app.use(auth.setUser);
 
 
 app.use("/", userRouter);
-app.use("/admin", auth.adminAuth, adminRouter); 
+app.use("/admin", adminRouter); 
 
 app.use((req, res) => {
   res.status(404).render("error");
