@@ -6,6 +6,10 @@ const BrandSchema = new Schema({
   name: { type: String },
   description: { type: String },
   brandLogo: { type: String },
+   cloudinaryPublicId : {
+    type: String,
+    default: ""
+  },
 },
 { timestamps: true }   
 );
