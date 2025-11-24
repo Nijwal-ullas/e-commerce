@@ -1,23 +1,40 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const { Schema, ObjectId } = mongoose;
 
 const AddressSchema = new Schema({
-  Name: { type: String, required: true },
-  State: { type: String, required: true },
-  City: { type: String, required: true },
-  Pincode: { type: String, required: true },
-  AddressType: { type: String, required: true, enum: [ 'home', 'work', 'other' ] },
-  UserId: { type: Schema.Types.ObjectId, required: true },
-  Phone: { type: String, required: true },
-  StreetName: { type: String, required: true },
-  Country: { type: String, required: true },
-  LandMark: { type: String },
-  AlternativePhone: { type: String },
-  FlatNumber: { type: String },
+  name: { type: String, required: true },
+  state: { type: String, required: true },
+  city: { type: String, required: true },
+  pincode: { 
+    type: String, 
+    required: true, 
+  },
+  addressType: { 
+    type: String, 
+    required: true, 
+    enum: ['home', 'work', 'other']
+  },
+  userId: { 
+    type: Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true 
+  },
+  phone: { 
+    type: String, 
+    required: true, 
+  },
+  streetName: { type: String, required: true },
+  country: { type: String, required: true },
+  landMark: { type: String },
+  alternativePhone: { 
+    type: String, 
+  },
+  flatNumber: { type: String }
 });
+
+AddressSchema.index({ userId: 1 });
 
 const Address = mongoose.model('Address', AddressSchema);
 
 export default Address;
-
