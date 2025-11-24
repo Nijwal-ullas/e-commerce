@@ -1,20 +1,9 @@
 import Product from "../../model/productSchema.js";
 import Category from "../../model/categorySchema.js";
 import Brand from "../../model/brandSchema.js";
-import fs from "fs";
-import path from "path";
-import sharp from "sharp";
-
+import { uploadToCloudinary, deleteFromCloudinary, getPublicIdFromUrl } from "../../helpers/cloudinaryUpload.js";
 
 const nameRegex = /^[A-Za-z ]{3,20}$/;
-
-const deleteUploadedFiles = (files) => {
-  files?.forEach((file) => {
-    if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-  });
-};
-
-
 
 const productPage = async (req, res) => {
   try {
@@ -55,8 +44,6 @@ const productPage = async (req, res) => {
   }
 };
 
-
-
 const addProduct = async (req, res) => {
   try {
     let {
@@ -74,21 +61,17 @@ const addProduct = async (req, res) => {
     productName = productName?.trim();
     description = description?.trim();
 
-
-    if (!productName || !price || !categoryId ||!brandId) {
-      deleteUploadedFiles(req.files);
+    if (!productName || !price || !categoryId || !brandId) {
       return res.status(400).json({
         success: false,
-        message: "Product name, price , brand and category are required",
+        message: "Product name, price, brand and category are required",
       });
     }
 
     if (!nameRegex.test(productName)) {
-      deleteUploadedFiles(req.files);
       return res.status(400).json({
         success: false,
-        message:
-          "Product name must be 3–20 characters and contain only letters",
+        message: "Product name must be 3–20 characters and contain only letters",
       });
     }
 
@@ -96,7 +79,6 @@ const addProduct = async (req, res) => {
       productName: { $regex: new RegExp(`^${productName}$`, "i") },
     });
     if (exists) {
-      deleteUploadedFiles(req.files);
       return res.status(400).json({
         success: false,
         message: "Product with this name already exists",
@@ -104,7 +86,6 @@ const addProduct = async (req, res) => {
     }
 
     if (isNaN(price) || price <= 0) {
-      deleteUploadedFiles(req.files);
       return res.status(400).json({
         success: false,
         message: "Price must be a valid positive number",
@@ -112,7 +93,6 @@ const addProduct = async (req, res) => {
     }
 
     if (description?.length < 10) {
-      deleteUploadedFiles(req.files);
       return res.status(400).json({
         success: false,
         message: "Description must be at least 10 characters long",
@@ -120,7 +100,6 @@ const addProduct = async (req, res) => {
     }
 
     if (!req.files || req.files.length < 3) {
-      deleteUploadedFiles(req.files);
       return res.status(400).json({
         success: false,
         message: "At least 3 images are required",
@@ -141,7 +120,6 @@ const addProduct = async (req, res) => {
         const Quantity = Number(qtyArray[i]);
 
         if (isNaN(Quantity) || Quantity < 0) {
-          deleteUploadedFiles(req.files);
           return res.status(400).json({
             success: false,
             message: "Variant quantity must be 0 or more",
@@ -153,7 +131,6 @@ const addProduct = async (req, res) => {
     }
 
     if (variantItems.length === 0) {
-      deleteUploadedFiles(req.files);
       return res.status(400).json({
         success: false,
         message: "At least one ML variant is required",
@@ -161,44 +138,31 @@ const addProduct = async (req, res) => {
     }
 
     if (variantItems.length > 4) {
-      deleteUploadedFiles(req.files);
       return res.status(400).json({
         success: false,
         message: "Maximum 4 ML variants allowed",
       });
     }
 
-
-    const RESIZED_DIR = path.join(
-      process.cwd(),
-      "public",
-      "uploads",
-      "products",
-      "resized"
-    );
-
-    if (!fs.existsSync(RESIZED_DIR))
-      fs.mkdirSync(RESIZED_DIR, { recursive: true });
-
     const imageArr = [];
+    const cloudinaryPublicIds = [];
 
-    for (const file of req.files) {
-      try {
-        const resizedName = `resized-${Date.now()}-${file.filename}`;
-        const resizedPath = path.join(RESIZED_DIR, resizedName);
-
-        await sharp(file.path)
-          .resize(440, 440, { fit: "cover" })
-          .jpeg({ quality: 90 })
-          .toFile(resizedPath);
-
-        imageArr.push(`/uploads/products/resized/${resizedName}`);
-        fs.unlinkSync(file.path);
-      } catch (err) {
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    try {
+      for (const file of req.files) {
+        const uploadResult = await uploadToCloudinary(file.buffer, 'products');
+        imageArr.push(uploadResult.secure_url);
+        cloudinaryPublicIds.push(uploadResult.public_id);
       }
+    } catch (uploadError) {
+      console.error('Cloudinary upload error:', uploadError);
+      for (const publicId of cloudinaryPublicIds) {
+        await deleteFromCloudinary(publicId);
+      }
+      return res.status(500).json({
+        success: false,
+        message: "Failed to upload product images",
+      });
     }
-
 
     const newProduct = new Product({
       productName,
@@ -208,6 +172,7 @@ const addProduct = async (req, res) => {
       category: categoryId,
       brand: brandId,
       images: imageArr,
+      cloudinaryPublicIds,
       VariantItem: variantItems,
       isListed: true,
     });
@@ -219,15 +184,12 @@ const addProduct = async (req, res) => {
     });
   } catch (err) {
     console.error("Add product error:", err);
-    deleteUploadedFiles(req.files);
     res.status(500).json({
       success: false,
       message: "Server error while adding product",
     });
   }
 };
-
-
 
 const getProduct = async (req, res) => {
   try {
@@ -253,7 +215,6 @@ const getProduct = async (req, res) => {
   }
 };
 
-
 const editProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -276,7 +237,6 @@ const editProduct = async (req, res) => {
 
     const product = await Product.findById(id);
     if (!product) {
-      deleteUploadedFiles(req.files);
       return res.status(404).json({
         success: false,
         message: "Product not found",
@@ -284,11 +244,9 @@ const editProduct = async (req, res) => {
     }
 
     if (!nameRegex.test(productName)) {
-      deleteUploadedFiles(req.files);
       return res.status(400).json({
         success: false,
-        message:
-          "Product name must be 3–20 characters and contain only letters",
+        message: "Product name must be 3–20 characters and contain only letters",
       });
     }
 
@@ -297,13 +255,11 @@ const editProduct = async (req, res) => {
       _id: { $ne: id },
     });
     if (existingProduct) {
-      deleteUploadedFiles(req.files);
       return res.status(400).json({
         success: false,
         message: "Another product with this name already exists",
       });
     }
-
 
     const variantItems = [];
     if (variantMl && variantQuantity) {
@@ -317,7 +273,6 @@ const editProduct = async (req, res) => {
         const Quantity = Number(qtyArray[i]);
 
         if (isNaN(Quantity) || Quantity < 0) {
-          deleteUploadedFiles(req.files);
           return res.status(400).json({
             success: false,
             message: "Variant quantity must be 0 or more",
@@ -329,7 +284,6 @@ const editProduct = async (req, res) => {
     }
 
     if (variantItems.length === 0) {
-      deleteUploadedFiles(req.files);
       return res.status(400).json({
         success: false,
         message: "At least one ML variant is required",
@@ -337,13 +291,11 @@ const editProduct = async (req, res) => {
     }
 
     if (variantItems.length > 4) {
-      deleteUploadedFiles(req.files);
       return res.status(400).json({
         success: false,
         message: "Maximum 4 ML variants allowed",
       });
     }
-
 
     let existingImages = [];
     if (req.body.existingImages) {
@@ -353,49 +305,52 @@ const editProduct = async (req, res) => {
     }
 
     let newImages = [];
+    let newCloudinaryPublicIds = [];
 
     if (req.files && req.files.length > 0) {
-      const RESIZED_DIR = path.join(
-        process.cwd(),
-        "public",
-        "uploads",
-        "products",
-        "resized"
-      );
-
-      if (!fs.existsSync(RESIZED_DIR))
-        fs.mkdirSync(RESIZED_DIR, { recursive: true });
-
-      for (const file of req.files) {
-        try {
-          const resizedName =
-            `resized-${Date.now()}-${Math.round(
-              Math.random() * 1e9
-            )}` + path.extname(file.originalname);
-
-          const resizedPath = path.join(RESIZED_DIR, resizedName);
-
-          await sharp(file.path)
-            .resize(440, 440, { fit: "cover", position: "center" })
-            .jpeg({ quality: 90 })
-            .toFile(resizedPath);
-
-          newImages.push(`/uploads/products/resized/${resizedName}`);
-          fs.unlinkSync(file.path);
-        } catch (err) {
-          if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      try {
+        for (const file of req.files) {
+          const uploadResult = await uploadToCloudinary(file.buffer, 'products');
+          newImages.push(uploadResult.secure_url);
+          newCloudinaryPublicIds.push(uploadResult.public_id);
         }
+      } catch (uploadError) {
+        console.error('Cloudinary upload error:', uploadError);
+        for (const publicId of newCloudinaryPublicIds) {
+          await deleteFromCloudinary(publicId);
+        }
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload new product images",
+        });
       }
     }
 
     const finalImages = [...existingImages, ...newImages];
+    const finalCloudinaryPublicIds = [
+      ...(product.cloudinaryPublicIds || []).filter(publicId => 
+        existingImages.some(img => getPublicIdFromUrl(img) === publicId)
+      ),
+      ...newCloudinaryPublicIds
+    ];
+
     if (finalImages.length < 3) {
+      for (const publicId of newCloudinaryPublicIds) {
+        await deleteFromCloudinary(publicId);
+      }
       return res.status(400).json({
         success: false,
         message: "At least 3 images are required",
       });
     }
 
+    const removedImages = product.images.filter(img => !finalImages.includes(img));
+    for (const removedImg of removedImages) {
+      const publicId = getPublicIdFromUrl(removedImg);
+      if (publicId) {
+        await deleteFromCloudinary(publicId);
+      }
+    }
 
     product.productName = productName;
     product.description = description;
@@ -405,6 +360,7 @@ const editProduct = async (req, res) => {
     product.category = categoryId;
     product.brand = brandId || null;
     product.images = finalImages;
+    product.cloudinaryPublicIds = finalCloudinaryPublicIds;
     product.VariantItem = variantItems;
     product.isListed = isListed === "true";
 
@@ -416,14 +372,12 @@ const editProduct = async (req, res) => {
     });
   } catch (err) {
     console.error("Edit product error:", err);
-    deleteUploadedFiles(req.files);
     res.status(500).json({
       success: false,
       message: "Server error while updating product",
     });
   }
 };
-
 
 const deleteProduct = async (req, res) => {
   try {
@@ -434,6 +388,16 @@ const deleteProduct = async (req, res) => {
         success: false,
         message: "Product not found",
       });
+    }
+
+    if (product.cloudinaryPublicIds && product.cloudinaryPublicIds.length > 0) {
+      for (const publicId of product.cloudinaryPublicIds) {
+        try {
+          await deleteFromCloudinary(publicId);
+        } catch (deleteError) {
+          console.error('Error deleting image from Cloudinary:', deleteError);
+        }
+      }
     }
 
     await Product.findByIdAndDelete(req.params.id);
@@ -450,8 +414,6 @@ const deleteProduct = async (req, res) => {
     });
   }
 };
-
-
 
 export default {
   productPage,
