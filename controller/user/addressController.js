@@ -54,9 +54,13 @@ const loadAddAddress = async (req, res) => {
   }
 };
 
+
 const registerAddress = async (req, res) => {
   try {
+
+    console.log("its here")
     const {
+      
       addressLine1,
       addressLine2,
       landmark,
@@ -69,8 +73,11 @@ const registerAddress = async (req, res) => {
       alternatePhone,
       isDefault,
       type,
-      addressId,
+      addressId, 
     } = req.body;
+
+  
+    const finalAddressId = addressId || req.params.id;
 
     if (
       !addressLine1 ||
@@ -129,11 +136,11 @@ const registerAddress = async (req, res) => {
       await Address.updateMany({ userId }, { $set: { isDefault: false } });
     }
 
-    let result;
+        let result;
 
-    if (addressId) {
+    if (finalAddressId) {
       result = await Address.findOneAndUpdate(
-        { _id: addressId, userId },
+        { _id: finalAddressId, userId }, 
         {
           name: userName,
           addressType: type ? type.toLowerCase() : "home",
@@ -179,7 +186,7 @@ const registerAddress = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: addressId
+      message: finalAddressId
         ? "Address updated successfully"
         : "Address saved successfully",
       address: result,
