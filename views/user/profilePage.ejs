@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rube Collection - My Profile</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+      body {
+        font-family: "Lato", sans-serif;
+      }
+
+      .image-upload-container {
+        position: relative;
+        width: 150px;
+        height: 150px;
+        margin: 0 auto;
+      }
+
+      .profile-image-preview {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid #e5e7eb;
+      }
+
+      .upload-overlay {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background-color: #b91c1c;
+        border-radius: 50%;
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: 3px solid white;
+        transition: background-color 0.2s;
+      }
+
+      #imageInput {
+        display: none;
+      }
+      .upload-overlay:hover {
+        background-color: #991b1b;
+      }
+
+      .error-message {
+        color: #dc2626;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+        display: none;
+      }
+    </style>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  </head>
+
+  <body class="bg-gray-50">
+    <%- include("../partials/user/header.ejs") %>
+
+    <div class="max-w-full mx-auto px-6 lg:px-12 py-8">
+      <div class="flex flex-col lg:flex-row gap-8">
+        <%- include("../partials/user/profileSidebar.ejs") %>
+
+        <div class="flex-1">
+          <div class="bg-gray-100 rounded-lg p-6 lg:p-8">
+            <div class="bg-white rounded-lg shadow-sm p-6 lg:p-10">
+              <h2 class="text-xl font-medium text-gray-800 mb-8">
+                Edit profile
+              </h2>
+
+              <div id="formSuccess" class="mb-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg hidden">
+                <span id="successMessage"></span>
+              </div>
+
+              <div id="formError" class="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg hidden">
+                <span id="errorMessage"></span>
+              </div>
+
+              <form id="profileForm" class="space-y-8" enctype="multipart/form-data">
+                <div class="mb-8">
+                  <label class="block text-sm font-medium text-gray-700 mb-4 text-center">Profile Picture</label>
+                  <div class="image-upload-container">
+                    <img id="imagePreview" src="<%= user.profileImage || '/images/default-avatar.png' %>" class="profile-image-preview" />
+                    <label for="imageInput" class="upload-overlay">
+                      <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </label>
+                    <input type="file" id="imageInput" accept="image/*" name="profileImage" />
+                  </div>
+                  <p class="text-xs text-gray-500 text-center mt-3">Click the camera icon to upload a new photo</p>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-3">Email</label>
+                  <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <input
+                      type="email"
+                      name="email"
+                      value="<%= user.email || '' %>"
+                      disabled
+                      class="flex-1 w-full px-5 py-3 border border-gray-300 bg-gray-200 cursor-not-allowed rounded-full"
+                    />
+                    <a
+                      href="/profile/change-email"
+                      class="px-5 py-2 rounded-full bg-red-700 text-white text-sm hover:bg-red-800 whitespace-nowrap"
+                    >
+                      Change Email
+                    </a>
+                    <a
+                      href="/profile/change-password"
+                      class="px-5 py-2 rounded-full bg-red-700 text-white text-sm hover:bg-red-800 whitespace-nowrap"
+                    >
+                      Change Password
+                    </a>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-3">Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value="<%= user.name || '' %>"
+                    required
+                    class="w-full px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-700 focus:outline-none"
+                  />
+                  <div id="nameError" class="error-message"></div>
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-3">Mobile</label>
+                  <input
+                    type="number"
+                    name="mobile"
+                    value="<%= user.phone || '' %>"
+                    required
+                    class="w-full px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-700 focus:outline-none"
+                  />
+                  <div id="mobileError" class="error-message"></div>
+                </div>
+
+                <div class="flex justify-end pt-6">
+                  <button 
+                    type="submit" 
+                    id="submitBtn"
+                    class="px-10 py-3 bg-red-700 hover:bg-red-800 text-white rounded-md font-medium transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    Save
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%- include("../partials/user/footer.ejs") %>
+
+    <div id="cropModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50">
+      <div class="bg-white p-6 rounded-xl shadow-lg max-w-lg w-full">
+        <h2 class="text-lg font-semibold mb-4 text-gray-700">
+          Crop Your Image
+        </h2>
+
+        <div class="w-full h-64">
+          <img id="cropImage" class="max-h-64 w-full object-contain" />
+        </div>
+
+        <div class="flex justify-end mt-4 gap-3">
+          <button onclick="closeCropper()" class="px-4 py-2 rounded-lg border border-gray-400 text-gray-600 hover:bg-gray-100">
+            Cancel
+          </button>
+
+          <button id="cropBtn" class="px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800">
+            Crop & Save
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let cropper;
+      const modal = document.getElementById("cropModal");
+      const cropImage = document.getElementById("cropImage");
+      const profileForm = document.getElementById("profileForm");
+      const submitBtn = document.getElementById("submitBtn");
+      const formSuccess = document.getElementById("formSuccess");
+      const formError = document.getElementById("formError");
+      const successMessage = document.getElementById("successMessage");
+      const errorMessage = document.getElementById("errorMessage");
+      const nameError = document.getElementById("nameError");
+      const mobileError = document.getElementById("mobileError");
+
+      function clearErrors() {
+        nameError.style.display = 'none';
+        mobileError.style.display = 'none';
+        formSuccess.classList.add('hidden');
+        formError.classList.add('hidden');
+      }
+
+      document.getElementById("imageInput").addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+          alert('Please select an image file');
+          return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Image size should be less than 5MB');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          cropImage.src = e.target.result;
+          openCropper();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      function openCropper() {
+        modal.classList.remove("hidden");
+        cropper = new Cropper(cropImage, {
+          aspectRatio: 1,
+          viewMode: 2,
+          background: false,
+          responsive: true,
+          autoCropArea: 1,
+        });
+      }
+
+      function closeCropper() {
+        modal.classList.add("hidden");
+        if (cropper) {
+          cropper.destroy();
+          cropper = null;
+        }
+      }
+
+      document.getElementById("cropBtn").addEventListener("click", () => {
+        const canvas = cropper.getCroppedCanvas({
+          width: 400,
+          height: 400,
+        });
+
+        canvas.toBlob((blob) => {
+          const previewUrl = URL.createObjectURL(blob);
+          document.getElementById("imagePreview").src = previewUrl;
+
+          window.croppedImageBlob = blob;
+
+          closeCropper();
+        }, "image/jpeg");
+      });
+
+      profileForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        clearErrors();
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+
+        try {
+          const formData = new FormData();
+
+          formData.append("name", profileForm.name.value.trim());
+          formData.append("mobile", profileForm.mobile.value.trim());
+
+          if (window.croppedImageBlob) {
+            formData.append("profileImage", window.croppedImageBlob, "profile.jpg");
+          }
+
+          const response = await axios.post("/profile", formData, {
+            headers: {
+              "Content-Type": "multipart/form-data"
+            }
+          });
+
+          if (response.data.success) {
+            Swal.fire({
+              title: 'Success!',
+              text: response.data.message || 'Profile updated successfully!',
+              icon: 'success',
+              confirmButtonText: 'OK'
+            }).then(() => {
+              window.location.reload();
+            });
+          } else {
+            if (response.data.message && response.data.message.includes('Name')) {
+              nameError.textContent = response.data.message;
+              nameError.style.display = 'block';
+            } else if (response.data.message && response.data.message.includes('mobile')) {
+              mobileError.textContent = response.data.message;
+              mobileError.style.display = 'block';
+            } else {
+              Swal.fire({
+                title: 'Error!',
+                text: response.data.message || 'Error updating profile',
+                icon: 'error',
+                confirmButtonText: 'OK'
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error:', error);
+
+          Swal.fire({
+            title: 'Error!',
+            text: 'Network error. Please try again.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+          });
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Save';
+        }
+      });
+    </script>
+  </body>
+</html>
