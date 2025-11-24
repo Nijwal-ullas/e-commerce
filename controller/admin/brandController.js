@@ -1,12 +1,6 @@
 import Brand from "../../model/brandSchema.js";
 import Product from "../../model/productSchema.js";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ROOT = path.resolve(__dirname, "../../../");
+import { uploadToCloudinary, deleteFromCloudinary } from "../../helpers/cloudinaryUpload.js";
 
 const brandNameRegex = /^[A-Za-z ]{2,20}$/;
 
@@ -51,8 +45,7 @@ const addBrand = async (req, res) => {
     if (!brandNameRegex.test(name.trim())) {
       return res.status(400).json({
         success: false,
-        message:
-          "Brand name must be 2-20 characters long and contain only letters",
+        message: "Brand name must be 2-20 characters long and contain only letters",
       });
     }
 
@@ -60,7 +53,7 @@ const addBrand = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Description cannot exceed 100 characters",
-      })
+      });
     }
 
     const existingBrand = await Brand.findOne({
@@ -74,14 +67,28 @@ const addBrand = async (req, res) => {
     }
 
     let brandLogo = "";
+    let cloudinaryPublicId = "";
+
     if (req.file) {
-      brandLogo = `/uploads/brands/${req.file.filename}`;
+      try {
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'brands');
+        brandLogo = uploadResult.secure_url;
+        cloudinaryPublicId = uploadResult.public_id;
+        
+      } catch (uploadError) {
+        console.error('Cloudinary upload error:', uploadError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload image",
+        });
+      }
     }
 
     const brand = new Brand({
       name: name.trim(),
       description: description?.trim() || "",
       brandLogo,
+      cloudinaryPublicId,
     });
 
     await brand.save();
@@ -111,42 +118,63 @@ const editBrand = async (req, res) => {
     }
 
     const brand = await Brand.findById(id);
-    if (!brand)
+    if (!brand) {
       return res.status(404).json({
         success: false,
         message: "Brand not found",
       });
+    }
 
     if (!brandNameRegex.test(name.trim())) {
       return res.status(400).json({
         success: false,
-        message:
-          "Brand name must be 2-20 characters long and contain only letters",
+        message: "Brand name must be 2-20 characters long and contain only letters",
       });
     }
 
     const duplicateBrand = await Brand.findOne({
-      name: { $regex: new regExp(`^${name.trim()}$`, "i") },
+      name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
       _id: { $ne: id },
     });
 
     if (duplicateBrand) {
-      return res.sratus(400).json({
+      return res.status(400).json({
         success: false,
         message: "Brand name already exists",
       });
     }
 
+    if (description && description.length > 100) {
+      return res.status(400).json({
+        success: false,
+        message: "Description cannot exceed 100 characters",
+      });
+    }
+
     if (req.file) {
-      const oldLogoPath = path.join(ROOT, "public", brand.brandLogo || "");
-      if (fs.existsSync(oldLogoPath)) fs.unlinkSync(oldLogoPath);
-      brand.brandLogo = `/uploads/brands/${req.file.filename}`;
+      try {
+        if (brand.cloudinaryPublicId) {
+          await deleteFromCloudinary(brand.cloudinaryPublicId);
+        }
+
+        const uploadResult = await uploadToCloudinary(req.file.buffer, 'brands');
+        brand.brandLogo = uploadResult.secure_url;
+        brand.cloudinaryPublicId = uploadResult.public_id;
+        
+      } catch (uploadError) {
+        console.error('Cloudinary upload error:', uploadError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload image",
+        });
+      }
     }
 
     brand.name = name.trim();
     brand.description = description?.trim() || "";
 
     await brand.save();
+    
     res.json({
       success: true,
       message: "Brand updated successfully",
@@ -188,10 +216,11 @@ const deleteBrand = async (req, res) => {
       });
     }
 
-    if (brand.brandLogo) {
-      const logoPath = path.join(ROOT, "public", brand.brandLogo);
-      if (fs.existsSync(logoPath)) {
-        fs.unlinkSync(logoPath);
+    if (brand.cloudinaryPublicId) {
+      try {
+        await deleteFromCloudinary(brand.cloudinaryPublicId);
+      } catch (deleteError) {
+        console.error('Error deleting image from Cloudinary:', deleteError);
       }
     }
 
