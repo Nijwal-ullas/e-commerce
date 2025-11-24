@@ -1,6 +1,13 @@
 import user from "../model/userSchema.js";
 import admin from "../model/adminSchema.js";
 
+const checkUser = (req, res, next) => {
+    if (!req.session.user) {
+        return res.redirect('/login');
+    }
+    next();
+};
+
 
 
 const adminAuth = async (req, res, next) => {
@@ -55,4 +62,4 @@ const setUser = (req, res, next) => {
   next();
 };
 
-export default {  adminAuth, isBlocked, setUser };
+export default { checkUser, adminAuth, isBlocked, setUser };
