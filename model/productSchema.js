@@ -15,6 +15,9 @@ const ProductSchema = new mongoose.Schema(
       Ml: { type: Number, required: true },
       Quantity: { type: Number, required: true, min: 0 },
     }],
+    cloudinaryPublicIds: [{
+  type: String
+}]
   },
   { timestamps: true }
 );
