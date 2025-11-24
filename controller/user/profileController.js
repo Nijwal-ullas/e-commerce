@@ -26,14 +26,40 @@ const profilePage = async (req, res) => {
   }
 };
 
+const loadEditProfile = async (req,res)=>{
+  try {
+    const userId = req.session.user;
+    if (!userId) return res.redirect("/login");
+
+    const userData = await User.findById(userId);
+
+    return res.render("user/editProfilePage",{
+       user : userData
+    })
+
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send("Server Error");
+  }
+}
+
 const updateProfile = async (req, res) => {
   try {
     const { name, mobile } = req.body;
     const userId = req.session.user;
 
+    if (!userId) return res.redirect("/login");
+
+    if (!name || !mobile) {
+      return res.status(400).json({
+        success: false,
+        message: "Name and mobile are required",
+      });
+    }
+
     const existingUser = await User.findById(userId);
     if (!existingUser) {
-      return res.status(400).json({
+      return res.status(404).json({
         success: false,
         message: "User not found",
       });
@@ -53,19 +79,43 @@ const updateProfile = async (req, res) => {
       });
     }
 
+    const mobileExists = await User.findOne({ 
+      phone: mobile.trim(), 
+      _id: { $ne: userId } 
+    });
+
+    if (mobileExists) {
+      return res.status(400).json({
+        success: false,
+        message: "Mobile number already in use by another account",
+      });
+    }
+
     let profileImage = "";
     let cloudinaryPublicId = "";
 
     if (req.file) {
       try {
+        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (!allowedMimeTypes.includes(req.file.mimetype)) {
+          return res.status(400).json({
+            success: false,
+            message: "Only JPEG, PNG, and JPG images are allowed",
+          });
+        }
+
+        if (req.file.size > 5 * 1024 * 1024) {
+          return res.status(400).json({
+            success: false,
+            message: "Image size should be less than 5MB",
+          });
+        }
+
         if (existingUser.cloudinaryPublicId) {
           await deleteFromCloudinary(existingUser.cloudinaryPublicId);
         }
 
-        const uploadResult = await uploadToCloudinary(
-          req.file.buffer,
-          "profile"
-        );
+        const uploadResult = await uploadToCloudinary(req.file.buffer, "profile");
         profileImage = uploadResult.secure_url;
         cloudinaryPublicId = uploadResult.public_id;
       } catch (uploadError) {
@@ -79,7 +129,7 @@ const updateProfile = async (req, res) => {
 
     const updateData = {
       name: name.trim(),
-      mobile: mobile.trim(),
+      phone: mobile.trim(),
     };
 
     if (profileImage && cloudinaryPublicId) {
@@ -95,12 +145,10 @@ const updateProfile = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
+    res.status(500).send("Server Error");
   }
 };
+
 
 const changeEmail = async (req, res) => {
   try {
@@ -339,6 +387,7 @@ const registerChangePassword = async (req, res) => {
 
 export default {
   profilePage,
+  loadEditProfile,
   updateProfile,
   changeEmail,
   verifyChangeEmail,
