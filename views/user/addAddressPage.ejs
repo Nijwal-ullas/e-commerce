@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= isEdit ? 'Edit' : 'Add' %> Address - Bulk Collection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+      body {
+        font-family: "Lato", sans-serif;
+      }
+      .error-message {
+        color: #dc2626;
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+        display: none;
+      }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <%- include("../partials/user/header.ejs") %>
+
+    <div class="max-w-full mx-auto px-6 lg:px-12 py-8">
+        <div class="flex flex-col lg:flex-row gap-8">
+            <%- include("../partials/user/profileSidebar.ejs") %>
+
+            <div class="flex-1">
+                <div class="bg-gray-100 rounded-lg p-6 lg:p-8">
+                    <div class="bg-white rounded-lg shadow-sm p-6 lg:p-10">
+                        <div class="mb-6">
+                            <a href="/address" class="inline-flex items-center text-red-700 hover:text-red-800 font-medium text-sm">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                </svg>
+                                Back to address
+                            </a>
+                        </div>
+                        <h2 class="text-xl font-medium text-gray-800 mb-8">
+                            <%= isEdit ? 'Edit Address' : 'Add New Address' %>
+                        </h2>
+
+                        <form id="addressForm" class="space-y-6">
+                            <% if (isEdit && addressId) { %>
+                                <input type="hidden" name="addressId" value="<%= addressId %>">
+                            <% } %>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-3">Address Type</label>
+                                <div class="flex gap-4">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="radio" name="type" value="Home" 
+                                            <%= (!address || address.addressType === 'home') ? 'checked' : '' %>
+                                            class="text-red-600 focus:ring-red-600 mr-2">
+                                        <span class="text-gray-700">Home</span>
+                                    </label>
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="radio" name="type" value="Work"
+                                            <%= (address && address.addressType === 'work') ? 'checked' : '' %>
+                                            class="text-red-600 focus:ring-red-600 mr-2">
+                                        <span class="text-gray-700">Work</span>
+                                    </label>
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="radio" name="type" value="Other"
+                                            <%= (address && address.addressType === 'other') ? 'checked' : '' %>
+                                            class="text-red-600 focus:ring-red-600 mr-2">
+                                        <span class="text-gray-700">Other</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-3">Flat/Building/Company*</label>
+                                <input 
+                                    type="text" 
+                                    name="addressLine1" 
+                                    value="<%= address ? address.flatNumber : '' %>"
+                                    placeholder="Enter flat, building, or company name"
+                                    class="w-full px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-700 focus:outline-none"
+                                >
+                                <div id="addressLine1Error" class="error-message"></div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-3">Street Name/Area</label>
+                                <input 
+                                    type="text" 
+                                    name="addressLine2"
+                                    value="<%= address ? address.streetName : '' %>"
+                                    placeholder="Enter street name or area"
+                                    class="w-full px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-700 focus:outline-none"
+                                >
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-3">Landmark</label>
+                                <input 
+                                    type="text" 
+                                    name="landmark"
+                                    value="<%= address ? address.landMark : '' %>"
+                                    placeholder="Enter nearby landmark"
+                                    class="w-full px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-700 focus:outline-none"
+                                >
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-3">Pincode*</label>
+                                    <input 
+                                        type="text" 
+                                        name="pincode" 
+                                        maxlength="6"
+                                        value="<%= address ? address.pincode : '' %>"
+                                        placeholder="Enter pincode"
+                                        class="w-full px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-700 focus:outline-none"
+                                    >
+                                    <div id="pincodeError" class="error-message"></div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-3">City/District*</label>
+                                    <input 
+                                        type="text" 
+                                        name="city" 
+                                        value="<%= address ? address.city : '' %>"
+                                        placeholder="Enter city or district"
+                                        class="w-full px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-700 focus:outline-none"
+                                    >
+                                    <div id="cityError" class="error-message"></div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-3">Country*</label>
+                                    <input 
+                                        type="text" 
+                                        name="country" 
+                                        value="<%= address ? address.country : 'India' %>"
+                                        placeholder="Enter country"
+                                        class="w-full px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-700 focus:outline-none"
+                                    >
+                                    <div id="countryError" class="error-message"></div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-3">State*</label>
+                                    <input 
+                                        type="text" 
+                                        name="state" 
+                                        value="<%= address ? address.state : '' %>"
+                                        placeholder="Enter state"
+                                        class="w-full px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-700 focus:outline-none"
+                                    >
+                                    <div id="stateError" class="error-message"></div>
+                                </div>
+                            </div>
+
+                            <div class="pt-4">
+                                <h3 class="text-lg font-medium text-gray-800 mb-4">Contact Details</h3>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-3">User Name*</label>
+                                <input 
+                                    type="text" 
+                                    name="userName" 
+                                    value="<%= address ? address.name : '' %>"
+                                    placeholder="Enter your name"
+                                    class="w-full px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-700 focus:outline-none"
+                                >
+                                <div id="userNameError" class="error-message"></div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-3">Phone Number*</label>
+                                    <div class="flex gap-2">
+                                        <input 
+                                            type="text" 
+                                            value="+91" 
+                                            disabled
+                                            class="w-16 px-3 py-3 border border-gray-300 bg-gray-100 rounded-full text-center"
+                                        >
+                                        <input 
+                                            type="tel" 
+                                            name="phone" 
+                                            maxlength="10"
+                                            value="<%= address ? address.phone : '' %>"
+                                            placeholder="Phone No."
+                                            class="flex-1 px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-700 focus:outline-none"
+                                        >
+                                    </div>
+                                    <div id="phoneError" class="error-message"></div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-3">Alternative Phone Number</label>
+                                    <div class="flex gap-2">
+                                        <input 
+                                            type="text" 
+                                            value="+91" 
+                                            disabled
+                                            class="w-16 px-3 py-3 border border-gray-300 bg-gray-100 rounded-full text-center"
+                                        >
+                                        <input 
+                                            type="tel" 
+                                            name="alternatePhone"
+                                            maxlength="10"
+                                            value="<%= address ? address.alternativePhone : '' %>"
+                                            placeholder="Alternative Phone No."
+                                            class="flex-1 px-5 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-700 focus:outline-none"
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-3">Save Address As</label>
+                                <div class="flex gap-4">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            name="isDefault" 
+                                            <%= (address && address.isDefault) ? 'checked' : '' %>
+                                            class="text-red-600 focus:ring-red-600 rounded mr-2"
+                                        >
+                                        <span class="text-gray-700">Set as default address</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end gap-4 pt-6">
+                                <button 
+                                    type="button" 
+                                    onclick="window.location.href='/address'"
+                                    class="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-md font-medium hover:bg-gray-50 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    id="submitBtn"
+                                    class="px-8 py-3 bg-red-700 hover:bg-red-800 text-white rounded-md font-medium transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                >
+                                    <%= isEdit ? 'Update Address' : 'Save Address' %>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include("../partials/user/footer.ejs") %>
+
+    <script>
+    const addressForm = document.getElementById('addressForm');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    const isEdit = document.body.getAttribute('data-is-edit') === 'true';
+    const addressId = document.body.getAttribute('data-address-id');
+
+    function clearErrors() {
+        document.querySelectorAll('.error-message').forEach(el => {
+            el.style.display = 'none';
+        });
+    }
+
+    function showError(fieldName, message) {
+        const errorElement = document.getElementById(`${fieldName}Error`);
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+    }
+
+    function validatePhone(phone) {
+        return /^[6-9]\d{9}$/.test(phone);
+    }
+
+    function validatePincode(pincode) {
+        return /^\d{6}$/.test(pincode);
+    }
+
+    addressForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearErrors();
+
+        const formData = new FormData(addressForm);
+        const data = Object.fromEntries(formData.entries());
+        
+        data.isDefault = formData.has('isDefault');
+
+        if (isEdit && addressId) {
+            data.addressId = addressId;
+        }
+
+        Object.keys(data).forEach(key => {
+            if (typeof data[key] === 'string') {
+                data[key] = data[key].trim();
+            }
+        });
+
+        let hasError = false;
+
+        if (!data.addressLine1) {
+            showError('addressLine1', 'Address is required');
+            hasError = true;
+        }
+
+        if (!data.pincode) {
+            showError('pincode', 'Pincode is required');
+            hasError = true;
+        } else if (!validatePincode(data.pincode)) {
+            showError('pincode', 'Please enter a valid 6-digit pincode');
+            hasError = true;
+        }
+
+        if (!data.city) {
+            showError('city', 'City is required');
+            hasError = true;
+        }
+
+        if (!data.country) {
+            showError('country', 'Country is required');
+            hasError = true;
+        }
+
+        if (!data.state) {
+            showError('state', 'State is required');
+            hasError = true;
+        }
+
+        if (!data.userName) {
+            showError('userName', 'Name is required');
+            hasError = true;
+        }
+
+        if (!data.phone) {
+            showError('phone', 'Phone number is required');
+            hasError = true;
+        } else if (!validatePhone(data.phone)) {
+            showError('phone', 'Please enter a valid 10-digit mobile number');
+            hasError = true;
+        }
+
+        if (data.alternatePhone && !validatePhone(data.alternatePhone)) {
+            showError('alternatePhone', 'Please enter a valid 10-digit mobile number');
+            hasError = true;
+        }
+
+        if (hasError) return;
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = isEdit ? 'Updating...' : 'Saving...';
+
+        try {
+            const url = isEdit ? `/address/edit/${addressId}` : '/address/add';
+            const response = await axios.post(url, data);
+
+            if (response.data.success) {
+                Swal.fire({
+                    title: 'Success!',
+                    text: response.data.message,
+                    icon: 'success',
+                    confirmButtonColor: '#b91c1c',
+                    confirmButtonText: 'OK'
+                }).then(() => {
+                    window.location.href = '/address';
+                });
+            } else {
+                Swal.fire({
+                    title: 'Error!',
+                    text: response.data.message,
+                    icon: 'error',
+                    confirmButtonColor: '#b91c1c'
+                });
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            Swal.fire({
+                title: 'Error!',
+                text: error.response?.data?.message || 'Network error. Please try again.',
+                icon: 'error',
+                confirmButtonColor: '#b91c1c'
+            });
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = isEdit ? 'Update Address' : 'Save Address';
+        }
+    });
+</script>
+</body>
+</html>
