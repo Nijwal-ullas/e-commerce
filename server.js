@@ -7,6 +7,8 @@ import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
 import userRouter from "./router/user/userRouter.js";
 import userProductRouter from "./router/user/productRouter.js";
+import profileRouter from "./router/user/profileRouter.js"
+import addressRouter from "./router/user/addressRouter.js"
 
 import adminRouter from "./router/admin/adminRouter.js";
 import brandRouter from "./router/admin/brandRoutes.js";
@@ -86,6 +88,8 @@ app.use(auth.setUser);
 
 app.use("/", userRouter);
 app.use("/", userProductRouter);
+app.use("/",profileRouter);
+app.use("/",addressRouter);
 
 app.use("/admin", adminRouter);
 app.use("/admin", brandRouter);
