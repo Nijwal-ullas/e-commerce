@@ -1,4 +1,3 @@
-// routes.js
 import express from "express";
 import addressController from "../../controller/user/addressController.js"
 import auth from "../../middleware/auth.js"
