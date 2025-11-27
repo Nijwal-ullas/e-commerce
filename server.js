@@ -5,10 +5,14 @@ import session from "express-session";
 import MongoStore from "connect-mongo";
 import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
+
 import userRouter from "./router/user/userRouter.js";
 import userProductRouter from "./router/user/productRouter.js";
 import profileRouter from "./router/user/profileRouter.js"
 import addressRouter from "./router/user/addressRouter.js"
+import orderRouter from "./router/user/ordersRouter.js"
+import cartRouter from "./router/user/cartRouter.js"
+import checkoutRouter from "./router/user/checkoutRouter.js"
 
 import adminRouter from "./router/admin/adminRouter.js";
 import brandRouter from "./router/admin/brandRoutes.js";
@@ -90,6 +94,9 @@ app.use("/", userRouter);
 app.use("/", userProductRouter);
 app.use("/",profileRouter);
 app.use("/",addressRouter);
+app.use("/",orderRouter);
+app.use("/",cartRouter);
+app.use("/",checkoutRouter);
 
 app.use("/admin", adminRouter);
 app.use("/admin", brandRouter);
