@@ -1,0 +1,11 @@
+import express from "express"
+import auth from "../../middleware/auth.js"
+import orderController from "../../controller/user/orderController.js"
+
+const router = express.Router();
+router.use(auth.checkUser)
+
+router.get("/orders",orderController.getOrder);
+
+
+export default router;
