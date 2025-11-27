@@ -10,11 +10,22 @@ const loadAddressPage = async (req, res) => {
     if (!userId) return res.redirect("/login");
 
     const userData = await User.findById(userId);
-    const addresses = await Address.find({ userId });
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = 2;
+    const skip = (page-1) * limit;
+
+    const totalAddresses = await Address.countDocuments({userId});
+    const totalPages = Math.ceil(totalAddresses/limit);
+
+    const addresses = await Address.find({ userId }).sort({createdAt : -1}).skip(skip).limit(limit);
+
 
     return res.render("user/addressPage", {
       user: userData,
       addresses: addresses,
+      page,
+      totalPages
     });
   } catch (error) {
     console.log(error);
@@ -58,7 +69,6 @@ const loadAddAddress = async (req, res) => {
 const registerAddress = async (req, res) => {
   try {
 
-    console.log("its here")
     const {
       
       addressLine1,
@@ -71,7 +81,6 @@ const registerAddress = async (req, res) => {
       userName,
       phone,
       alternatePhone,
-      isDefault,
       type,
       addressId, 
     } = req.body;
@@ -153,7 +162,6 @@ const registerAddress = async (req, res) => {
           country,
           phone,
           alternativePhone: alternatePhone || "",
-          isDefault: Boolean(isDefault),
         },
         { new: true }
       );
@@ -177,7 +185,6 @@ const registerAddress = async (req, res) => {
         country,
         phone,
         alternativePhone: alternatePhone || "",
-        isDefault: Boolean(isDefault),
         userId,
       });
 
