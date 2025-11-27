@@ -49,10 +49,6 @@
                 <div class="border border-gray-200 rounded-lg p-6">
                   <div class="flex items-start justify-between">
                     <div class="flex items-start space-x-3">
-                      <input type="radio" name="defaultAddress" value="<%=
-                      address._id %>" <%= address.isDefault ? 'checked' : '' %>
-                      onchange="setDefaultAddress('<%= address._id %>')"
-                      class="mt-1 text-red-600 focus:ring-red-600" >
                       <div>
                         <div class="flex items-center space-x-2 mb-2">
                           <span class="font-medium text-gray-800"
@@ -113,6 +109,32 @@
               </div>
               <% } %>
             </div>
+            <% if (totalPages > 1) { %>
+            <div class="flex justify-center mt-8 space-x-2">
+              <% if (page > 1) { %>
+              <a
+                href="/address?page=<%= page - 1 %>"
+                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded"
+              >
+                Previous
+              </a>
+              <% } %> <% for (let i = 1; i <= totalPages; i++) { %>
+              <a
+                href="/address?page=<%= i %>"
+                class="px-4 py-2 rounded <%= i === page ? 'bg-red-700 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700' %>"
+              >
+                <%= i %>
+              </a>
+              <% } %> <% if (page < totalPages) { %>
+              <a
+                href="/address?page=<%= page + 1 %>"
+                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded"
+              >
+                Next
+              </a>
+              <% } %>
+            </div>
+            <% } %>
           </div>
         </div>
       </div>
