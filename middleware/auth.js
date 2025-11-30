@@ -1,11 +1,31 @@
 import user from "../model/userSchema.js";
 import admin from "../model/adminSchema.js";
 
-const checkUser = (req, res, next) => {
-    if (!req.session.user) {
-        return res.redirect('/login');
+const checkUser = async (req, res, next) => {
+ 
+  if (req.originalUrl.startsWith('/admin')) {
+    return next();
+  }
+
+  if (req.session.user) {
+    try {
+      const currentUser = await user.findById(req.session.user._id || req.session.user);
+
+      if (currentUser && !currentUser.isBlocked) {
+        res.locals.user = currentUser;
+        next();
+      } else {
+        delete req.session.user;
+        res.locals.user = null;
+        res.redirect("/login");
+      }
+    } catch (err) {
+      console.log(err);
+      res.status(500).send("Internal Server Error");
     }
-    next();
+  } else {
+    res.redirect("/login");
+  }
 };
 
 
