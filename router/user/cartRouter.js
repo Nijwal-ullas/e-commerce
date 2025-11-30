@@ -4,6 +4,7 @@ import auth from "../../middleware/auth.js"
 
 const router = express.Router();
 router.use(auth.checkUser)
+router.use(auth.isBlocked)
 
 
 router.get("/cart", cartController.getCart);

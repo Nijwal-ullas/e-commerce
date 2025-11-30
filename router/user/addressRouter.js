@@ -5,6 +5,7 @@ import auth from "../../middleware/auth.js"
 const router = express.Router();
 router.use(auth.checkUser)
 
+
 router.get("/address", addressController.loadAddressPage);
 router.get("/address/add", addressController.loadAddAddress); 
 router.get("/address/edit/:id", addressController.loadAddAddress); 
