@@ -5,10 +5,16 @@ import user from "../../model/userSchema.js";
 
 const productPage = async (req, res) => {
   try {
-  
     let userData = null;
+    let userWishlist = [];
+
     if (req.session.user) {
       userData = await user.findById(req.session.user._id);
+      if (userData && userData.wishlist) {
+        userWishlist = userData.wishlist.map((id) => id.toString());
+      }
+    } else {
+      userWishlist = req.session.wishlist || [];
     }
 
     const brands = await brand.find();
@@ -20,6 +26,7 @@ const productPage = async (req, res) => {
       brands,
       categories,
       products,
+      userWishlist,
     });
   } catch (err) {
     console.error("Error loading product page:", err);
@@ -33,24 +40,34 @@ const getProducts = async (req, res) => {
     const limit = Math.min(Math.max(1, parseInt(req.query.limit) || 12), 100);
     const skip = (page - 1) * limit;
 
+    let userWishlist = [];
+    if (req.session.user) {
+      const userData = await user.findById(req.session.user._id);
+      if (userData && userData.wishlist) {
+        userWishlist = userData.wishlist.map((id) => id.toString());
+      }
+    } else {
+      userWishlist = req.session.wishlist || [];
+    }
+
     const listedCategories = await category.find({ isListed: true });
-    const listedCategoryIds = listedCategories.map(cat => cat._id.toString());
+    const listedCategoryIds = listedCategories.map((cat) => cat._id.toString());
 
     let filterQuery = {
       isListed: true,
-      category: { $in: listedCategoryIds } 
+      category: { $in: listedCategoryIds },
     };
 
     if (req.query.categories) {
       const categoryIds = req.query.categories
         .split(",")
         .filter((id) => id && id.trim() !== "");
-      
+
       if (categoryIds.length > 0) {
-        const validCategoryIds = categoryIds.filter(id => 
+        const validCategoryIds = categoryIds.filter((id) =>
           listedCategoryIds.includes(id)
         );
-        
+
         if (validCategoryIds.length > 0) {
           filterQuery.category = { $in: validCategoryIds };
         } else {
@@ -132,8 +149,9 @@ const getProducts = async (req, res) => {
     res.json({
       success: true,
       products,
-      categories : listedCategories,
+      categories: listedCategories,
       brands,
+      userWishlist,
       currentPage: page,
       totalPages,
       totalProducts,
@@ -151,7 +169,6 @@ const getProducts = async (req, res) => {
 
 const getProductDetails = async (req, res) => {
   try {
-    
     const productId = req.params.id;
 
     if (
@@ -172,8 +189,15 @@ const getProductDetails = async (req, res) => {
     }
 
     let userData = null;
+    let userWishlist = [];
+
     if (req.session.user) {
       userData = await user.findById(req.session.user._id);
+      if (userData && userData.wishlist) {
+        userWishlist = userData.wishlist.map((id) => id.toString());
+      }
+    } else {
+      userWishlist = req.session.wishlist || [];
     }
 
     const relatedProducts = await product
@@ -186,18 +210,18 @@ const getProductDetails = async (req, res) => {
       .populate("brand")
       .populate("category");
 
-
-      const breadcrumb = [
+    const breadcrumb = [
       { name: "Home", url: "/" },
       { name: "Products", url: "/product" },
-      { name: productData.productName, url: null }, 
+      { name: productData.productName, url: null },
     ];
 
     res.render("user/productDetails", {
       product: productData,
       relatedProducts: relatedProducts,
       user: userData,
-      breadcrumb
+      userWishlist,
+      breadcrumb,
     });
   } catch (error) {
     console.error("Error:", error);
@@ -205,4 +229,8 @@ const getProductDetails = async (req, res) => {
   }
 };
 
-export default { productPage, getProducts, getProductDetails };
+export default {
+  productPage,
+  getProducts,
+  getProductDetails,
+};

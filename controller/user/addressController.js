@@ -12,20 +12,22 @@ const loadAddressPage = async (req, res) => {
     const userData = await User.findById(userId);
 
     const page = parseInt(req.query.page) || 1;
-    const limit = 2;
-    const skip = (page-1) * limit;
+    const limit = 3;
+    const skip = (page - 1) * limit;
 
-    const totalAddresses = await Address.countDocuments({userId});
-    const totalPages = Math.ceil(totalAddresses/limit);
+    const totalAddresses = await Address.countDocuments({ userId });
+    const totalPages = Math.ceil(totalAddresses / limit);
 
-    const addresses = await Address.find({ userId }).sort({createdAt : -1}).skip(skip).limit(limit);
-
+    const addresses = await Address.find({ userId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     return res.render("user/addressPage", {
       user: userData,
       addresses: addresses,
       page,
-      totalPages
+      totalPages,
     });
   } catch (error) {
     console.log(error);
@@ -65,12 +67,9 @@ const loadAddAddress = async (req, res) => {
   }
 };
 
-
 const registerAddress = async (req, res) => {
   try {
-
     const {
-      
       addressLine1,
       addressLine2,
       landmark,
@@ -82,14 +81,14 @@ const registerAddress = async (req, res) => {
       phone,
       alternatePhone,
       type,
-      addressId, 
+      addressId,
     } = req.body;
 
-  
     const finalAddressId = addressId || req.params.id;
 
     if (
       !addressLine1 ||
+      !landmark ||
       !pincode ||
       !city ||
       !state ||
@@ -131,6 +130,13 @@ const registerAddress = async (req, res) => {
       });
     }
 
+    const addressCount = await Address.countDocuments({ userId });
+    if (addressCount >= 5) {
+      return res.status(400).json({
+        success: false,
+        message: "You can only save up to 5 addresses",
+      });
+    }
     const userId = req.session.user;
     const userData = await User.findById(userId);
 
@@ -141,15 +147,11 @@ const registerAddress = async (req, res) => {
       });
     }
 
-    if (isDefault) {
-      await Address.updateMany({ userId }, { $set: { isDefault: false } });
-    }
-
-        let result;
+    let result;
 
     if (finalAddressId) {
       result = await Address.findOneAndUpdate(
-        { _id: finalAddressId, userId }, 
+        { _id: finalAddressId, userId },
         {
           name: userName,
           addressType: type ? type.toLowerCase() : "home",
