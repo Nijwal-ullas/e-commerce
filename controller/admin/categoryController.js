@@ -5,7 +5,7 @@ const categoryNameRegex = /^[A-Za-z ]{2,20}$/;
 const categoryPage = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = 5;
+    const limit = 10;
     const skip = (page - 1) * limit;
 
     const search = req.query.search?.trim() || "";

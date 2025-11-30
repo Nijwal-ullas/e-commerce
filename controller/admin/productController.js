@@ -9,7 +9,7 @@ const productPage = async (req, res) => {
   try {
     const search = req.query.search?.trim() || "";
     const page = parseInt(req.query.page) || 1;
-    const limit = 5;
+    const limit = 10;
     const skip = (page - 1) * limit;
 
     let query = {};
