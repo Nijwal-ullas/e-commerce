@@ -168,6 +168,7 @@
           const res = await fetch("/changeEmail-otp", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include", 
             body: JSON.stringify({ otp }),
           });
 
@@ -177,9 +178,9 @@
             Swal.fire({
               icon: "success",
               title: "OTP Verified!",
-              text: "Your account has been successfully created.",
+              text: "Your email has been successfully updated.",
             }).then(() => {
-              window.location.href = data.redirectUrl || "/";
+              window.location.href = data.redirectUrl || "/profile";
             });
           } else {
             Swal.fire({
@@ -200,22 +201,29 @@
       resendBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         resendBtn.classList.add("disabled");
+        resendBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Sending...';
 
         try {
-          const res = await fetch("/resend-otp", {
+          const res = await fetch("/resend-otps", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              "Cache-Control": "no-cache"
+            },
+            credentials: "include"
           });
 
           const data = await res.json();
 
-          Swal.fire({
-            icon: data.success ? "success" : "error",
-            title: data.success ? "OTP Resent!" : "Failed",
-            text: data.message,
-          });
-
           if (data.success) {
+            Swal.fire({
+              icon: "success",
+              title: "OTP Resent!",
+              text: data.message,
+              timer: 2000,
+              showConfirmButton: false
+            });
+
             otpInputs.forEach((box) => {
               box.value = "";
               box.disabled = false;
@@ -227,17 +235,31 @@
             timeLeft = 60;
             clearInterval(timer);
             timer = setInterval(updateTimer, 1000);
+            
+            setTimeout(() => {
+              resendBtn.classList.remove("disabled");
+              resendBtn.innerHTML = 'Resend OTP';
+            }, 30000);
           } else {
+            Swal.fire({
+              icon: "error",
+              title: "Failed",
+              text: data.message,
+            });
+            
             resendBtn.classList.remove("disabled");
+            resendBtn.innerHTML = 'Resend OTP';
           }
         } catch (error) {
+          console.error("Fetch error:", error);
           Swal.fire({
             icon: "error",
-            title: "Error",
-            text: "Cannot resend right now.",
+            title: "Network Error",
+            text: "Cannot connect to server. Please check your connection.",
           });
-
+          
           resendBtn.classList.remove("disabled");
+          resendBtn.innerHTML = 'Resend OTP';
         }
       });
     </script>

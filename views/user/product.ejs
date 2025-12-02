@@ -69,6 +69,22 @@
     #search-input:focus + div #clear-search {
       color: #dc2626;
     }
+
+    .wishlist-btn {
+      transition: all 0.3s ease;
+    }
+    
+    .wishlist-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .wishlist-btn.active i {
+      color: #dc2626 !important;
+    }
+
+    .wishlist-btn.active {
+      background-color: #fef2f2;
+    }
     
     @media (max-width: 768px) {
       .container {
@@ -86,7 +102,7 @@
 
   <main class="main-content flex-1 w-full header-gap">
     <div class="container mx-auto px-4 py-8">
-      <div class="text-center mb-12"> </div>
+      <div class="text-center mb-12"></div>
 
       <div class="flex flex-col lg:flex-row gap-8">
         <aside class="lg:w-1/4" aria-label="Product filters">
@@ -159,8 +175,9 @@
             </button>
 
             <div class="filter-content expanded space-y-3">
-              <% categories.forEach(category => { %>
-                <div class="form-check">
+              <% if (categories && categories.length > 0) { %>
+                <% categories.forEach(category => { %>
+                  <div class="form-check">
                     <input 
                       type="checkbox" 
                       class="category-filter mr-3 rounded border-gray-300 text-red-600 focus:ring-red-500" 
@@ -173,7 +190,10 @@
                       <%= category.name %>
                     </label>
                   </div>
-              <% }) %>
+                <% }) %>
+              <% } else { %>
+                <p class="text-gray-500 text-sm">No categories available</p>
+              <% } %>
             </div>
           </section>
 
@@ -186,7 +206,7 @@
             </button>
             <div class="filter-content expanded">
               <div class="flex justify-between mb-2">
-                <span class="text-sm text-gray-600">Min: ₹<span id="min-price">500</span></span>
+                <span class="text-sm text-gray-600">Min: ₹<span id="min-price">0</span></span>
                 <span class="text-sm text-gray-600">Max: ₹<span id="max-price">5000</span></span>
               </div>
               <input 
@@ -258,6 +278,13 @@
   </div>
 
   <script>
+    const serverWishlist = <%- JSON.stringify(userWishlist || []) %>;
+    let userWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
+    
+    const mergedWishlist = [...new Set([...serverWishlist, ...userWishlist])];
+    userWishlist = mergedWishlist;
+    localStorage.setItem('userWishlist', JSON.stringify(mergedWishlist));
+
     const showAlert = {
         success: (message, timer = 2000) => {
             Swal.fire({
@@ -544,107 +571,120 @@
         const productGrid = document.getElementById('product-grid');
         
         if (!productsToRender || productsToRender.length === 0) {
-          productGrid.innerHTML = `
-            <div class="col-span-full text-center py-12">
-              <i class="fas fa-search text-4xl text-gray-300 mb-4"></i>
-              <h3 class="text-xl font-semibold text-gray-600 mb-2">No products found</h3>
-              <p class="text-gray-500">Try adjusting your filters or search terms</p>
-              <button onclick="clearAllFilters()" class="mt-4 bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors">
-                Clear All Filters
-              </button>
-            </div>
-          `;
-          return;
+            productGrid.innerHTML = `
+                <div class="col-span-full text-center py-12">
+                    <i class="fas fa-search text-4xl text-gray-300 mb-4"></i>
+                    <h3 class="text-xl font-semibold text-gray-600 mb-2">No products found</h3>
+                    <p class="text-gray-500">Try adjusting your filters or search terms</p>
+                    <button onclick="clearAllFilters()" class="mt-4 bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                        Clear All Filters
+                    </button>
+                </div>
+            `;
+            return;
         }
 
         productGrid.innerHTML = '';
 
         productsToRender.forEach(product => {
-          if (!product || !product._id) {
-            console.warn('Invalid product data:', product);
-            return;
-          }
+            if (!product || !product._id) {
+                console.warn('Invalid product data:', product);
+                return;
+            }
 
-          const productId = product._id;
-          const productName = product.productName || 'Unnamed Product';
-          const productPrice = typeof product.price === 'number' ? product.price : 0;
-          const productImages = Array.isArray(product.images) ? product.images : [];
-          const mainImage = productImages.length > 0 ? productImages[0] : 'https://via.placeholder.com/300x400/f3f4f6/000?text=Perfume+Image';
-          
-          const selectedSize = document.querySelector('.size-btn.active')?.dataset.size;
-          const hasStock = product.VariantItem && 
-                            Array.isArray(product.VariantItem) &&
-                            product.VariantItem.some(variant => {
-                              const hasQuantity = variant.Quantity > 0;
-                              if (selectedSize) {
-                                return hasQuantity && variant.Ml === parseInt(selectedSize);
-                              }
-                              return hasQuantity;
-                            });
-          
-          const inStock = hasStock && product.isListed !== false;
-          
-          const brandName = product.brand?.name || '';
-          const categoryName = product.category?.name || '';
-
-          const productElement = document.createElement('article');
-          productElement.className = 'bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 product-card group h-full flex flex-col';
-          productElement.innerHTML = `
-            <a href="/product/${productId}" class="relative h-80 rounded-t-lg overflow-hidden flex-shrink-0 block">
-              <img 
-                src="${mainImage}" 
-                alt="${productName}"
-                class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                onerror="this.src='https://via.placeholder.com/300x400/f3f4f6/000?text=Perfume+Image'"
-              >
-
+            const productId = product._id;
+            const productName = product.productName || 'Unnamed Product';
+            const productPrice = typeof product.price === 'number' ? product.price : 0;
+            const productImages = Array.isArray(product.images) ? product.images : [];
+            const mainImage = productImages.length > 0 ? productImages[0] : 'https://via.placeholder.com/300x400/f3f4f6/000?text=Perfume+Image';
             
+            const selectedSize = document.querySelector('.size-btn.active')?.dataset.size;
+            const hasStock = product.VariantItem && 
+                              Array.isArray(product.VariantItem) &&
+                              product.VariantItem.some(variant => {
+                                const hasQuantity = variant.Quantity > 0;
+                                if (selectedSize) {
+                                    return hasQuantity && variant.Ml === parseInt(selectedSize);
+                                }
+                                return hasQuantity;
+                              });
+            
+            const inStock = hasStock && product.isListed !== false;
+            
+            const brandName = product.brand?.name || '';
+            const categoryName = product.category?.name || '';
 
-              ${!inStock ? `
-                <div class="absolute top-4 left-4 bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-medium">
-                  Out of Stock
+            const isInWishlist = userWishlist.includes(productId);
+            const heartIconClass = isInWishlist ? 'fas fa-heart' : 'far fa-heart';
+            const activeClass = isInWishlist ? 'active' : '';
+
+            const productElement = document.createElement('article');
+            productElement.className = 'bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 product-card group h-full flex flex-col';
+            productElement.innerHTML = `
+                <div class="relative h-80 rounded-t-lg overflow-hidden flex-shrink-0">
+                    <!-- Wishlist Heart Icon -->
+                    <button 
+                        class="wishlist-btn absolute top-3 right-3 z-20 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-red-50 transition-all duration-300 ${activeClass}"
+                        data-product-id="${productId}"
+                        aria-label="${isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}"
+                    >
+                        <i class="${heartIconClass} text-red-600 text-lg"></i>
+                    </button>
+
+                    <a href="/product/${productId}" class="block h-full">
+                        <img 
+                            src="${mainImage}" 
+                            alt="${productName}"
+                            class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                            onerror="this.src='https://via.placeholder.com/300x400/f3f4f6/000?text=Perfume+Image'"
+                        >
+
+                        ${!inStock ? `
+                            <div class="absolute top-4 left-4 bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-medium">
+                                Out of Stock
+                            </div>
+                        ` : ''}
+
+                        ${product.discount > 0 ? `
+                            <div class="absolute top-4 ${!inStock ? 'left-16' : 'left-4'} bg-red-600 text-white px-2 py-1 rounded-full text-xs font-medium">
+                                ${Math.min(100, Math.max(0, product.discount))}% OFF
+                            </div>
+                        ` : ''}
+                    </a>
                 </div>
-              ` : ''}
 
-              ${product.discount > 0 ? `
-                <div class="absolute top-4 ${!inStock ? 'left-16' : 'left-4'} bg-red-600 text-white px-2 py-1 rounded-full text-xs font-medium">
-                  ${Math.min(100, Math.max(0, product.discount))}% OFF
+                <div class="p-6 text-center flex-grow flex flex-col justify-end">
+                    <a href="/product/${productId}" class="block">
+                        <h3 class="text-base font-semibold text-gray-800 mb-3 line-clamp-2 hover:text-red-600 transition-colors" title="${productName}">
+                            ${productName}
+                        </h3>
+                    </a>
+                    
+                    <div class="flex items-center justify-center gap-2 mb-2">
+                        <p class="text-red-600 font-bold text-xl">₹${productPrice.toFixed(2)}</p>
+                        ${product.oldPrice && product.oldPrice > productPrice ? `
+                            <p class="text-gray-500 line-through text-sm">₹${product.oldPrice.toFixed(2)}</p>
+                        ` : ''}
+                    </div>
+                    
+                    ${brandName ? `
+                        <p class="text-gray-500 text-sm mb-1">${brandName}</p>
+                    ` : ''}
+                    
+                    ${inStock ? `
+                        <p class="text-green-600 text-sm mt-2 flex items-center justify-center">
+                            <i class="fas fa-check-circle mr-1"></i> In Stock
+                        </p>
+                    ` : `
+                        <p class="text-red-500 text-sm mt-2 flex items-center justify-center">
+                            <i class="fas fa-times-circle mr-1"></i> Out of Stock
+                        </p>
+                    `}
                 </div>
-              ` : ''}
-            </a>
 
-            <div class="p-6 text-center flex-grow flex flex-col justify-end">
-              <a href="/product/${productId}" class="block">
-                <h3 class="text-base font-semibold text-gray-800 mb-3 line-clamp-2 hover:text-red-600 transition-colors" title="${productName}">
-                  ${productName}
-                </h3>
-              </a>
-              
-              <div class="flex items-center justify-center gap-2 mb-2">
-                <p class="text-red-600 font-bold text-xl">₹${productPrice.toFixed(2)}</p>
-                ${product.oldPrice && product.oldPrice > productPrice ? `
-                  <p class="text-gray-500 line-through text-sm">₹${product.oldPrice.toFixed(2)}</p>
-                ` : ''}
-              </div>
-              
-              ${brandName ? `
-                <p class="text-gray-500 text-sm mb-1">${brandName}</p>
-              ` : ''}
-              
-              ${inStock ? `
-                <p class="text-green-600 text-sm mt-2 flex items-center justify-center">
-                  <i class="fas fa-check-circle mr-1"></i> In Stock
-                </p>
-              ` : `
-                <p class="text-red-500 text-sm mt-2 flex items-center justify-center">
-                  <i class="fas fa-times-circle mr-1"></i> Out of Stock
-                </p>
-              `}
-            </div>
-
-
-          `;
-          productGrid.appendChild(productElement);
+         
+            `;
+            productGrid.appendChild(productElement);
         });
 
         attachProductEventListeners();
@@ -735,70 +775,73 @@
       }
 
       function attachProductEventListeners() {
-        document.querySelectorAll('.add-to-cart').forEach(btn => {
-          btn.addEventListener('click', async function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (this.disabled) return;
-            
-            const productId = this.dataset.productId;
-            
-            if (!productId) {
-              showAlert.error('Invalid product');
-              return;
-            }
-            
-            try {
-              showAlert.loading('Adding to cart...');
-              
-              const response = await axios.post(`/cart/${productId}`);
-              
-              showAlert.close();
-
-              if (response.data.success) {
-                showAlert.success('Product added to cart successfully!', 1500);
-                setTimeout(() => {
-                  window.location.href = "/cart";
-                }, 1500);
-              } else {
-                showAlert.error(response.data.message || 'Failed to add to cart');
-              }
-            } catch (error) {
-              showAlert.close();
-              console.error('Error adding to cart:', error);
-              
-              let errorMessage = 'Network error. Please check your connection and try again.';
-              if (error.response && error.response.data && error.response.data.message) {
-                errorMessage = error.response.data.message;
-              }
-              
-              showAlert.error(errorMessage);
-            }
-          });
-        });
-
         document.querySelectorAll('.wishlist-btn').forEach(btn => {
-          btn.addEventListener('click', async function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            const productId = this.dataset.productId;
-            
-            if (!productId) {
-              showAlert.error('Invalid product');
-              return;
-            }
-            
-            try {
-              this.classList.toggle('text-red-600');
-              const isAdded = this.classList.contains('text-red-600');
-              
-              showAlert.success(isAdded ? 'Added to wishlist!' : 'Removed from wishlist');
-            } catch (error) {
-              console.error('Error with wishlist:', error);
-              showAlert.error('Error updating wishlist');
-            }
-          });
+            btn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const productId = this.dataset.productId;
+                
+                if (!productId) {
+                    showAlert.error('Invalid product');
+                    return;
+                }
+                
+                try {
+                    const heartIcon = this.querySelector('i');
+                    const isCurrentlyInWishlist = userWishlist.includes(productId);
+                    
+                    if (isCurrentlyInWishlist) {
+                        userWishlist = userWishlist.filter(id => id !== productId);
+                        this.classList.remove('active');
+                        heartIcon.classList.remove('fas');
+                        heartIcon.classList.add('far');
+                        
+                        const response = await axios.delete(`/wishlist/remove/${productId}`);
+                        
+                        if (response.data.success) {
+                            showAlert.success('Removed from wishlist!');
+                            localStorage.setItem('userWishlist', JSON.stringify(userWishlist));
+                        } else {
+                            userWishlist.push(productId);
+                            this.classList.add('active');
+                            heartIcon.classList.remove('far');
+                            heartIcon.classList.add('fas');
+                            showAlert.error(response.data.message || 'Failed to remove from wishlist');
+                        }
+                    } else {
+                        userWishlist.push(productId);
+                        this.classList.add('active');
+                        heartIcon.classList.remove('far');
+                        heartIcon.classList.add('fas');
+                        
+                        const response = await axios.post('/wishlist/add', {
+                            productId: productId
+                        });
+                        
+                        if (response.data.success) {
+                            showAlert.success('Added to wishlist!');
+                            localStorage.setItem('userWishlist', JSON.stringify(userWishlist));
+                        } else {
+                            userWishlist = userWishlist.filter(id => id !== productId);
+                            this.classList.remove('active');
+                            heartIcon.classList.remove('fas');
+                            heartIcon.classList.add('far');
+                            showAlert.error(response.data.message || 'Failed to add to wishlist');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error with wishlist:', error);
+                    
+                    if (error.response?.status === 401) {
+                        showAlert.warning('Please login to manage your wishlist');
+                    } else {
+                        showAlert.error('Error updating wishlist');
+                    }
+                }
+            });
         });
+
+
       }
 
       async function clearAllFilters() {
