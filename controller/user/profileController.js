@@ -7,7 +7,7 @@ import {
 } from "../../helpers/cloudinaryUpload.js";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const nameRegex = /^[A-Za-z]{6,20}$/;
+const nameRegex = /^[A-Za-z ]{5,20}$/;
 const mobileRegex = /^\d{10}$/;
 
 const profilePage = async (req, res) => {
@@ -68,7 +68,7 @@ const updateProfile = async (req, res) => {
     if (!nameRegex.test(name.trim())) {
       return res.status(400).json({
         success: false,
-        message: "Name must be 6–20 letters long and contain only alphabets",
+        message: "Name must be 6-20 letters long and contain only alphabets",
       });
     }
 
@@ -299,9 +299,15 @@ const registerOtpPage = async (req, res) => {
 
 const resendOtp = async (req, res) => {
   try {
+    console.log("=== RESEND OTP DEBUG ===");
+    console.log("Session ID:", req.sessionID);
+    console.log("Session userData:", req.session.userData);
+    
+    // Get the email from session data
     const userData = req.session.userData;
-
+    
     if (!userData || !userData.newEmail) {
+      console.log("No userData found in session");
       return res.status(400).json({
         success: false,
         message: "Session expired. Please try again.",
@@ -310,19 +316,41 @@ const resendOtp = async (req, res) => {
 
     const email = userData.newEmail;
     const otp = generateOtp();
-    console.log(`resend otp for ${email} : ${otp}`);
+    console.log(`Resend OTP for ${email}: ${otp}`);
 
+    // Store new OTP in session
     req.session.userOtp = otp;
-    req.session.otpExpire = Date.now() + 1 * 60 * 1000;
+    req.session.otpExpire = Date.now() + 60 * 1000;
+    
+    // Save session with callback
+    req.session.save(async (saveErr) => {
+      if (saveErr) {
+        console.error("Session save error:", saveErr);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to save session. Please try again.",
+        });
+      }
 
-    await emailer(email, otp);
-
-    return res.status(200).json({
-      success: true,
-      message: "OTP resent successfully. Please check your email.",
+      try {
+        await emailer(email, otp);
+        console.log(`OTP sent successfully to ${email}`);
+        
+        return res.status(200).json({
+          success: true,
+          message: "OTP resent successfully. Please check your email.",
+        });
+      } catch (emailError) {
+        console.error("Email sending error:", emailError);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to send OTP email. Please try again.",
+        });
+      }
     });
+
   } catch (error) {
-    console.log("Error in resending OTP:", error);
+    console.error("Error in resending OTP:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error during OTP resend.",
