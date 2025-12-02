@@ -20,6 +20,7 @@ import brandRouter from "./router/admin/brandRoutes.js";
 import categoryRouter from "./router/admin/categoryRoutes.js";
 import customerRouter from "./router/admin/customerRoutes.js";
 import productRouter from "./router/admin/productRoutes.js";
+import ordersRouter from "./router/admin/ordersRouter.js"
 
 import auth from "./middleware/auth.js";
 import passport from "./config/passport.js";
@@ -105,6 +106,7 @@ app.use("/admin", brandRouter);
 app.use("/admin", categoryRouter);
 app.use("/admin", customerRouter);
 app.use("/admin", productRouter);
+app.use("/admin", ordersRouter)
 
 app.use((req, res) => {
   res.status(404).render("error");
