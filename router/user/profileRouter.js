@@ -15,7 +15,7 @@ router.get("/profile/change-email",profileController.changeEmail)
 router.post("/profile/change-email",profileController.verifyChangeEmail)
 router.get("/changeEmail-otp",profileController.loadOtpPage)
 router.post("/changeEmail-otp",profileController.registerOtpPage)
-router.post("/resend-otp",profileController.resendOtp)
+router.post("/resend-otps",profileController.resendOtp)
 router.get("/profile/change-password",profileController.loadchangePassword);
 router.post("/profile/change-password",profileController.registerChangePassword);
 
