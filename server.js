@@ -112,9 +112,6 @@ app.use((req, res) => {
   res.status(404).render("error");
 });
 
-app.use((err, req, res, next) => {
-  res.status(500).render("error.ejs");
-});
 
 const port = process.env.PORT;
 app.listen(port, () => {
