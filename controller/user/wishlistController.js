@@ -8,7 +8,7 @@ const isValidObjectId = (id) => {
 
 const getWishlist = async (req, res) => {
   try {
-    const userId = req.session.user?._id || req.session.user;
+    const userId = req.session.user;
     if (!userId) return res.redirect("/login");
 
     const page = parseInt(req.query.page) || 1;
