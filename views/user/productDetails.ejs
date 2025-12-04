@@ -736,13 +736,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else {
                         showAlert.success('Product added to cart successfully!', 1500);
                         setTimeout(() => {
-                            window.location.href = '/cart';
+                            window.location.href = `/product/${productId}`;
                         }, 1500);
                     }
                 } else {
                     showAlert.error(response.data.message || 'Failed to add to cart');
                     
-                    // Reset button states
                     addToCartBtn.innerHTML = '🛒 Add to cart';
                     addToCartBtn.disabled = false;
                     buyNowBtn.innerHTML = '⚡ Buy Now';
