@@ -70,12 +70,7 @@ const addCart = async (req, res) => {
   try {    
     const userId = req.session.user;
     if (!userId) {
-      if (req.xhr || req.headers.accept.indexOf("json") > -1) {
-        return res
-          .status(401)
-          .json({ success: false, message: "Please login first" });
-      }
-      return res.redirect("/login");
+          return res.redirect("/login");
     }
 
     const productId = req.params.id;
@@ -139,10 +134,7 @@ const addCart = async (req, res) => {
       });
     }
 
-    const productPrice =
-      productData.offerPrice && productData.offerPrice < productData.price
-        ? productData.offerPrice
-        : productData.price;
+    const productPrice = productData.price;
 
     const totalPrice = productPrice * quantity;
 
@@ -231,14 +223,7 @@ const addCart = async (req, res) => {
       return res.redirect("/cart");
     }
   } catch (error) {
-    if (req.xhr || req.headers.accept.indexOf("json") > -1) {
-      return res.status(500).json({
-        success: false,
-        message: "Server error: " + error.message,
-      });
-    } else {
-      return res.status(500).send("Server Error");
-    }
+        return res.json({ success: false, message: "Server error" });
   }
 };
 
@@ -276,10 +261,14 @@ const removeFromCart = async (req, res) => {
 
 const updateQuantity = async (req, res) => {
   try {
+    const userId = req.session.user;
+    if(!userId) {
+      return res.redirect("/login")
+    }
     const { itemId, action } = req.body;
 
     const cartData = await cart
-      .findOne({ userId: req.session.user })
+      .findOne({ userId})
       .populate("cart_items.packageProductId");
 
     if (!cartData) {
@@ -327,7 +316,7 @@ const updateQuantity = async (req, res) => {
       0
     );
 
-    const shipping = subtotal > 500 ? 0 : 50;
+    const shipping = subtotal > 1000 ? 0 : 0;
     const total = subtotal + shipping;
 
     return res.json({

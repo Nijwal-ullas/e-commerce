@@ -129,7 +129,7 @@ const placeOrder = async (req, res) => {
       .filter(Boolean);
 
     const afterDiscount = subtotal - discount;
-    const deliveryCharge = afterDiscount > 500 ? 0 : 50;
+    const deliveryCharge = afterDiscount > 1000 ? 0 : 0;
     const finalAmount = afterDiscount + deliveryCharge;
 
   

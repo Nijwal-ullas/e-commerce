@@ -111,8 +111,8 @@ const updateProfile = async (req, res) => {
           });
         }
 
-        if (existingUser.cloudinaryPublicId) {
-          await deleteFromCloudinary(existingUser.cloudinaryPublicId);
+        if (existingUser.cloudinaryPublicIds) {
+          await deleteFromCloudinary(existingUser.cloudinaryPublicIds);
         }
 
         const uploadResult = await uploadToCloudinary(req.file.buffer, "profile");
@@ -299,15 +299,10 @@ const registerOtpPage = async (req, res) => {
 
 const resendOtp = async (req, res) => {
   try {
-    console.log("=== RESEND OTP DEBUG ===");
-    console.log("Session ID:", req.sessionID);
-    console.log("Session userData:", req.session.userData);
     
-    // Get the email from session data
     const userData = req.session.userData;
     
     if (!userData || !userData.newEmail) {
-      console.log("No userData found in session");
       return res.status(400).json({
         success: false,
         message: "Session expired. Please try again.",
@@ -318,11 +313,9 @@ const resendOtp = async (req, res) => {
     const otp = generateOtp();
     console.log(`Resend OTP for ${email}: ${otp}`);
 
-    // Store new OTP in session
     req.session.userOtp = otp;
     req.session.otpExpire = Date.now() + 60 * 1000;
     
-    // Save session with callback
     req.session.save(async (saveErr) => {
       if (saveErr) {
         console.error("Session save error:", saveErr);
