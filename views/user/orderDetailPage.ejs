@@ -628,8 +628,13 @@
             <% 
               const canCancelOrder = ['pending', 'processing'].includes((order.status || order.orderStatus || '').toLowerCase()); 
             %>
-            
-            <a
+
+            <% 
+              const invoiceDownloads = ['delivered', 'cancelled' , 'returned'].includes((order.status || order.orderStatus || '').toLowerCase()); 
+            %>
+
+            <% if (invoiceDownloads) { %>
+                      <a
               href="/order/invoice/<%= order._id %>"
               target="_blank"
               class="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
@@ -640,7 +645,10 @@
                 </path>
               </svg>
               Download Invoice
-            </a>
+            </a>    
+              <% } %>
+            
+          
 
             <% if (canCancelOrder) { %>
               <button

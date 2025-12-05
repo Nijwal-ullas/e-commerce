@@ -698,75 +698,73 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        async function addToCart(isBuyNow = false) {
-            if (!selectedVariant || selectedVariant.quantity <= 0) {
-                showAlert.warning('Please select a valid variant');
+async function addToCart(isBuyNow = false) {
+    if (!selectedVariant || selectedVariant.quantity <= 0) {
+        showAlert.warning('Please select a valid variant');
+        return;
+    }
+
+    const quantity = parseInt(document.getElementById('quantity').value);
+
+    if (isBuyNow) {
+        const buyNowBtn = document.getElementById('buy-now-btn');
+        buyNowBtn.innerHTML = '🔄 Processing...';
+        buyNowBtn.disabled = true;
+
+        try {
+            const response = await axios.post(`/buy-now/${productId}`, {  
+                quantity: quantity,
+                variantMl: selectedVariant.ml
+            });
+
+            if (response.data.success) {
+                window.location.href = "/checkout";
                 return;
             }
 
-            try {
-                const addToCartBtn = document.getElementById('add-to-cart-btn');
-                const buyNowBtn = document.getElementById('buy-now-btn');
-                
-                const quantity = parseInt(document.getElementById('quantity').value);
-                
-                if (isBuyNow) {
-                    buyNowBtn.innerHTML = '🔄 Processing...';
-                    buyNowBtn.disabled = true;
-                } else {
-                    addToCartBtn.innerHTML = '🔄 Adding...';
-                    addToCartBtn.disabled = true;
-                }
-
-                showAlert.loading(isBuyNow ? 'Processing your order...' : 'Adding to cart...');
-
-                const response = await axios.post(`/cart/${productId}`, {
-                    quantity: quantity,
-                    variantMl: selectedVariant.ml 
-                });
-
-                showAlert.close();
-
-                if (response.data.success) {
-                    if (isBuyNow) {
-                        showAlert.success('Redirecting to checkout...', 1000);
-                        setTimeout(() => {
-                            window.location.href = '/checkout';
-                        }, 1000);
-                    } else {
-                        showAlert.success('Product added to cart successfully!', 1500);
-                        setTimeout(() => {
-                            window.location.href = `/product/${productId}`;
-                        }, 1500);
-                    }
-                } else {
-                    showAlert.error(response.data.message || 'Failed to add to cart');
-                    
-                    addToCartBtn.innerHTML = '🛒 Add to cart';
-                    addToCartBtn.disabled = false;
-                    buyNowBtn.innerHTML = '⚡ Buy Now';
-                    buyNowBtn.disabled = false;
-                }
-
-            } catch (error) {
-                showAlert.close();
-                
-                let errorMessage = 'Network error. Please check your connection and try again.';
-                if (error.response?.data?.message) {
-                    errorMessage = error.response.data.message;
-                }
-                
-                showAlert.error(errorMessage);
-                
-                const addToCartBtn = document.getElementById('add-to-cart-btn');
-                const buyNowBtn = document.getElementById('buy-now-btn');
-                
-                addToCartBtn.innerHTML = '🛒 Add to cart';
-                addToCartBtn.disabled = false;
-                buyNowBtn.innerHTML = '⚡ Buy Now';
-                buyNowBtn.disabled = false;
+            if (response.data.redirect) {
+                window.location.href = response.data.redirect;
+                return;
             }
+
+            showAlert.error(response.data.message || 'Failed to Buy Now');
+        } catch (err) {
+            console.error("Buy Now error:", err);
+            showAlert.error("Error processing Buy Now request");
         }
+
+        buyNowBtn.innerHTML = '⚡ Buy Now';
+        buyNowBtn.disabled = false;
+        return;
+    }
+    
+    const addToCartBtn = document.getElementById('add-to-cart-btn');
+    addToCartBtn.innerHTML = '🔄 Adding...';
+    addToCartBtn.disabled = true;
+
+    try {
+        const response = await axios.post(`/cart/${productId}`, {
+            quantity: quantity,
+            variantMl: selectedVariant.ml
+        });
+
+        if (response.data.success) {
+            showAlert.success('Product added to cart!');
+            setTimeout(() => {
+                window.location.href = '/cart';
+            }, 1500);
+        } else {
+            showAlert.error(response.data.message || 'Failed to add to cart');
+            addToCartBtn.innerHTML = '🛒 Add to cart';
+            addToCartBtn.disabled = false;
+        }
+    } catch (err) {
+        console.error("Add to cart error:", err);
+        showAlert.error("Error adding to cart");
+        addToCartBtn.innerHTML = '🛒 Add to cart';
+        addToCartBtn.disabled = false;
+    }
+}
 
         async function addRelatedToCart(relatedProductId) {
             try {
