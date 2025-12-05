@@ -17,6 +17,52 @@ const getCheckout = async (req, res) => {
     }
 
     const userData = await user.findById(userId);
+    
+    if (req.session.buyNowItem) {
+      const buyNowItem = req.session.buyNowItem;
+      const productData = await product.findById(buyNowItem.productId);
+      
+      if (!productData) {
+        delete req.session.buyNowItem;
+        return res.redirect("/cart");
+      }
+      
+      const mockCart = {
+        cart_items: [{
+          packageProductId: productData,
+          variantId: buyNowItem.variantId,
+          variantMl: buyNowItem.variantMl,
+          price: buyNowItem.price,
+          quantity: buyNowItem.quantity,
+          totalPrice: buyNowItem.totalPrice,
+          Ml: buyNowItem.variantMl,
+          ml: buyNowItem.variantMl
+        }]
+      };
+      
+      const page = parseInt(req.query.page) || 1;
+      const limit = 3;
+      const skip = (page - 1) * limit;
+      const totalAddresses = await address.countDocuments({ userId });
+      const totalPage = Math.ceil(totalAddresses / limit);
+      const userAddress = await address
+        .find({ userId })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+
+      return res.render("user/checkoutPage", {
+        user: userData,
+        cart: mockCart,
+        cartItems: mockCart.cart_items || [],
+        addresses: userAddress,
+        page,
+        totalPage,
+        isBuyNow: true, 
+        buyNowItem: buyNowItem
+      });
+    }
+    
     const cartData = await cart
       .findOne({ userId: userId })
       .populate("cart_items.packageProductId");
@@ -43,6 +89,7 @@ const getCheckout = async (req, res) => {
       addresses: userAddress,
       page,
       totalPage,
+      isBuyNow: false
     });
   } catch (error) {
     console.log(error);
@@ -64,18 +111,45 @@ const placeOrder = async (req, res) => {
         .json({ success: false, message: "Select address" });
     }
 
-    const userCart = await cart
-      .findOne({ userId })
-      .populate("cart_items.packageProductId");
+    let cartItems = [];
+    let isBuyNow = false;
+    
+    if (req.session.buyNowItem) {
+      isBuyNow = true;
+      const buyNowItem = req.session.buyNowItem;
+      const productData = await product.findById(buyNowItem.productId);
+      
+      if (!productData) {
+        delete req.session.buyNowItem;
+        return res.status(400).json({ success: false, message: "Product not found" });
+      }
+      
+      cartItems = [{
+        packageProductId: productData,
+        variantId: buyNowItem.variantId,
+        variantMl: buyNowItem.variantMl,
+        price: buyNowItem.price,
+        quantity: buyNowItem.quantity,
+        totalPrice: buyNowItem.totalPrice,
+        Ml: buyNowItem.variantMl,
+        ml: buyNowItem.variantMl
+      }];
+    } else {
+      const userCart = await cart
+        .findOne({ userId })
+        .populate("cart_items.packageProductId");
 
-    if (!userCart || !userCart.cart_items || userCart.cart_items.length === 0) {
-      return res.status(400).json({ success: false, message: "Cart is empty" });
+      if (!userCart || !userCart.cart_items || userCart.cart_items.length === 0) {
+        return res.status(400).json({ success: false, message: "Cart is empty" });
+      }
+      
+      cartItems = userCart.cart_items;
     }
 
     let subtotal = 0;
     let discount = 0;
 
-    const orderedItem = userCart.cart_items
+    const orderedItem = cartItems
       .map((item) => {
         const productDoc = item.packageProductId;
         if (!productDoc) return null;
@@ -89,32 +163,29 @@ const placeOrder = async (req, res) => {
 
         let variantId = item.variantId || null;
         let mlValue = null;
+        
+        if (item.variantMl) {
+          mlValue = Number(item.variantMl);
+        } else if (item.Ml !== undefined && item.Ml !== null) {
+          mlValue = Number(item.Ml);
+        } else if (item.ml !== undefined && item.ml !== null) {
+          mlValue = Number(item.ml);
+        }
 
-        if (productDoc.VariantItem && productDoc.VariantItem.length > 0) {
-          if (item.Ml !== undefined && item.Ml !== null) {
-            mlValue = Number(item.Ml);
-          } else if (item.ml !== undefined && item.ml !== null) {
-            mlValue = Number(item.ml);
-          }
-
-          let variantDoc = null;
-
-          if (variantId) {
-            variantDoc =
-              productDoc.VariantItem.id(variantId) ||
-              productDoc.VariantItem.find(
-                (v) => v._id.toString() === variantId.toString()
-              );
-          }
-
-          if (!variantDoc && mlValue != null) {
-            variantDoc = productDoc.VariantItem.find((v) => v.Ml === mlValue);
-          }
-
-          if (variantDoc) {
-            variantId = variantDoc._id;
-            if (mlValue == null) mlValue = variantDoc.Ml;
-          }
+        let variantDoc = null;
+        if (variantId && productDoc.VariantItem) {
+          variantDoc = productDoc.VariantItem.find(
+            (v) => v._id.toString() === variantId.toString()
+          );
+        }
+        
+        if (!variantDoc && mlValue !== null && productDoc.VariantItem) {
+          variantDoc = productDoc.VariantItem.find((v) => v.Ml === mlValue);
+        }
+        
+        if (variantDoc) {
+          variantId = variantDoc._id;
+          mlValue = variantDoc.Ml;
         }
 
         return {
@@ -132,31 +203,36 @@ const placeOrder = async (req, res) => {
     const deliveryCharge = afterDiscount > 1000 ? 0 : 0;
     const finalAmount = afterDiscount + deliveryCharge;
 
-  
-    for (const cartItem of userCart.cart_items) {
+    for (const cartItem of cartItems) {
       const productDoc = cartItem.packageProductId;
       if (!productDoc) continue;
 
       if (productDoc.VariantItem && productDoc.VariantItem.length > 0) {
         let mlValue = null;
-        if (cartItem.Ml !== undefined && cartItem.Ml !== null) {
+        let variantId = cartItem.variantId || null;
+        
+        if (cartItem.variantMl) {
+          mlValue = Number(cartItem.variantMl);
+        } else if (cartItem.Ml !== undefined && cartItem.Ml !== null) {
           mlValue = Number(cartItem.Ml);
         } else if (cartItem.ml !== undefined && cartItem.ml !== null) {
           mlValue = Number(cartItem.ml);
         }
 
         let variantDoc = null;
-
-        if (cartItem.variantId) {
-          variantDoc =
-            productDoc.VariantItem.id(cartItem.variantId) ||
-            productDoc.VariantItem.find(
-              (v) => v._id.toString() === cartItem.variantId.toString()
-            );
+        
+        if (variantId) {
+          variantDoc = productDoc.VariantItem.find(
+            (v) => v._id.toString() === variantId.toString()
+          );
         }
-
-        if (!variantDoc && mlValue != null) {
+        
+        if (!variantDoc && mlValue !== null) {
           variantDoc = productDoc.VariantItem.find((v) => v.Ml === mlValue);
+        }
+        
+        if (!variantDoc && productDoc.VariantItem.length > 0) {
+          variantDoc = productDoc.VariantItem[0];
         }
 
         if (!variantDoc) {
@@ -174,24 +250,22 @@ const placeOrder = async (req, res) => {
         }
 
         variantDoc.Quantity -= cartItem.quantity;
-      } else {
-        if ((productDoc.stock || 0) < cartItem.quantity) {
+        
+      } 
+      else {
+        const stock = productDoc.stock || 0;
+        if (stock < cartItem.quantity) {
           return res.status(400).json({
             success: false,
-            message: `Insufficient stock for ${
-              productDoc.productName
-            }. Available: ${productDoc.stock || 0}, Requested: ${
-              cartItem.quantity
-            }`,
+            message: `Insufficient stock for ${productDoc.productName}. Available: ${stock}, Requested: ${cartItem.quantity}`,
           });
         }
-        productDoc.stock = (productDoc.stock || 0) - cartItem.quantity;
+        productDoc.stock = stock - cartItem.quantity;
       }
 
       await productDoc.save();
     }
 
-    
     const addressData = await address.findById(addressId);
     if (!addressData) {
       return res
@@ -227,8 +301,15 @@ const placeOrder = async (req, res) => {
 
     await newOrder.save();
 
-    userCart.cart_items = [];
-    await userCart.save();
+    if (isBuyNow) {
+      delete req.session.buyNowItem;
+    } else {
+      const userCart = await cart.findOne({ userId });
+      if (userCart) {
+        userCart.cart_items = [];
+        await userCart.save();
+      }
+    }
 
     return res.json({
       success: true,
@@ -316,7 +397,6 @@ const addAddress = async (req, res) => {
       !fullName ||
       !phone ||
       !addressLine1 ||
-      !landmark ||
       !city ||
       !state ||
       !pincode ||
@@ -386,7 +466,7 @@ const addAddress = async (req, res) => {
       phone: phone.trim(),
       flatNumber: addressLine1.trim(),
       streetName: addressLine2 ? addressLine2.trim() : "",
-      landMark: landmark.trim(),
+      landMark: landmark ? landmark.trim() : "",
       city: city.trim(),
       state: state.trim(),
       pincode: pincode.trim(),
@@ -447,7 +527,6 @@ const editAddress = async (req, res) => {
       !fullName ||
       !phone ||
       !addressLine1 ||
-      !landmark ||
       !city ||
       !state ||
       !pincode ||
@@ -510,7 +589,7 @@ const editAddress = async (req, res) => {
         phone: phone.trim(),
         flatNumber: addressLine1.trim(),
         streetName: addressLine2 ? addressLine2.trim() : "",
-        landmark: landmark.trim(),
+        landmark: landmark ? landmark.trim() : "",
         city: city.trim(),
         state: state.trim(),
         pincode: pincode.trim(),

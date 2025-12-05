@@ -2,12 +2,15 @@ import user from "../../model/userSchema.js";
 import product from "../../model/productSchema.js";
 import cart from "../../model/cartSchema.js";
 
-
 const getCart = async (req, res) => {
   try {
     const userId = req.session.user;
     if (!userId) {
       return res.redirect("/login");
+    }
+
+    if (req.session.buyNowItem) {
+      delete req.session.buyNowItem;
     }
 
     const userData = await user.findById(userId);
@@ -67,10 +70,10 @@ const getCart = async (req, res) => {
 };
 
 const addCart = async (req, res) => {
-  try {    
+  try {
     const userId = req.session.user;
     if (!userId) {
-          return res.redirect("/login");
+      return res.redirect("/login");
     }
 
     const productId = req.params.id;
@@ -223,7 +226,7 @@ const addCart = async (req, res) => {
       return res.redirect("/cart");
     }
   } catch (error) {
-        return res.json({ success: false, message: "Server error" });
+    return res.json({ success: false, message: "Server error" });
   }
 };
 
@@ -233,12 +236,16 @@ const removeFromCart = async (req, res) => {
     const itemId = req.params.id;
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Login required" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Login required" });
     }
 
     const userCart = await cart.findOne({ userId });
     if (!userCart) {
-      return res.status(404).json({ success: false, message: "Cart not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Cart not found" });
     }
 
     userCart.cart_items = userCart.cart_items.filter(
@@ -258,17 +265,16 @@ const removeFromCart = async (req, res) => {
   }
 };
 
-
 const updateQuantity = async (req, res) => {
   try {
     const userId = req.session.user;
-    if(!userId) {
-      return res.redirect("/login")
+    if (!userId) {
+      return res.redirect("/login");
     }
     const { itemId, action } = req.body;
 
     const cartData = await cart
-      .findOne({ userId})
+      .findOne({ userId })
       .populate("cart_items.packageProductId");
 
     if (!cartData) {
@@ -293,7 +299,10 @@ const updateQuantity = async (req, res) => {
       }
 
       if (item.quantity >= 10) {
-        return res.json({ success: false, message: "Max quantity allowed is 10" });
+        return res.json({
+          success: false,
+          message: "Max quantity allowed is 10",
+        });
       }
 
       item.quantity += 1;
@@ -337,10 +346,68 @@ const updateQuantity = async (req, res) => {
   }
 };
 
+const buyNow = async (req, res) => {
+  try {
+    const userId = req.session.user;
+    if (!userId) {
+      return res.json({
+        success: false,
+        redirect: "/login",
+      });
+    }
+
+    const productId = req.params.id;
+    const { quantity, variantMl } = req.body;
+
+    const productData = await product.findById(productId);
+    if (!productData) {
+      return res.json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    let selectedVariant = productData.VariantItem.find(
+      (v) => v.Ml === parseInt(variantMl)
+    );
+
+    if (!selectedVariant || selectedVariant.Quantity <= 0) {
+      return res.json({
+        success: false,
+        message: "Selected variant out of stock",
+      });
+    }
+
+    if (quantity > selectedVariant.Quantity) {
+      return res.json({
+        success: false,
+        message: `Only ${selectedVariant.Quantity} pieces available`,
+      });
+    }
+
+    req.session.buyNowItem = {
+      productId,
+      variantId: selectedVariant._id,
+      variantMl: selectedVariant.Ml,
+      price: productData.price,
+      quantity,
+      totalPrice: productData.price * quantity,
+    };
+
+    return res.json({
+      success: true,
+      message: "Proceed to checkout",
+    });
+  } catch (error) {
+    console.log("Buy Now error:", error);
+    return res.json({ success: false, message: "Server error" });
+  }
+};
 
 export default {
   getCart,
   addCart,
   removeFromCart,
   updateQuantity,
+  buyNow,
 };

@@ -187,18 +187,29 @@ const cancelOrder = async (req, res) => {
         message: `Cannot cancel order with status ${orderDoc.orderStatus}`,
       });
 
+    let cancelledAmount = 0;
+
     if (cancelAll === "true" || cancelAll === true) {
       orderDoc.orderStatus = "Cancelled";
       orderDoc.cancellationReason = reason || "";
 
       for (const item of orderDoc.orderedItem) {
+        cancelledAmount += item.price * item.quantity;
         item.status = "Cancelled";
         item.cancellationReason = reason || "";
         await restoreStock(item);
       }
 
+      orderDoc.totalPrice = 0;
+      orderDoc.finalAmount = 0;
+      orderDoc.discount = 0;
+
       await orderDoc.save();
-      return res.json({ success: true, message: "Order cancelled" });
+      return res.json({ 
+        success: true, 
+        message: "Order cancelled",
+        cancelledAmount: cancelledAmount
+      });
     }
 
     const item = orderDoc.orderedItem.find((i) => i._id.toString() === itemId);
@@ -212,18 +223,54 @@ const cancelOrder = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Item cannot be cancelled now" });
 
+    const itemAmount = item.price * item.quantity;
+    cancelledAmount = itemAmount;
+
     item.status = "Cancelled";
     item.cancellationReason = reason || "";
 
     await restoreStock(item);
 
+    let newTotalPrice = 0;
+    let activeItems = 0;
+
+    for (const orderItem of orderDoc.orderedItem) {
+      if (orderItem.status !== "Cancelled") {
+        newTotalPrice += orderItem.price * orderItem.quantity;
+        activeItems++;
+      }
+    }
+
+    orderDoc.totalPrice = newTotalPrice;
+    
+    const originalTotal = orderDoc.totalPrice + itemAmount;
+    let discountRatio = 1;
+    if (originalTotal > 0) {
+      discountRatio = newTotalPrice / originalTotal;
+    }
+    
+    orderDoc.discount = Math.round(orderDoc.discount * discountRatio * 100) / 100;
+    
+    orderDoc.finalAmount = orderDoc.totalPrice - orderDoc.discount;
+    
+    if (orderDoc.finalAmount < 0) orderDoc.finalAmount = 0;
+    if (orderDoc.discount < 0) orderDoc.discount = 0;
+
     if (orderDoc.orderedItem.every((i) => i.status === "Cancelled")) {
       orderDoc.orderStatus = "Cancelled";
+      orderDoc.totalPrice = 0;
+      orderDoc.discount = 0;
+      orderDoc.finalAmount = 0;
     }
 
     await orderDoc.save();
 
-    res.json({ success: true, message: "Item cancelled successfully" });
+    res.json({ 
+      success: true, 
+      message: "Item cancelled successfully",
+      cancelledAmount: cancelledAmount,
+      newTotal: orderDoc.finalAmount
+    });
   } catch (error) {
     console.error("Cancel error:", error);
     res.status(500).json({ success: false, message: "Server error" });
