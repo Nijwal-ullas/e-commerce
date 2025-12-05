@@ -11,5 +11,7 @@ router.get("/cart", cartController.getCart);
 router.post("/cart/update-quantity", cartController.updateQuantity); 
 router.post("/cart/remove/:id", cartController.removeFromCart);
 router.post("/cart/:id", cartController.addCart);
+router.post("/buy-now/:id", cartController.buyNow);
+
 
 export default router;
