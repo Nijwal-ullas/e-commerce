@@ -34,7 +34,7 @@ const categoryPage = async (req, res) => {
 };
 
 const addCategory = async (req, res) => {
-  const { name, description } = req.body;
+  const { name, description, offer } = req.body;
   try {
     if (!name || name.trim() === "") {
       return res.status(400).json({
@@ -58,6 +58,15 @@ const addCategory = async (req, res) => {
       });
     }
 
+     const offerValue = parseInt(offer) || 0;
+
+    if (offerValue <= 0 || offerValue >= 100) {
+      return res.status(400).json({
+        success: false,
+        message: "Offer percentage must be between 1 and 99",
+      });
+    }
+
     const existingCategory = await category.findOne({
       name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
     });
@@ -67,7 +76,11 @@ const addCategory = async (req, res) => {
         message: "Category already exists",
       });
     }
-    const newCategory = new category({ name: name.trim(), description });
+    const newCategory = new category({
+      name: name.trim(),
+      description: description.trim(),
+      offer: offerValue,
+    });
     await newCategory.save();
     res.status(201).json({
       success: true,
@@ -82,7 +95,7 @@ const addCategory = async (req, res) => {
 
 const editCategory = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, offer } = req.body;
     const id = req.params.id;
 
     const existing = await category.findOne({
@@ -111,10 +124,32 @@ const editCategory = async (req, res) => {
       });
     }
 
-    category.name = name.trim();
-    category.description = description?.trim() || "";
+    const offerValue = parseInt(offer) || 0;
 
-    await category.save();
+    if (offerValue <= 0 || offerValue >= 100) {
+      return res.status(400).json({
+        success: false,
+        message: "Offer percentage must be between 1 and 99",
+      });
+    }
+
+        const updated = await category.findByIdAndUpdate(
+      id,
+      {
+        name: name.trim(),
+        description: description?.trim() || "",
+        offer: offerValue,
+      },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+    
     res
       .status(200)
       .json({ message: "Category updated successfully", category: updated });
@@ -185,4 +220,11 @@ const unlistCategory = async (req, res) => {
   }
 };
 
-export default { categoryPage, addCategory, editCategory, deleteCategory, listCategory, unlistCategory};
+export default {
+  categoryPage,
+  addCategory,
+  editCategory,
+  deleteCategory,
+  listCategory,
+  unlistCategory,
+};
