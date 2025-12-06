@@ -7,6 +7,7 @@ const CategoriesSchema = new Schema(
     name: { type: String },
     description: { type: String },
     isListed: { type: Boolean, default: true },
+    offer : { type: Number}
   },
   { timestamps: true }   
 );
