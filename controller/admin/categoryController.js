@@ -1,4 +1,5 @@
 import category from "../../model/categorySchema.js";
+import product from "../../model/productSchema.js";
 
 const categoryNameRegex = /^[A-Za-z ]{2,20}$/;
 
@@ -76,6 +77,9 @@ const addCategory = async (req, res) => {
         message: "Category already exists",
       });
     }
+
+    
+
     const newCategory = new category({
       name: name.trim(),
       description: description.trim(),
@@ -102,6 +106,7 @@ const editCategory = async (req, res) => {
       name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
       _id: { $ne: id },
     });
+
     if (existing) {
       return res.status(400).json({
         success: false,
@@ -133,7 +138,33 @@ const editCategory = async (req, res) => {
       });
     }
 
-        const updated = await category.findByIdAndUpdate(
+    const products = await product.find({ category: id });
+
+    if (products.length > 0) {
+      for (const prod of products) {
+        prod.VariantItem = prod.VariantItem.map((variant) => {
+          const basePrice = variant.Price;
+
+          const productDiscount = prod.discount || 0;
+
+          const categoryDiscount = offerValue;
+
+          const highestDiscount = Math.max(productDiscount, categoryDiscount);
+
+          const discountAmount = (basePrice * highestDiscount) / 100;
+          const newOfferPrice = basePrice - discountAmount;
+
+          return {
+            ...variant.toObject(),
+            offerPrice: newOfferPrice,
+          };
+        });
+
+        await prod.save();
+      }
+    }
+
+    const updated = await category.findByIdAndUpdate(
       id,
       {
         name: name.trim(),
@@ -149,15 +180,18 @@ const editCategory = async (req, res) => {
         message: "Category not found",
       });
     }
-    
-    res
-      .status(200)
-      .json({ message: "Category updated successfully", category: updated });
+
+    res.status(200).json({
+      message: "Category updated successfully",
+      category: updated,
+    });
+
   } catch (error) {
     console.error("Error editing category:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
+
 
 const deleteCategory = async (req, res) => {
   try {

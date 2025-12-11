@@ -2,7 +2,11 @@ import Order from "../../model/orderSchema.js";
 import user from "../../model/userSchema.js";
 import product from "../../model/productSchema.js";
 
+const FLOW_STATUSES = ["Pending", "Processing", "Shipped", "Delivered"];
 
+// ─────────────────────────────────────────────
+// LIST ORDERS
+// ─────────────────────────────────────────────
 const getOrdersPage = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -30,7 +34,11 @@ const getOrdersPage = async (req, res) => {
     }
 
     if (statusFilter) {
-      query.orderStatus = statusFilter;
+      if (statusFilter === "Return Requested" || statusFilter === "Return Approved") {
+        query["orderedItem.status"] = statusFilter;
+      } else {
+        query.orderStatus = statusFilter;
+      }
     }
 
     const totalOrders = await Order.countDocuments(query);
@@ -42,16 +50,24 @@ const getOrdersPage = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-    const formattedOrders = orders.map((o) => ({
-      _id: o._id,
-      orderId: o.orderId,
-      username: o.userId?.name || "Guest",
-      date: o.createdAt,
-      totalAmount: o.finalAmount || o.totalPrice || 0,
-      paymentMethod: o.payment,
-      status: o.orderStatus,
-      returnRequested: o.orderStatus === "Return Requested",
-    }));
+    const formattedOrders = orders.map((o) => {
+      const hasReturnRequested = o.orderedItem.some(item => item.status === "Return Requested");
+      const hasReturnApproved = o.orderedItem.some(item => item.status === "Return Approved");
+      const hasReturned = o.orderedItem.some(item => item.status === "Returned");
+      
+      return {
+        _id: o._id,
+        orderId: o.orderId,
+        username: o.userId?.name || "Guest",
+        date: o.createdAt,
+        totalAmount: o.finalAmount || o.totalPrice || 0,
+        paymentMethod: o.payment,
+        status: o.orderStatus,
+        hasReturnRequested,
+        hasReturnApproved,
+        hasReturned,
+      };
+    });
 
     res.render("admin/ordersPage", {
       orders: formattedOrders,
@@ -70,6 +86,9 @@ const getOrdersPage = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────
+// ORDER DETAIL PAGE
+// ─────────────────────────────────────────────
 const getDetailPage = async (req, res) => {
   try {
     const { id } = req.params;
@@ -109,43 +128,178 @@ const getDetailPage = async (req, res) => {
   }
 };
 
-const getNextValidStatuses = (currentStatus, isItem = false) => {
-  const statusFlow = ["Pending", "Processing", "Shipped", "Delivered"];
-  const cancelStatus = "Cancelled";
-  const returnStatus = "Returned";
-  const returnRequested = "Return Requested";
-  const returnApproved = "Return Approved";
-  const returnRejected = "Return Rejected";
-
-  if (
-    [returnRequested, returnApproved, returnRejected].includes(currentStatus)
-  ) {
+// ─────────────────────────────────────────────
+// HELPER: VALID NEXT STATUSES FOR MAIN ORDER
+// NO CANCEL OPTION - orders can only be cancelled by customers
+// ─────────────────────────────────────────────
+const getNextValidStatuses = (currentStatus) => {
+  if (currentStatus === "Delivered" || currentStatus === "Cancelled") {
     return [];
   }
 
-  if (currentStatus === cancelStatus || currentStatus === returnStatus) {
-    return [];
-  }
-
-  if (currentStatus === "Delivered") {
-    return [];
-  }
-
-  const currentIndex = statusFlow.indexOf(currentStatus);
-
+  const idx = FLOW_STATUSES.indexOf(currentStatus);
   const nextStatuses = [];
 
-  if (currentIndex + 1 < statusFlow.length) {
-    nextStatuses.push(statusFlow[currentIndex + 1]);
+  if (idx !== -1 && idx + 1 < statusFlow.length) {
+    nextStatuses.push(FLOW_STATUSES[idx + 1]);
   }
 
-  if (currentStatus !== "Delivered") {
-    nextStatuses.push(cancelStatus);
-  }
+  // REMOVED: "Cancelled" option - admin cannot cancel orders
 
   return [...new Set(nextStatuses)];
 };
 
+// ─────────────────────────────────────────────
+// HELPER: VALID NEXT STATUSES FOR ITEM
+// NO CANCEL OPTION - items can only be cancelled by customers
+// ─────────────────────────────────────────────
+function getItemNextValidStatuses(currentItemStatus, orderStatus) {
+  const hardFinal = ["Cancelled", "Returned", "Return Approved"];
+
+  if (hardFinal.includes(currentItemStatus)) {
+    return [];
+  }
+
+  if (currentItemStatus === "Delivered" && orderStatus === "Delivered") {
+    return ["Return Requested"];
+  }
+
+  if (currentItemStatus === "Return Requested") {
+    return ["Return Approved", "Delivered"];
+  }
+
+  if (currentItemStatus === "Return Approved") {
+    return ["Returned", "Return Requested"];
+  }
+
+  const idx = FLOW_STATUSES.indexOf(currentItemStatus);
+  const next = [];
+
+  if (idx !== -1 && idx + 1 < FLOW_STATUSES.length) {
+    next.push(FLOW_STATUSES[idx + 1]);
+  }
+
+  // REMOVED: "Cancelled" option - admin cannot cancel items
+
+  return next;
+}
+
+// ─────────────────────────────────────────────
+// HELPER: RECALCULATE ORDER STATUS FROM ITEMS
+// ─────────────────────────────────────────────
+function recalculateOrderStatus(orderDoc) {
+  const items = orderDoc.orderedItem || [];
+
+  const activeItems = items.filter(item => 
+    !["Cancelled", "Returned", "Return Approved", "Return Requested"].includes(item.status)
+  );
+
+  if (activeItems.length === 0) {
+    if (items.every(item => item.status === "Cancelled")) {
+      orderDoc.orderStatus = "Cancelled";
+    } else if (items.every(item => item.status === "Returned")) {
+      orderDoc.orderStatus = "Delivered";
+    } else {
+      orderDoc.orderStatus = "Delivered";
+    }
+    return;
+  }
+
+  let minIdx = Infinity;
+  activeItems.forEach((i) => {
+    const status = i.status || "Pending";
+    const idx = FLOW_STATUSES.indexOf(status);
+    if (idx !== -1 && idx < minIdx) {
+      minIdx = idx;
+    }
+  });
+
+  if (minIdx !== Infinity) {
+    orderDoc.orderStatus = FLOW_STATUSES[minIdx];
+  }
+
+  const allActiveDelivered = activeItems.every(item => item.status === "Delivered");
+  if (allActiveDelivered && !orderDoc.deliveredDate) {
+    orderDoc.deliveredDate = new Date();
+  }
+}
+
+// ─────────────────────────────────────────────
+// HELPER: RECALCULATE ORDER PAYMENT STATUS
+// ─────────────────────────────────────────────
+function recalculateOrderPaymentStatus(orderDoc) {
+  const items = orderDoc.orderedItem || [];
+  
+  if (items.length === 0) {
+    orderDoc.paymentStatus = "Pending";
+    return;
+  }
+
+  const activeItems = items.filter(item => 
+    !["Cancelled", "Returned"].includes(item.status)
+  );
+
+  if (activeItems.length === 0) {
+    if (items.every(item => item.status === "Cancelled")) {
+      orderDoc.paymentStatus = "Pending";
+    } else if (items.every(item => item.status === "Returned")) {
+      orderDoc.paymentStatus = "Refunded";
+    } else {
+      orderDoc.paymentStatus = "Paid";
+    }
+    return;
+  }
+
+  const allActiveDelivered = activeItems.every(item => 
+    item.status === "Delivered" || 
+    item.status === "Return Requested" || 
+    item.status === "Return Approved"
+  );
+
+  if (allActiveDelivered) {
+    orderDoc.paymentStatus = "Paid";
+    return;
+  }
+
+  const hasRefundedItems = items.some(item => item.paymentStatus === "Refunded");
+  const hasRefundApprovedItems = items.some(item => item.paymentStatus === "Refund Approved");
+  const hasReturnRequestedItems = items.some(item => item.paymentStatus === "Return Requested");
+  const hasFailedItems = items.some(item => item.paymentStatus === "Failed");
+  const hasPendingItems = items.some(item => item.paymentStatus === "Pending");
+
+  if (hasFailedItems) {
+    orderDoc.paymentStatus = "Failed";
+  } else if (hasRefundedItems && activeItems.length === 0) {
+    orderDoc.paymentStatus = "Refunded";
+  } else if (hasRefundApprovedItems) {
+    orderDoc.paymentStatus = "Refund Approved";
+  } else if (hasReturnRequestedItems) {
+    orderDoc.paymentStatus = "Refund Processing";
+  } else if (hasPendingItems) {
+    orderDoc.paymentStatus = "Pending";
+  } else {
+    orderDoc.paymentStatus = "Paid";
+  }
+}
+
+// ─────────────────────────────────────────────
+// HELPER: CALCULATE REFUND AMOUNT FOR ITEM
+// ─────────────────────────────────────────────
+function calculateItemRefundAmount(item, orderDoc) {
+  const itemTotal = item.price * item.quantity;
+  
+  if (orderDoc.discount && orderDoc.totalPrice > 0) {
+    const discountRatio = orderDoc.discount / orderDoc.totalPrice;
+    const discountedAmount = itemTotal * discountRatio;
+    return itemTotal - discountedAmount;
+  }
+  
+  return itemTotal;
+}
+
+// ─────────────────────────────────────────────
+// MAIN ORDER STATUS UPDATE (NO CANCEL OPTION)
+// ─────────────────────────────────────────────
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -166,83 +320,64 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
-    if (
-      ["Return Requested", "Return Approved", "Return Rejected"].includes(
-        currentOrder.orderStatus
-      )
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot update order in return process",
-      });
-    }
+    const currentStatus = currentOrder.orderStatus;
 
-    if (
-      currentOrder.orderStatus === "Cancelled" ||
-      currentOrder.orderStatus === "Returned"
-    ) {
+    // Block updates for cancelled or returned orders
+    if (["Cancelled", "Returned"].includes(currentStatus)) {
       return res.status(400).json({
         success: false,
         message: "Cannot update a cancelled or returned order",
       });
     }
 
-    if (currentOrder.orderStatus === "Delivered" && status !== "Delivered") {
+    if (currentStatus === "Delivered" && status !== "Delivered") {
       return res.status(400).json({
         success: false,
         message: "Cannot update status of a delivered order",
       });
     }
 
-    const validNextStatuses = getNextValidStatuses(currentOrder.orderStatus);
+    // REMOVED: Cancel validation - admin cannot cancel
 
-    if (!validNextStatuses.includes(status)) {
+    const validNext = getNextValidStatuses(currentStatus);
+    if (!validNext.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: `Invalid status transition. Current: ${
-          currentOrder.orderStatus
-        }, Valid next: ${validNextStatuses.join(", ")}`,
+        message: `Invalid status transition. Current: ${currentStatus}, Valid next: ${validNext.join(", ")}`,
       });
     }
 
-    const statusFlow = ["Pending", "Processing", "Shipped", "Delivered"];
-    if (status !== "Cancelled") {
-      const currentIndex = statusFlow.indexOf(currentOrder.orderStatus);
-      const newIndex = statusFlow.indexOf(status);
+    // Update all active items to the new status
+    const finalItemStates = ["Cancelled", "Returned", "Return Approved"];
 
-      if (newIndex !== currentIndex + 1) {
-        return res.status(400).json({
-          success: false,
-          message: `Cannot skip steps. Must go from ${
-            currentOrder.orderStatus
-          } to ${statusFlow[currentIndex + 1] || "Delivered"}`,
-        });
+    for (const item of currentOrder.orderedItem) {
+      const currentItemStatus = item.status || currentStatus;
+
+      if (finalItemStates.includes(currentItemStatus)) continue;
+      if (currentItemStatus === "Delivered" && status !== "Delivered") continue;
+
+      item.status = status;
+
+      if (status === "Delivered") {
+        item.paymentStatus = "Paid";
+        if (!item.deliveredDate) {
+          item.deliveredDate = new Date();
+        }
       }
     }
 
-    const updateData = { orderStatus: status };
-    if (status === "Delivered") {
-      updateData.deliveredDate = new Date();
+    currentOrder.orderStatus = status;
+    if (status === "Delivered" && !currentOrder.deliveredDate) {
+      currentOrder.deliveredDate = new Date();
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(id, updateData, {
-      new: true,
-    });
-
-    if (status === "Cancelled") {
-      for (const item of currentOrder.orderedItem) {
-        await restoreStock(item);
-      }
-
-      await Order.findByIdAndUpdate(id, {
-        $set: { "orderedItem.$[].status": "Cancelled" },
-      });
-    }
+    recalculateOrderPaymentStatus(currentOrder);
+    await currentOrder.save();
 
     res.json({
       success: true,
       message: "Order status updated successfully",
-      order: updatedOrder,
+      order: currentOrder,
     });
   } catch (error) {
     console.error("Error updating order status:", error);
@@ -254,6 +389,9 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────
+// ITEM STATUS UPDATE (NO CANCEL OPTION)
+// ─────────────────────────────────────────────
 const updateItemStatus = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
@@ -262,133 +400,84 @@ const updateItemStatus = async (req, res) => {
     if (!orderId || !itemId || !status) {
       return res.status(400).json({
         success: false,
-        message: "Order ID, Item ID and status are required",
+        message: "Order ID, Item ID, and status are required",
       });
     }
 
-    const orderData = await Order.findById(orderId);
-    if (!orderData) {
+    const orderDoc = await Order.findById(orderId);
+    if (!orderDoc) {
       return res.status(404).json({
         success: false,
         message: "Order not found",
       });
     }
 
-    if (
-      ["Return Requested", "Return Approved", "Return Rejected"].includes(
-        orderData.orderStatus
-      )
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot update items in return process",
-      });
-    }
-
-    if (
-      orderData.orderStatus === "Cancelled" ||
-      orderData.orderStatus === "Returned"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot update items in a cancelled or returned order",
-      });
-    }
-
-    const item = orderData.orderedItem.find(
+    const itemIndex = orderDoc.orderedItem.findIndex(
       (item) => item._id.toString() === itemId
     );
 
-    if (!item) {
+    if (itemIndex === -1) {
       return res.status(404).json({
         success: false,
         message: "Item not found in order",
       });
     }
 
-    if (item.status === "Delivered" && status !== "Delivered") {
+    const currentItem = orderDoc.orderedItem[itemIndex];
+    const currentStatus = currentItem.status || orderDoc.orderStatus;
+
+    const validStatuses = getItemNextValidStatuses(currentStatus, orderDoc.orderStatus);
+    if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
-        message: "Cannot update status of a delivered item",
+        message: `Invalid item status transition. Current: ${currentStatus}, Valid next: ${validStatuses.join(", ")}`,
       });
     }
 
-    const currentItemStatus = item.status || orderData.orderStatus;
-    const validNextStatuses = getNextValidStatuses(currentItemStatus, true);
-
-    if (!validNextStatuses.includes(status)) {
+    if (status === "Return Requested" && orderDoc.orderStatus !== "Delivered") {
       return res.status(400).json({
         success: false,
-        message: `Invalid status transition. Current: ${currentItemStatus}, Valid next: ${validNextStatuses.join(
-          ", "
-        )}`,
+        message: "Cannot request return until entire order is delivered",
       });
     }
 
-    const statusFlow = ["Pending", "Processing", "Shipped", "Delivered"];
-    if (status !== "Cancelled") {
-      const currentIndex = statusFlow.indexOf(currentItemStatus);
-      const newIndex = statusFlow.indexOf(status);
+    // REMOVED: Cancel logic - admin cannot cancel items
 
-      if (newIndex !== currentIndex + 1) {
-        return res.status(400).json({
-          success: false,
-          message: `Item can only move one step at a time. Current: ${currentItemStatus}, Next: ${
-            statusFlow[currentIndex + 1] || "Delivered"
-          }`,
-        });
-      }
-    }
-
-    const itemIndex = orderData.orderedItem.findIndex(
-      (i) => i._id.toString() === itemId
-    );
-
-    orderData.orderedItem[itemIndex].status = status;
+    currentItem.status = status;
 
     if (status === "Delivered") {
-      orderData.orderedItem[itemIndex].deliveredDate = new Date();
-    }
-
-    if (status === "Cancelled") {
-      await restoreStock(orderData.orderedItem[itemIndex]);
-    }
-
-    await orderData.save();
-
-    const allItemsStatus = orderData.orderedItem.map(
-      (item) => item.status || orderData.orderStatus
-    );
-
-    const allDelivered = allItemsStatus.every((s) => s === "Delivered");
-    const allShipped = allItemsStatus.every((s) => s === "Shipped");
-    const allProcessing = allItemsStatus.every((s) => s === "Processing");
-    const anyCancelled = allItemsStatus.some((s) => s === "Cancelled");
-
-    let newOrderStatus = orderData.orderStatus;
-
-    if (anyCancelled) {
-      newOrderStatus = "Cancelled";
-    } else if (allDelivered) {
-      newOrderStatus = "Delivered";
-    } else if (allShipped) {
-      newOrderStatus = "Shipped";
-    } else if (allProcessing) {
-      newOrderStatus = "Processing";
-    }
-
-    if (newOrderStatus !== orderData.orderStatus) {
-      orderData.orderStatus = newOrderStatus;
-      if (newOrderStatus === "Delivered") {
-        orderData.deliveredDate = new Date();
+      currentItem.paymentStatus = "Paid";
+      if (!currentItem.deliveredDate) {
+        currentItem.deliveredDate = new Date();
       }
-      await orderData.save();
+    } else if (status === "Return Requested") {
+      currentItem.paymentStatus = "Return Requested";
+      currentItem.returnRequestDate = new Date();
+    } else if (status === "Return Approved") {
+      currentItem.paymentStatus = "Refund Approved";
+      currentItem.returnApprovalDate = new Date();
+      currentItem.refundAmount = calculateItemRefundAmount(currentItem, orderDoc);
+    } else if (status === "Returned") {
+      currentItem.paymentStatus = "Refunded";
+      currentItem.returnedDate = new Date();
+      currentItem.refundAmount = currentItem.refundAmount || calculateItemRefundAmount(currentItem, orderDoc);
+      currentItem.refundDate = new Date();
+      await restoreStock(currentItem);
     }
+
+    recalculateOrderPaymentStatus(orderDoc);
+    if (!["Return Requested", "Return Approved", "Returned"].includes(status)) {
+      recalculateOrderStatus(orderDoc);
+    }
+
+    await orderDoc.save();
 
     res.json({
       success: true,
       message: "Item status updated successfully",
-      order: orderData,
+      item: orderDoc.orderedItem[itemIndex],
+      orderStatus: orderDoc.orderStatus,
+      paymentStatus: orderDoc.paymentStatus,
     });
   } catch (error) {
     console.error("Error updating item status:", error);
@@ -400,8 +489,205 @@ const updateItemStatus = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────
+// APPROVE RETURN FOR SPECIFIC ITEM
+// ─────────────────────────────────────────────
+const approveItemReturn = async (req, res) => {
+  try {
+    const { orderId, itemId } = req.params;
 
+    const orderDoc = await Order.findById(orderId);
+    if (!orderDoc) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
 
+    const item = orderDoc.orderedItem.id(itemId);
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Item not found in order",
+      });
+    }
+
+    if (item.status !== "Return Requested") {
+      return res.status(400).json({
+        success: false,
+        message: "Item does not have a pending return request",
+      });
+    }
+
+    item.status = "Return Approved";
+    item.paymentStatus = "Refund Approved";
+    item.returnApprovalDate = new Date();
+    item.refundAmount = calculateItemRefundAmount(item, orderDoc);
+
+    recalculateOrderPaymentStatus(orderDoc);
+
+    await orderDoc.save();
+
+    res.json({
+      success: true,
+      message: "Item return approved successfully",
+      item: item,
+      orderStatus: orderDoc.orderStatus,
+    });
+  } catch (error) {
+    console.error("Approve item return error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to approve item return",
+    });
+  }
+};
+
+// ─────────────────────────────────────────────
+// REJECT RETURN FOR SPECIFIC ITEM
+// ─────────────────────────────────────────────
+const rejectItemReturn = async (req, res) => {
+  try {
+    const { orderId, itemId } = req.params;
+
+    const orderDoc = await Order.findById(orderId);
+    if (!orderDoc) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    const item = orderDoc.orderedItem.id(itemId);
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: "Item not found in order",
+      });
+    }
+
+    if (item.status !== "Return Requested") {
+      return res.status(400).json({
+        success: false,
+        message: "Item does not have a pending return request",
+      });
+    }
+
+    item.status = "Delivered";
+    item.paymentStatus = "Paid";
+    item.returnRejectionDate = new Date();
+
+    recalculateOrderPaymentStatus(orderDoc);
+
+    await orderDoc.save();
+
+    res.json({
+      success: true,
+      message: "Item return rejected successfully",
+      item: item,
+      orderStatus: orderDoc.orderStatus,
+    });
+  } catch (error) {
+    console.error("Reject item return error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to reject item return",
+    });
+  }
+};
+
+// ─────────────────────────────────────────────
+// REFUND SPECIFIC ITEM
+// ─────────────────────────────────────────────
+const refundItem = async (req, res) => {
+  try {
+    const { orderId, itemId } = req.params;
+
+    const orderDoc = await Order.findById(orderId);
+    if (!orderDoc) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const item = orderDoc.orderedItem.id(itemId);
+    if (!item) {
+      return res.status(404).json({ success: false, message: "Item not found" });
+    }
+
+    if (item.status !== "Return Approved") {
+      return res.status(400).json({
+        success: false,
+        message: "Item must be approved for refund",
+      });
+    }
+
+    item.status = "Returned";
+    item.paymentStatus = "Refunded";
+    item.returnedDate = new Date();
+    item.refundAmount = item.price * item.quantity; 
+    item.refundDate = new Date();
+
+    await restoreStock(item);
+
+    let newTotalPrice = 0;  
+    let newFinalTotal = 0;  
+
+    for (const itm of orderDoc.orderedItem) {
+      if (itm.status === "Returned" || itm.status === "Cancelled") continue;
+
+      const productDoc = await product.findById(itm.productId);
+      if (!productDoc) continue;
+
+      let variantDoc = null;
+
+      if (itm.variantId) {
+        variantDoc = productDoc.VariantItem.find(
+          (v) => v._id.toString() === itm.variantId.toString()
+        );
+      }
+
+      if (!variantDoc && itm.ml) {
+        variantDoc = productDoc.VariantItem.find(
+          (v) => v.Ml === Number(itm.ml)
+        );
+      }
+
+      if (!variantDoc) continue;
+
+      const basePrice = variantDoc.Price;
+      const offerPrice = variantDoc.offerPrice || variantDoc.Price;
+
+      newTotalPrice += basePrice * itm.quantity;
+      newFinalTotal += offerPrice * itm.quantity;
+    }
+
+    const newDiscount = newTotalPrice - newFinalTotal;
+
+    orderDoc.totalPrice = newTotalPrice;
+    orderDoc.discount = Math.max(newDiscount, 0);
+    orderDoc.finalAmount = Math.max(newFinalTotal, 0);
+
+    recalculateOrderPaymentStatus(orderDoc);
+
+    await orderDoc.save();
+
+    return res.json({
+      success: true,
+      message: "Refund processed and totals recalculated successfully",
+      order: orderDoc,
+    });
+
+  } catch (error) {
+    console.error("Refund Item Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to process refund",
+    });
+  }
+};
+
+// ─────────────────────────────────────────────
+// STOCK RESTORE HELPER
+// ─────────────────────────────────────────────
 async function restoreStock(item) {
   try {
     const productDoc = await product.findById(item.productId);
@@ -416,14 +702,14 @@ async function restoreStock(item) {
         );
       }
 
-      if (!variant) {
+      if (!variant && typeof item.ml === "number") {
         variant = productDoc.VariantItem.find((v) => v.Ml === item.ml);
       }
 
       if (variant) {
         variant.Quantity += item.quantity;
       }
-    } else {
+    } else if (typeof productDoc.stock === "number") {
       productDoc.stock += item.quantity;
     }
 
@@ -433,152 +719,12 @@ async function restoreStock(item) {
   }
 }
 
-const approveReturnRequest = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-
-    const orderDoc = await Order.findById(orderId);
-    if (!orderDoc) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    if (orderDoc.orderStatus !== "Return Requested") {
-      return res.status(400).json({
-        success: false,
-        message: "No pending return request found for this order",
-      });
-    }
-
-    orderDoc.orderStatus = "Return Approved";
-    orderDoc.paymentStatus = "Refund Approved";
-    orderDoc.returnApprovalDate = new Date();
-
-    orderDoc.orderedItem.forEach((item) => {
-      item.status = "Return Approved";
-      item.returnApprovalDate = new Date();
-    });
-
-    await orderDoc.save();
-
-    res.json({
-      success: true,
-      message:
-        "Return approved successfully. Order is ready for refund processing.",
-      order: orderDoc,
-    });
-  } catch (error) {
-    console.error("Approve return error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
-  }
-};
-
-const rejectReturnRequest = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-
-    const orderDoc = await Order.findById(orderId);
-    if (!orderDoc) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    if (orderDoc.orderStatus !== "Return Requested") {
-      return res.status(400).json({
-        success: false,
-        message: "No pending return request found for this order",
-      });
-    }
-
-    orderDoc.orderStatus = "Delivered";
-    orderDoc.paymentStatus = "Paid";
-    orderDoc.returnRejectionDate = new Date();
-
-    orderDoc.orderedItem.forEach((item) => {
-      item.status = "Delivered";
-    });
-
-    await orderDoc.save();
-
-    res.json({
-      success: true,
-      message: "Return request rejected. Order status reverted to Delivered.",
-      order: orderDoc,
-    });
-  } catch (error) {
-    console.error("Reject return error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
-  }
-};
-
-const processRefund = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-
-    const orderDoc = await Order.findById(orderId);
-    if (!orderDoc) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    if (orderDoc.orderStatus !== "Return Approved") {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Order must be in 'Return Approved' status before processing refund",
-      });
-    }
-
-    orderDoc.orderStatus = "Returned";
-    orderDoc.paymentStatus = "Refunded";
-    orderDoc.refundDate = new Date();
-    orderDoc.refundAmount = orderDoc.finalAmount;
-
-    orderDoc.orderedItem.forEach((item) => {
-      item.status = "Returned";
-    });
-
-    for (const item of orderDoc.orderedItem) {
-      await restoreStock(item);
-    }
-
-    await orderDoc.save();
-
-    res.json({
-      success: true,
-      message: "Refund processed successfully. Stock has been restored.",
-      order: orderDoc,
-    });
-  } catch (error) {
-    console.error("Process refund error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
-  }
-};
-
 export default {
   getOrdersPage,
   getDetailPage,
   updateOrderStatus,
   updateItemStatus,
-  approveReturnRequest,
-  rejectReturnRequest,
-  processRefund,
+  approveItemReturn,
+  rejectItemReturn,
+  refundItem,
 };
