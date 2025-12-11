@@ -130,6 +130,9 @@ const registerAddress = async (req, res) => {
       });
     }
 
+        const userId = req.session.user;
+
+
     const addressCount = await Address.countDocuments({ userId });
     if (addressCount >= 5) {
       return res.status(400).json({
@@ -137,7 +140,6 @@ const registerAddress = async (req, res) => {
         message: "You can only save up to 5 addresses",
       });
     }
-    const userId = req.session.user;
     const userData = await User.findById(userId);
 
     if (!userData) {
