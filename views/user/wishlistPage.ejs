@@ -28,160 +28,158 @@
                             <% } %>
                         </div>
 
-                        <div class="mb-8">
-                            <p class="text-gray-600" id="wishlistCount">
-                                <% if (wishlistItems && wishlistItems.length > 0) { %>
-                                    <%= wishlistItems.length %> <%= wishlistItems.length === 1 ? 'item' : 'items' %> saved
-                                <% } else { %>
-                                    No items in your wishlist
-                                <% } %>
-                            </p>
-                        </div>
+                        <p class="text-gray-600 mb-8" id="wishlistCount">
+                            <% if (wishlistItems.length > 0) { %>
+                                <%= wishlistItems.length %> <%= wishlistItems.length === 1 ? "item" : "items" %> saved
+                            <% } else { %>
+                                No items in your wishlist
+                            <% } %>
+                        </p>
 
-                        <% if (wishlistItems && wishlistItems.length > 0) { %>
+                        <% if (wishlistItems.length > 0) { %>
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="wishlist-container">
-                                <% wishlistItems.forEach(item => { %>
-                                    <% const product = item.productId; %>
-                                    <% if (!product) return; %>
-                                    
-                                    <% 
-                                      let hasStock = false;
-                                      let totalStock = 0;
-                                      
-                                      if (product.VariantItem && Array.isArray(product.VariantItem) && product.VariantItem.length > 0) {
-                                        // Check if ANY variant has stock
-                                        hasStock = product.VariantItem.some(variant => variant.Quantity > 0);
-                                        // Calculate total stock across all variants
-                                        totalStock = product.VariantItem.reduce((sum, variant) => sum + (variant.Quantity || 0), 0);
-                                      } else {
-                                        // Fallback to quantity field if VariantItem doesn't exist
-                                        hasStock = product.quantity > 0;
-                                        totalStock = product.quantity || 0;
-                                      }
-                                    %>
-                                    
-                                    <div class="bg-white rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden group relative border border-gray-200" data-product-id="<%= product._id %>">
-                                        <button onclick="removeFromWishlist('<%= product._id %>')" 
-                                                class="absolute top-3 right-3 z-10 w-9 h-9 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-red-50 transition-colors">
-                                            <i class="fas fa-times text-red-600"></i>
-                                        </button>
+                                <% wishlistItems.forEach(item => { 
+                                    const product = item.productId;
+                                    if (!product) return;
 
-                                        <a href="/product/<%= product._id %>" class="block relative overflow-hidden">
-                                            <img src="<%= product.images?.[0] || '/images/placeholder.png' %>" 
-                                                 alt="<%= product.productName || 'Product' %>"
-                                                 class="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-300"
-                                                 onerror="this.src='/images/placeholder.png'">
-                                            
-                                            <% if (!hasStock) { %>
-                                                <span class="absolute top-3 left-3 bg-red-600 text-white text-xs px-3 py-1 rounded-full">
-                                                    Out of Stock
-                                                </span>
-                                            <% } else if (totalStock < 10) { %>
-                                                <span class="absolute top-3 left-3 bg-orange-500 text-white text-xs px-3 py-1 rounded-full">
-                                                    Only <%= totalStock %> left
-                                                </span>
-                                            <% } %>
+                                    // 🔥 Extract prices from VariantItem
+                                    let basePrice = 0;
+                                    let offerPrice = 0;
 
-                                            <% if (product.offerPrice && product.offerPrice < product.price) { %>
-                                                <% const discountPercent = Math.round(((product.price - product.offerPrice) / product.price) * 100); %>
-                                                <span class="absolute bottom-3 left-3 bg-green-600 text-white text-xs px-3 py-1 rounded-full font-semibold">
-                                                    <%= discountPercent %>% OFF
-                                                </span>
-                                            <% } %>
+                                    if (product.VariantItem?.length > 0) {
+                                        const baseList = product.VariantItem.map(v => v.Price);
+                                        const offerList = product.VariantItem.map(v => v.offerPrice || v.Price);
+
+                                        basePrice = Math.min(...baseList);
+                                        offerPrice = Math.min(...offerList);
+                                    }
+
+                                    // stock calc
+                                    let hasStock = false;
+                                    let totalStock = 0;
+                                    if (product.VariantItem?.length > 0) {
+                                        hasStock = product.VariantItem.some(v => v.Quantity > 0);
+                                        totalStock = product.VariantItem.reduce((s, v) => s + (v.Quantity || 0), 0);
+                                    }
+                                %>
+
+                                <div class="bg-white rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-300 overflow-hidden group relative border border-gray-200" data-product-id="<%= product._id %>">
+                                    
+                                    <!-- REMOVE FROM WISHLIST BUTTON -->
+                                    <button onclick="removeFromWishlist('<%= product._id %>')" 
+                                            class="absolute top-3 right-3 z-10 w-9 h-9 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-red-50 transition-colors">
+                                        <i class="fas fa-times text-red-600"></i>
+                                    </button>
+
+                                    <!-- Product Image -->
+                                    <a href="/product/<%= product._id %>" class="block relative overflow-hidden">
+                                        <img src="<%= product.images?.[0] || '/images/placeholder.png' %>" 
+                                             class="w-full h-64 object-cover group-hover:scale-110 transition-transform duration-300">
+
+                                        <% if (!hasStock) { %>
+                                            <span class="absolute top-3 left-3 bg-red-600 text-white text-xs px-3 py-1 rounded-full">Out of Stock</span>
+                                        <% } else if (totalStock < 10) { %>
+                                            <span class="absolute top-3 left-3 bg-orange-500 text-white text-xs px-3 py-1 rounded-full">
+                                                Only <%= totalStock %> left
+                                            </span>
+                                        <% } %>
+
+                                        <!-- 🔥 Discount Badge (fixed) -->
+                                        <% if (offerPrice < basePrice) { 
+                                            const discountPercent = Math.round(((basePrice - offerPrice) / basePrice) * 100);
+                                        %>
+                                            <span class="absolute bottom-3 left-3 bg-green-600 text-white text-xs px-3 py-1 rounded-full font-semibold">
+                                                <%= discountPercent %>% OFF
+                                            </span>
+                                        <% } %>
+                                    </a>
+
+                                    <!-- Product Content -->
+                                    <div class="p-4">
+                                        <a href="/product/<%= product._id %>">
+                                            <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2 hover:text-red-600 transition-colors">
+                                                <%= product.productName %>
+                                            </h3>
                                         </a>
 
-                                        <div class="p-4">
-                                            <a href="/product/<%= product._id %>" class="block">
-                                                <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2 hover:text-red-600 transition-colors">
-                                                    <%= product.productName || 'Product' %>
-                                                </h3>
-                                            </a>
-
-                                            <% if (product.brand) { %>
-                                                <p class="text-sm text-gray-500 mb-3">
-                                                    <%= product.brand.name || product.brand %>
-                                                </p>
-                                            <% } %>
-
-                                            <div class="mb-4">
-                                                <% if (product.offerPrice && product.offerPrice < product.price) { %>
-                                                    <div class="flex items-center gap-2">
-                                                        <span class="text-2xl font-bold text-gray-900">₹<%= product.offerPrice.toFixed(2) %></span>
-                                                        <span class="text-sm text-gray-500 line-through">₹<%= product.price.toFixed(2) %></span>
-                                                    </div>
-                                                <% } else { %>
-                                                    <span class="text-2xl font-bold text-gray-900">₹<%= product.price.toFixed(2) %></span>
-                                                <% } %>
-                                            </div>
-
-                                            <div class="flex gap-2">
-                                                <% if (hasStock) { %>
-                                                    <button onclick="moveToCart('<%= product._id %>')" 
-                                                            class="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700 transition-colors font-medium">
-                                                        <i class="fas fa-shopping-cart mr-2"></i>Move to Cart
-                                                    </button>
-                                                <% } else { %>
-                                                    <button disabled 
-                                                            class="flex-1 bg-gray-300 text-gray-600 py-2 px-4 rounded-lg cursor-not-allowed font-medium">
-                                                        Out of Stock
-                                                    </button>
-                                                <% } %>
-                                            </div>
-
-                                            <p class="text-xs text-gray-400 mt-3">
-                                                <i class="far fa-clock mr-1"></i>
-                                                Added <%= new Date(item.addedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %>
+                                        <% if (product.brand) { %>
+                                            <p class="text-sm text-gray-500 mb-3">
+                                                <%= product.brand.name || product.brand %>
                                             </p>
+                                        <% } %>
+
+                                        <!-- 🔥 FIXED PRICE DISPLAY -->
+                                        <div class="mb-4">
+                                            <% if (offerPrice < basePrice) { %>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-2xl font-bold text-gray-900">₹<%= offerPrice.toFixed(2) %></span>
+                                                    <span class="text-sm text-gray-500 line-through">₹<%= basePrice.toFixed(2) %></span>
+                                                </div>
+                                            <% } else { %>
+                                                <span class="text-2xl font-bold text-gray-900">₹<%= basePrice.toFixed(2) %></span>
+                                            <% } %>
                                         </div>
+
+                                        <!-- Move to Cart Button -->
+                                        <div class="flex gap-2">
+                                            <% if (hasStock) { %>
+                                                <button onclick="moveToCart('<%= product._id %>')" 
+                                                        class="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors font-medium">
+                                                    <i class="fas fa-shopping-cart mr-2"></i>Move to Cart
+                                                </button>
+                                            <% } else { %>
+                                                <button disabled class="flex-1 bg-gray-300 text-gray-600 py-2 rounded-lg cursor-not-allowed font-medium">
+                                                    Out of Stock
+                                                </button>
+                                            <% } %>
+                                        </div>
+
+                                        <p class="text-xs text-gray-400 mt-3">
+                                            <i class="far fa-clock mr-1"></i>
+                                            Added <%= new Date(item.addedAt).toLocaleDateString('en-US') %>
+                                        </p>
                                     </div>
+                                </div>
+
                                 <% }) %>
                             </div>
 
+                            <!-- Pagination -->
                             <% if (totalPage > 1) { %>
-                            <div class="flex justify-center items-center gap-4 mt-12">
-                                <button onclick="changePage(<%= page - 1 %>)" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium" <%= page <= 1 ? 'disabled' : '' %>>
-                                    <i class="fas fa-chevron-left mr-1"></i> Previous
-                                </button>
+                                <div class="flex justify-center items-center gap-4 mt-12">
+                                    <button onclick="changePage(<%= page - 1 %>)" class="px-4 py-2 bg-gray-200 rounded-lg" <%= page <= 1 ? 'disabled' : '' %>>
+                                        <i class="fas fa-chevron-left mr-1"></i> Previous
+                                    </button>
 
-                                <div class="flex items-center gap-2">
-                                    <% for(let i = 1; i <= totalPage; i++) { %>
-                                        <button onclick="changePage(<%= i %>)" class="w-10 h-10 rounded-lg font-medium <%= i === page ? 'bg-red-600 text-white' : 'bg-gray-200 hover:bg-gray-300' %>">
+                                    <% for (let i = 1; i <= totalPage; i++) { %>
+                                        <button onclick="changePage(<%= i %>)"
+                                            class="w-10 h-10 rounded-lg <%= i === page ? 'bg-red-600 text-white' : 'bg-gray-200' %>">
                                             <%= i %>
                                         </button>
                                     <% } %>
-                                </div>
 
-                                <button onclick="changePage(<%= page + 1 %>)" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium" <%= page >= totalPage ? 'disabled' : '' %>>
-                                    Next <i class="fas fa-chevron-right ml-1"></i>
-                                </button>
-                            </div>
+                                    <button onclick="changePage(<%= page + 1 %>)" class="px-4 py-2 bg-gray-200 rounded-lg" <%= page >= totalPage ? 'disabled' : '' %>>
+                                        Next <i class="fas fa-chevron-right ml-1"></i>
+                                    </button>
+                                </div>
                             <% } %>
 
                         <% } else { %>
+
+                            <!-- Empty Wishlist -->
                             <div class="bg-white rounded-lg shadow-sm p-12 text-center">
-                                <div class="max-w-md mx-auto">
-                                    <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <i class="fas fa-heart text-4xl text-gray-400"></i>
-                                    </div>
-                                    <h2 class="text-2xl font-bold text-gray-900 mb-3">Your Wishlist is Empty</h2>
-                                    <p class="text-gray-600 mb-8">
-                                        Save your favorite items here and they'll be waiting for you when you're ready!
-                                    </p>
-                                    <a href="/product" class="inline-block bg-red-600 text-white px-8 py-3 rounded-lg hover:bg-red-700 transition-colors font-semibold">
-                                        <i class="fas fa-shopping-bag mr-2"></i>Start Shopping
-                                    </a>
+                                <div class="w-24 h-24 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-6">
+                                    <i class="fas fa-heart text-4xl text-gray-400"></i>
                                 </div>
+                                <h2 class="text-2xl font-bold text-gray-900 mb-3">Your Wishlist is Empty</h2>
+                                <p class="text-gray-600 mb-8">Save your favorite items and they will appear here.</p>
+                                <a href="/product" class="bg-red-600 text-white px-8 py-3 rounded-lg hover:bg-red-700 transition-colors font-semibold">
+                                    <i class="fas fa-shopping-bag mr-2"></i>Start Shopping
+                                </a>
                             </div>
 
-                            <div class="mt-12">
-                                <h2 class="text-2xl font-bold text-gray-900 mb-6">You Might Also Like</h2>
-                                <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
-                                    <div class="text-center text-gray-500 col-span-full py-8">
-                                        <p>Check out our latest collection</p>
-                                    </div>
-                                </div>
-                            </div>
                         <% } %>
+
                     </div>
                 </div>
             </div>
