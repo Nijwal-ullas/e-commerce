@@ -101,29 +101,67 @@
                         <p class="text-sm text-gray-600 mb-1">Offer price</p>
                         <div class="flex items-center gap-3">
                             <p id="price-display" class="text-3xl font-bold text-gray-900">
-                                ₹<%= product.price ? product.price.toFixed(2) : '0.00' %>
-                            </p>
-                            <% if (product.oldPrice && product.oldPrice > product.price) { %>
-                                <p class="text-lg text-gray-500 line-through">₹<%= product.oldPrice.toFixed(2) %></p>
-                                <% if (product.discount && product.discount > 0) { %>
-                                    <span class="bg-red-100 text-red-600 px-2 py-1 rounded text-sm font-medium">
-                                        <%= product.discount %>% OFF
-                                    </span>
+                                <% if (product.VariantItem && product.VariantItem.length > 0) { %>
+                                    <% const firstAvailableVariant = product.VariantItem.find(v => v.Quantity > 0) || product.VariantItem[0]; %>
+                                    ₹<%= (firstAvailableVariant.offerPrice || firstAvailableVariant.Price || 0).toFixed(2) %>
+                                <% } else { %>
+                                    ₹<%= (product.price || 0).toFixed(2) %>
                                 <% } %>
-                            <% } %>
-                        </div>
+                            </p>
+                            <div id="original-price-container">
+                                <% if (product.VariantItem && product.VariantItem.length > 0) { %>
+                                    <% const firstAvailableVariant = product.VariantItem.find(v => v.Quantity > 0) || product.VariantItem[0]; %>
+                                    <% if (firstAvailableVariant.Price && firstAvailableVariant.Price > (firstAvailableVariant.offerPrice || 0)) { %>
+                                        <p class="text-lg text-gray-500 line-through">₹<%= firstAvailableVariant.Price.toFixed(2) %></p>
+                                        <% 
+                                            let discountPercentage = 0;
+                                            if (firstAvailableVariant.Price && firstAvailableVariant.offerPrice && firstAvailableVariant.Price > 0) {
+                                                discountPercentage = Math.round(((firstAvailableVariant.Price - firstAvailableVariant.offerPrice) / firstAvailableVariant.Price) * 100);
+                                            }
+                                        %>
+                                        <% if (discountPercentage > 0) { %>
+                                            <span class="bg-red-100 text-red-600 px-2 py-1 rounded text-sm font-medium">
+                                                <%= discountPercentage %>% OFF
+                                            </span>
+                                        <% } %>
+                                    <% } %>
+                                <% } else if (product.oldPrice && product.oldPrice > (product.price || 0)) { %>
+                                    <p class="text-lg text-gray-500 line-through">₹<%= product.oldPrice.toFixed(2) %></p>
+                                    <% 
+                                        let discountPercentage = 0;
+                                        if (product.oldPrice && product.price && product.oldPrice > 0) {
+                                            discountPercentage = Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100);
+                                        }
+                                    %>
+                                    <% if (discountPercentage > 0) { %>
+                                        <span class="bg-red-100 text-red-600 px-2 py-1 rounded text-sm font-medium">
+                                            <%= discountPercentage %>% OFF
+                                        </span>
+                                    <% } %>
+                                <% } %>
+                            </div>
+                        </div>  
                     </div>
+                    
                     <div class="mb-6">
                         <p class="text-sm font-semibold text-gray-700 mb-3">Size (ML):</p>
                         <div class="flex gap-3 flex-wrap" id="variant-container">
                             <% if (product.VariantItem && product.VariantItem.length > 0) { %>
                                 <% product.VariantItem.forEach((variant, index) => { %>
+                                    <% 
+                                        let discountPercentage = 0;
+                                        if (variant.Price && variant.offerPrice && variant.Price > 0) {
+                                            discountPercentage = Math.round(((variant.Price - variant.offerPrice) / variant.Price) * 100);
+                                        }
+                                    %>
                                     <button class="variant-btn px-4 py-2 border rounded transition text-sm 
                                         <%= variant.Quantity > 0 ? 'border-gray-300 hover:border-gray-800 hover:bg-gray-800 hover:text-white' : 'border-gray-200 bg-gray-100 text-gray-400 out-of-stock-btn' %>
                                         <%= index === 0 && variant.Quantity > 0 ? 'active border-gray-800 bg-gray-800 text-white' : '' %>"
                                             data-ml="<%= variant.Ml %>"
                                             data-quantity="<%= variant.Quantity %>"
-                                            data-price="<%= product.price %>"
+                                            data-offerprice="<%= variant.offerPrice %>"
+                                            data-price="<%= variant.Price %>"
+                                            data-discount="<%= discountPercentage %>"
                                             <%= variant.Quantity <= 0 ? 'disabled' : '' %>>
                                         <%= variant.Ml %>ml
                                         <% if (variant.Quantity <= 0) { %>
@@ -134,15 +172,41 @@
                                     </button>
                                 <% }) %>
                             <% } else { %>
-                                <button class="variant-btn px-4 py-2 border border-gray-800 bg-gray-800 text-white rounded text-sm active" data-ml="50" data-quantity="10" data-price="<%= product.price %>">50ml</button>
-                                <button class="variant-btn px-4 py-2 border border-gray-300 rounded hover:border-gray-800 hover:bg-gray-800 hover:text-white transition text-sm" data-ml="100" data-quantity="10" data-price="<%= product.price %>">100ml</button>
+                                <% 
+                                    let discountPercentage = 0;
+                                    if (product.oldPrice && product.price && product.oldPrice > 0) {
+                                        discountPercentage = Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100);
+                                    }
+                                %>
+                                <button class="variant-btn px-4 py-2 border border-gray-800 bg-gray-800 text-white rounded text-sm active" 
+                                        data-ml="50" 
+                                        data-quantity="10" 
+                                        data-offerprice="<%= product.price || 0 %>" 
+                                        data-price="<%= product.oldPrice || 0 %>"
+                                        data-discount="<%= discountPercentage %>">
+                                    50ml
+                                    <% if (discountPercentage > 0) { %>
+                                        <span class="block text-xs text-red-600 font-medium"><%= discountPercentage %>% OFF</span>
+                                    <% } %>
+                                </button>
+                                <button class="variant-btn px-4 py-2 border border-gray-300 rounded hover:border-gray-800 hover:bg-gray-800 hover:text-white transition text-sm" 
+                                        data-ml="100" 
+                                        data-quantity="10" 
+                                        data-offerprice="<%= product.price || 0 %>" 
+                                        data-price="<%= product.oldPrice || 0 %>"
+                                        data-discount="<%= discountPercentage %>">
+                                    100ml
+                                    <% if (discountPercentage > 0) { %>
+                                        <span class="block text-xs text-red-600 font-medium"><%= discountPercentage %>% OFF</span>
+                                    <% } %>
+                                </button>
                             <% } %>
                         </div>
                         <p id="stock-info" class="text-xs mt-2">
                             <% if (product.VariantItem && product.VariantItem.length > 0) { %>
-                                <% const firstVariant = product.VariantItem[0]; %>
-                                <% if (firstVariant.Quantity > 0) { %>
-                                    <span class="text-green-600"><%= firstVariant.Quantity %> pieces in stock</span>
+                                <% const firstAvailableVariant = product.VariantItem.find(v => v.Quantity > 0) || product.VariantItem[0]; %>
+                                <% if (firstAvailableVariant.Quantity > 0) { %>
+                                    <span class="text-green-600"><%= firstAvailableVariant.Quantity %> pieces in stock</span>
                                 <% } else { %>
                                     <span class="text-red-600">Out of Stock</span>
                                 <% } %>
@@ -266,6 +330,13 @@
                     <h2 class="text-2xl font-bold text-center mb-8">Related Products</h2>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         <% relatedProducts.forEach(relatedProduct => { %>
+                            <% 
+                                // Get the first variant for price display
+                                const relatedFirstVariant = relatedProduct.VariantItem && relatedProduct.VariantItem[0];
+                                const relatedOfferPrice = relatedFirstVariant ? (relatedFirstVariant.offerPrice || relatedFirstVariant.Price || 0) : 0;
+                                const relatedOriginalPrice = relatedFirstVariant ? (relatedFirstVariant.Price || 0) : 0;
+                                const hasDiscount = relatedOriginalPrice > 0 && relatedOriginalPrice > relatedOfferPrice;
+                            %>
                             <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 product-card group">
                                 <a href="/product/<%= relatedProduct._id %>" class="block">
                                     <div class="relative h-64 bg-gray-50 flex items-center justify-center overflow-hidden rounded-t-lg">
@@ -273,10 +344,18 @@
                                              alt="<%= relatedProduct.productName %>" 
                                              class="h-full w-full object-contain group-hover:scale-105 transition duration-300">
                                         
-                                        <% if (relatedProduct.discount > 0) { %>
-                                            <div class="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-xs font-medium">
-                                                <%= Math.min(100, Math.max(0, relatedProduct.discount)) %>% OFF
-                                            </div>
+                                        <% if (hasDiscount) { %>
+                                          <%
+                                            let discountPercentage = 0;
+                                            if (relatedOriginalPrice > 0 && relatedOfferPrice > 0) {
+                                                discountPercentage = Math.round(((relatedOriginalPrice - relatedOfferPrice) / relatedOriginalPrice) * 100);
+                                            }
+                                          %>
+                                          <% if (discountPercentage > 0) { %>
+                                            <span class="absolute top-2 left-2 bg-red-100 text-red-600 px-2 py-1 rounded text-sm font-medium">
+                                               <%= discountPercentage %>% OFF
+                                            </span>
+                                          <% } %>
                                         <% } %>
                                         
                                         <% const isInStock = relatedProduct.VariantItem && relatedProduct.VariantItem.some(v => v.Quantity > 0); %>
@@ -293,9 +372,9 @@
                                         </h3>
                                         
                                         <div class="flex items-center gap-2 mb-2">
-                                            <p class="text-red-600 font-bold text-lg">₹<%= relatedProduct.price.toFixed(2) %></p>
-                                            <% if (relatedProduct.oldPrice && relatedProduct.oldPrice > relatedProduct.price) { %>
-                                                <p class="text-gray-500 line-through text-sm">₹<%= relatedProduct.oldPrice.toFixed(2) %></p>
+                                            <p class="text-red-600 font-bold text-lg">₹<%= relatedOfferPrice.toFixed(2) %></p>
+                                            <% if (hasDiscount) { %>
+                                                <p class="text-gray-500 line-through text-sm">₹<%= relatedOriginalPrice.toFixed(2) %></p>
                                             <% } %>
                                         </div>
                                         
@@ -487,157 +566,223 @@
                 document.getElementById('descriptionTab').classList.add('border-gray-800');
             }
         }
-async function toggleWishlist() {
-    try {
-        const wishlistBtn = document.getElementById('wishlist-btn');
-        const heartIcon = wishlistBtn.querySelector('i');
-        
-        const currentWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
-        const isCurrentlyInWishlist = currentWishlist.includes(productId);
-        
-        if (!isCurrentlyInWishlist) {
-            heartIcon.classList.remove('far');
-            heartIcon.classList.add('fas');
-            wishlistBtn.classList.add('text-red-500');
+
+        function updatePriceDisplay(offerPrice, originalPrice, discountPercentage) {
+            const priceDisplay = document.getElementById('price-display');
+            const originalPriceContainer = document.getElementById('original-price-container');
             
-            const response = await axios.post('/wishlist/add', {
-                productId: productId
+            // Update current price
+            priceDisplay.innerHTML = `₹${offerPrice.toFixed(2)}`;
+            
+            // Update original price and discount badge
+            if (originalPrice > offerPrice && discountPercentage > 0) {
+                originalPriceContainer.innerHTML = `
+                    <p class="text-lg text-gray-500 line-through">₹${originalPrice.toFixed(2)}</p>
+                    <span class="bg-red-100 text-red-600 px-2 py-1 rounded text-sm font-medium">
+                        ${discountPercentage}% OFF
+                    </span>
+                `;
+            } else {
+                originalPriceContainer.innerHTML = '';
+            }
+        }
+
+        function initializeVariantSelection() {
+            const variantButtons = document.querySelectorAll('.variant-btn');
+            
+            // Find first available variant to set as default
+            variantButtons.forEach((button) => {
+                if (parseInt(button.dataset.quantity) > 0 && !selectedVariant) {
+                    selectedVariant = {
+                        ml: button.dataset.ml,
+                        quantity: parseInt(button.dataset.quantity),
+                        offerPrice: parseFloat(button.dataset.offerprice),
+                        originalPrice: parseFloat(button.dataset.price),
+                        discount: parseInt(button.dataset.discount)
+                    };
+                    
+                    // Set initial price display
+                    updatePriceDisplay(
+                        selectedVariant.offerPrice, 
+                        selectedVariant.originalPrice, 
+                        selectedVariant.discount
+                    );
+                    
+                    // Update stock info
+                    const stockInfo = document.getElementById('stock-info');
+                    stockInfo.innerHTML = `<span class="text-green-600">${selectedVariant.quantity} pieces in stock</span>`;
+                }
             });
             
-            if (response.data.success) {
-                currentWishlist.push(productId);
-                localStorage.setItem('userWishlist', JSON.stringify(currentWishlist));
+            // Add click event listeners to all variant buttons
+            variantButtons.forEach((button) => {
+                button.addEventListener('click', function() {
+                    if (this.disabled) return;
+                    
+                    // Remove active class from all buttons
+                    variantButtons.forEach(btn => {
+                        btn.classList.remove('active', 'border-gray-800', 'bg-gray-800', 'text-white');
+                        if (!btn.disabled) {
+                            btn.classList.add('border-gray-300', 'bg-white', 'text-gray-800');
+                        }
+                    });
+                    
+                    // Add active class to clicked button
+                    this.classList.remove('border-gray-300', 'bg-white', 'text-gray-800');
+                    this.classList.add('active', 'border-gray-800', 'bg-gray-800', 'text-white');
+                    
+                    // Update selected variant
+                    selectedVariant = {
+                        ml: this.dataset.ml,
+                        quantity: parseInt(this.dataset.quantity),
+                        offerPrice: parseFloat(this.dataset.offerprice),
+                        originalPrice: parseFloat(this.dataset.price),
+                        discount: parseInt(this.dataset.discount)
+                    };
+                    
+                    // Update price display
+                    updatePriceDisplay(
+                        selectedVariant.offerPrice, 
+                        selectedVariant.originalPrice, 
+                        selectedVariant.discount
+                    );
+                    
+                    // Update stock information
+                    const stockInfo = document.getElementById('stock-info');
+                    if (selectedVariant.quantity > 0) {
+                        stockInfo.innerHTML = `<span class="text-green-600">${selectedVariant.quantity} pieces in stock</span>`;
+                    } else {
+                        stockInfo.innerHTML = `<span class="text-red-600">Out of Stock</span>`;
+                    }
+                    
+                    // Reset quantity if it exceeds available stock
+                    const qtyInput = document.getElementById('quantity');
+                    if (parseInt(qtyInput.value) > selectedVariant.quantity) {
+                        qtyInput.value = Math.min(selectedVariant.quantity, 10);
+                        selectedQuantity = parseInt(qtyInput.value);
+                    }
+                    
+                    // Update cart buttons
+                    updateAddToCartButton();
+                });
+            });
+        }
+
+        async function toggleWishlist() {
+            try {
+                const wishlistBtn = document.getElementById('wishlist-btn');
+                const heartIcon = wishlistBtn.querySelector('i');
                 
-                window.dispatchEvent(new CustomEvent('wishlistUpdated', {
-                    detail: { productId, action: 'added' }
-                }));
+                const currentWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
+                const isCurrentlyInWishlist = currentWishlist.includes(productId);
                 
-                showAlert.success('Added to wishlist!');
+                if (!isCurrentlyInWishlist) {
+                    heartIcon.classList.remove('far');
+                    heartIcon.classList.add('fas');
+                    wishlistBtn.classList.add('text-red-500');
+                    
+                    const response = await axios.post('/wishlist/add', {
+                        productId: productId
+                    });
+                    
+                    if (response.data.success) {
+                        currentWishlist.push(productId);
+                        localStorage.setItem('userWishlist', JSON.stringify(currentWishlist));
+                        
+                        window.dispatchEvent(new CustomEvent('wishlistUpdated', {
+                            detail: { productId, action: 'added' }
+                        }));
+                        
+                        showAlert.success('Added to wishlist!');
+                    } else {
+                        heartIcon.classList.remove('fas');
+                        heartIcon.classList.add('far');
+                        wishlistBtn.classList.remove('text-red-500');
+                        showAlert.error(response.data.message || 'Failed to add to wishlist');
+                    }
+                } else {
+                    heartIcon.classList.remove('fas');
+                    heartIcon.classList.add('far');
+                    wishlistBtn.classList.remove('text-red-500');
+                    
+                    const response = await axios.delete(`/wishlist/remove/${productId}`);
+                    
+                    if (response.data.success) {
+                        const updatedWishlist = currentWishlist.filter(id => id !== productId);
+                        localStorage.setItem('userWishlist', JSON.stringify(updatedWishlist));
+                        
+                        window.dispatchEvent(new CustomEvent('wishlistUpdated', {
+                            detail: { productId, action: 'removed' }
+                        }));
+                        
+                        showAlert.success('Removed from wishlist!');
+                    } else {
+                        heartIcon.classList.remove('far');
+                        heartIcon.classList.add('fas');
+                        wishlistBtn.classList.add('text-red-500');
+                        showAlert.error(response.data.message || 'Failed to remove from wishlist');
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating wishlist:', error);
+                
+                if (error.response?.status === 401) {
+                    showAlert.warning('Please login to manage your wishlist');
+                } else {
+                    showAlert.error('Error updating wishlist');
+                }
+                
+                const wishlistBtn = document.getElementById('wishlist-btn');
+                const heartIcon = wishlistBtn.querySelector('i');
+                heartIcon.classList.remove('fas', 'far');
+                heartIcon.classList.add('far');
+                wishlistBtn.classList.remove('text-red-500');
+            }
+        }
+
+        async function checkInitialWishlistStatus() {
+            try {
+                const localWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
+                const isInLocalWishlist = localWishlist.includes(productId);
+                
+                if (isInLocalWishlist) {
+                    updateWishlistUI(true);
+                }
+                
+                const response = await axios.get(`/wishlist/check/${productId}`);
+                
+                if (response.data.success) {
+                    const isInWishlist = response.data.inWishlist;
+                    updateWishlistUI(isInWishlist);
+                    
+                    if (isInWishlist && !isInLocalWishlist) {
+                        localWishlist.push(productId);
+                        localStorage.setItem('userWishlist', JSON.stringify(localWishlist));
+                    } else if (!isInWishlist && isInLocalWishlist) {
+                        const updatedWishlist = localWishlist.filter(id => id !== productId);
+                        localStorage.setItem('userWishlist', JSON.stringify(updatedWishlist));
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking wishlist status:', error);
+                const localWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
+                const isInWishlist = localWishlist.includes(productId);
+                updateWishlistUI(isInWishlist);
+            }
+        }
+
+        function updateWishlistUI(isInWishlist) {
+            const wishlistBtn = document.getElementById('wishlist-btn');
+            const heartIcon = wishlistBtn.querySelector('i');
+            
+            if (isInWishlist) {
+                heartIcon.classList.remove('far');
+                heartIcon.classList.add('fas');
+                wishlistBtn.classList.add('text-red-500');
             } else {
                 heartIcon.classList.remove('fas');
                 heartIcon.classList.add('far');
                 wishlistBtn.classList.remove('text-red-500');
-                showAlert.error(response.data.message || 'Failed to add to wishlist');
-            }
-        } else {
-            heartIcon.classList.remove('fas');
-            heartIcon.classList.add('far');
-            wishlistBtn.classList.remove('text-red-500');
-            
-            const response = await axios.delete(`/wishlist/remove/${productId}`);
-            
-            if (response.data.success) {
-                const updatedWishlist = currentWishlist.filter(id => id !== productId);
-                localStorage.setItem('userWishlist', JSON.stringify(updatedWishlist));
-                
-                window.dispatchEvent(new CustomEvent('wishlistUpdated', {
-                    detail: { productId, action: 'removed' }
-                }));
-                
-                showAlert.success('Removed from wishlist!');
-            } else {
-                heartIcon.classList.remove('far');
-                heartIcon.classList.add('fas');
-                wishlistBtn.classList.add('text-red-500');
-                showAlert.error(response.data.message || 'Failed to remove from wishlist');
-            }
-        }
-    } catch (error) {
-        console.error('Error updating wishlist:', error);
-        
-        if (error.response?.status === 401) {
-            showAlert.warning('Please login to manage your wishlist');
-        } else {
-            showAlert.error('Error updating wishlist');
-        }
-        
-        const wishlistBtn = document.getElementById('wishlist-btn');
-        const heartIcon = wishlistBtn.querySelector('i');
-        heartIcon.classList.remove('fas', 'far');
-        heartIcon.classList.add('far');
-        wishlistBtn.classList.remove('text-red-500');
-    }
-}
-
-async function checkInitialWishlistStatus() {
-    try {
-        const localWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
-        const isInLocalWishlist = localWishlist.includes(productId);
-        
-        if (isInLocalWishlist) {
-            updateWishlistUI(true);
-        }
-        
-        const response = await axios.get(`/wishlist/check/${productId}`);
-        
-        if (response.data.success) {
-            const isInWishlist = response.data.inWishlist;
-            updateWishlistUI(isInWishlist);
-            
-            if (isInWishlist && !isInLocalWishlist) {
-                localWishlist.push(productId);
-                localStorage.setItem('userWishlist', JSON.stringify(localWishlist));
-            } else if (!isInWishlist && isInLocalWishlist) {
-                const updatedWishlist = localWishlist.filter(id => id !== productId);
-                localStorage.setItem('userWishlist', JSON.stringify(updatedWishlist));
-            }
-        }
-    } catch (error) {
-        console.error('Error checking wishlist status:', error);
-        const localWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
-        const isInWishlist = localWishlist.includes(productId);
-        updateWishlistUI(isInWishlist);
-    }
-}
-
-function updateWishlistUI(isInWishlist) {
-    const wishlistBtn = document.getElementById('wishlist-btn');
-    const heartIcon = wishlistBtn.querySelector('i');
-    
-    if (isInWishlist) {
-        heartIcon.classList.remove('far');
-        heartIcon.classList.add('fas');
-        wishlistBtn.classList.add('text-red-500');
-    } else {
-        heartIcon.classList.remove('fas');
-        heartIcon.classList.add('far');
-        wishlistBtn.classList.remove('text-red-500');
-    }
-}
-
-window.addEventListener('wishlistUpdated', function(event) {
-    const { productId: updatedProductId, action } = event.detail;
-    
-    if (updatedProductId === productId) {
-        if (action === 'added') {
-            updateWishlistUI(true);
-        } else if (action === 'removed') {
-            updateWishlistUI(false);
-        }
-    }
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    initializeVariantSelection();
-    updateAddToCartButton();
-    checkInitialWishlistStatus();
-    
-    document.getElementById('wishlist-btn').addEventListener('click', toggleWishlist);
-});
-
-        async function checkInitialWishlistStatus() {
-            try {
-                const response = await axios.get(`/wishlist/check/${productId}`);
-                
-                if (response.data.success && response.data.inWishlist) {
-                    const wishlistBtn = document.getElementById('wishlist-btn');
-                    const heartIcon = wishlistBtn.querySelector('i');
-                    heartIcon.classList.remove('far');
-                    heartIcon.classList.add('fas');
-                    wishlistBtn.classList.add('text-red-500');
-                }
-            } catch (error) {
-                console.error('Error checking wishlist status:', error);
             }
         }
 
@@ -647,124 +792,82 @@ document.addEventListener('DOMContentLoaded', function() {
             checkInitialWishlistStatus();
             
             document.getElementById('wishlist-btn').addEventListener('click', toggleWishlist);
-        });
-
-        function initializeVariantSelection() {
-            const variantButtons = document.querySelectorAll('.variant-btn');
             
-            variantButtons.forEach((button, index) => {
-                if (parseInt(button.dataset.quantity) > 0 && !selectedVariant) {
-                    selectedVariant = {
-                        ml: button.dataset.ml,
-                        quantity: parseInt(button.dataset.quantity),
-                        price: parseFloat(button.dataset.price)
-                    };
-                }
-                
-                button.addEventListener('click', function() {
-                    if (this.disabled) return;
-                    
-                    variantButtons.forEach(btn => {
-                        btn.classList.remove('active', 'border-gray-800', 'bg-gray-800', 'text-white');
-                        if (!btn.disabled) {
-                            btn.classList.add('border-gray-300', 'bg-white', 'text-gray-800');
-                        }
-                    });
-                    
-                    this.classList.remove('border-gray-300', 'bg-white', 'text-gray-800');
-                    this.classList.add('active', 'border-gray-800', 'bg-gray-800', 'text-white');
-                    
-                    selectedVariant = {
-                        ml: this.dataset.ml,
-                        quantity: parseInt(this.dataset.quantity),
-                        price: parseFloat(this.dataset.price)
-                    };
-                    
-                    const stockInfo = document.getElementById('stock-info');
-                    if (selectedVariant.quantity > 0) {
-                        stockInfo.innerHTML = `<span class="text-green-600">${selectedVariant.quantity} pieces in stock</span>`;
-                    } else {
-                        stockInfo.innerHTML = `<span class="text-red-600">Out of Stock</span>`;
-                    }
-                    
-                    const qtyInput = document.getElementById('quantity');
-                    if (parseInt(qtyInput.value) > selectedVariant.quantity) {
-                        qtyInput.value = Math.min(selectedVariant.quantity, 10);
-                        selectedQuantity = parseInt(qtyInput.value);
-                    }
-                    
-                    updateAddToCartButton();
-                });
+            // Initialize elevate zoom
+            $("#mainImage").elevateZoom({
+                zoomType: "lens",
+                lensShape: "round",
+                lensSize: 200
             });
-        }
-
-async function addToCart(isBuyNow = false) {
-    if (!selectedVariant || selectedVariant.quantity <= 0) {
-        showAlert.warning('Please select a valid variant');
-        return;
-    }
-
-    const quantity = parseInt(document.getElementById('quantity').value);
-
-    if (isBuyNow) {
-        const buyNowBtn = document.getElementById('buy-now-btn');
-        buyNowBtn.innerHTML = '🔄 Processing...';
-        buyNowBtn.disabled = true;
-
-        try {
-            const response = await axios.post(`/buy-now/${productId}`, {  
-                quantity: quantity,
-                variantMl: selectedVariant.ml
-            });
-
-            if (response.data.success) {
-                window.location.href = "/checkout";
-                return;
-            }
-
-            if (response.data.redirect) {
-                window.location.href = response.data.redirect;
-                return;
-            }
-
-            showAlert.error(response.data.message || 'Failed to Buy Now');
-        } catch (err) {
-            console.error("Buy Now error:", err);
-            showAlert.error("Error processing Buy Now request");
-        }
-
-        buyNowBtn.innerHTML = '⚡ Buy Now';
-        buyNowBtn.disabled = false;
-        return;
-    }
-    
-    const addToCartBtn = document.getElementById('add-to-cart-btn');
-    addToCartBtn.innerHTML = '🔄 Adding...';
-    addToCartBtn.disabled = true;
-
-    try {
-        const response = await axios.post(`/cart/${productId}`, {
-            quantity: quantity,
-            variantMl: selectedVariant.ml
         });
 
-        if (response.data.success) {
-            showAlert.success('Product added to cart!');
-            setTimeout(() => {
-                window.location.href = '/cart';
-            }, 1500);
-        } else {
-            showAlert.error(response.data.message || 'Failed to add to cart');
-            addToCartBtn.innerHTML = '🛒 Add to cart';
-            addToCartBtn.disabled = false;
+        async function addToCart(isBuyNow = false) {
+            if (!selectedVariant || selectedVariant.quantity <= 0) {
+                showAlert.warning('Please select a valid variant');
+                return;
+            }
+
+            const quantity = parseInt(document.getElementById('quantity').value);
+
+            if (isBuyNow) {
+                const buyNowBtn = document.getElementById('buy-now-btn');
+                buyNowBtn.innerHTML = '🔄 Processing...';
+                buyNowBtn.disabled = true;
+
+                try {
+                    const response = await axios.post(`/buy-now/${productId}`, {  
+                        quantity: quantity,
+                        variantMl: selectedVariant.ml
+                    });
+
+                    if (response.data.success) {
+                        window.location.href = "/checkout";
+                        return;
+                    }
+
+                    if (response.data.redirect) {
+                        window.location.href = response.data.redirect;
+                        return;
+                    }
+
+                    showAlert.error(response.data.message || 'Failed to Buy Now');
+                } catch (err) {
+                    console.error("Buy Now error:", err);
+                    showAlert.error("Error processing Buy Now request");
+                }
+
+                buyNowBtn.innerHTML = '⚡ Buy Now';
+                buyNowBtn.disabled = false;
+                return;
+            }
+            
+            const addToCartBtn = document.getElementById('add-to-cart-btn');
+            addToCartBtn.innerHTML = '🔄 Adding...';
+            addToCartBtn.disabled = true;
+
+            try {
+                const response = await axios.post(`/cart/${productId}`, {
+                    quantity: quantity,
+                    variantMl: selectedVariant.ml
+                });
+
+                if (response.data.success) {
+                    showAlert.success('Product added to cart!');
+                    setTimeout(() => {
+                        window.location.href = '/cart';
+                    }, 1500);
+                } else {
+                    showAlert.error(response.data.message || 'Failed to add to cart');
+                    addToCartBtn.innerHTML = '🛒 Add to cart';
+                    addToCartBtn.disabled = false;
+                }
+            } catch (err) {
+                console.error("Add to cart error:", err);
+                showAlert.error("Error adding to cart");
+                addToCartBtn.innerHTML = '🛒 Add to cart';
+                addToCartBtn.disabled = false;
+            }
         }
-    } catch (err) {
-        console.error("Add to cart error:", err);
-        showAlert.error("Error adding to cart");
-        addToCartBtn.innerHTML = '🛒 Add to cart';
-        addToCartBtn.disabled = false;
-    }
-}
 
         async function addRelatedToCart(relatedProductId) {
             try {
@@ -807,14 +910,6 @@ async function addToCart(isBuyNow = false) {
                 btn.disabled = false;
             }
         }
-
-        $(document).ready(function () {
-            $("#mainImage").elevateZoom({
-                zoomType: "lens",
-                lensShape: "round",
-                lensSize: 200
-            });
-        });
     </script>
 </body>
 </html>
