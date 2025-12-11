@@ -50,17 +50,35 @@ const OrdersSchema = new Schema(
           default: "Pending",
         },
 
+        paymentStatus: {
+          type: String,
+          enum: [
+            "Pending",
+            "Paid",
+            "Failed",
+            "Refunded",
+            "Refund Processing",
+            "Refund Approved",
+            "Return Requested",
+          ],
+          default: "Pending",
+        },
+
         cancellationReason: { type: String },
         returnReason: { type: String },
         returnRequestDate: { type: Date },
         returnApprovalDate: { type: Date },
+        returnRejectionDate: { type: Date },
+        returnedDate: { type: Date },
+        refundAmount: { type: Number }, 
+        refundDate: { type: Date },
         deliveredDate: { type: Date },
       },
     ],
 
     payment: {
       type: String,
-      enum: ["COD", "Cod"],
+      enum: ["COD", "Cod", "razorpay" , "Razorpay", "Wallet", "wallet"],
       required: true,
     },
 
@@ -106,20 +124,10 @@ const OrdersSchema = new Schema(
         "Shipped",
         "Delivered",
         "Cancelled",
-        "Return Requested", 
-        "Return Approved", 
-        "Returned", 
-        "Return Rejected", 
       ],
       default: "Pending",
     },
 
-    returnRequestDate: { type: Date },
-    returnApprovalDate: { type: Date },
-    returnRejectionDate: { type: Date },
-    returnReason: { type: String },
-    refundAmount: { type: Number },
-    refundDate: { type: Date },
     metadata: {
       type: Object,
       default: {},

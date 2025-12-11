@@ -4,8 +4,6 @@ const ProductSchema = new mongoose.Schema(
   {
     productName: { type: String, required: true },
     description: { type: String },
-    price: { type: Number, required: true },
-    oldPrice: { type: Number },
     discount: { type: Number, default: 0 },
     category: { type: mongoose.Schema.Types.ObjectId, ref: "Categories" },
     brand: { type: mongoose.Schema.Types.ObjectId, ref: "Brand" },
@@ -14,6 +12,8 @@ const ProductSchema = new mongoose.Schema(
     VariantItem: [{
       Ml: { type: Number, required: true },
       Quantity: { type: Number, required: true, min: 0 },
+      offerPrice: { type: Number, required: true },
+      Price: { type: Number },
     }],
     cloudinaryPublicIds: [{
   type: String

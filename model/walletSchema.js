@@ -1,18 +1,25 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const { Schema, ObjectId } = mongoose;
 
 const WalletSchema = new Schema({
-  Balance: { type: String },
+  Balance: { 
+    type: Number, 
+    default: 0 
+  },
   Wallet_transaction: [{
-     Amount: { type: String },
-     CreatedAt: { type: Date },
-     Type: { type: String, enum: [ 'credit', 'debit' ] },
+     Amount: { type: Number },
+     CreatedAt: { type: Date, default: Date.now }, 
+     Type: { type: String, enum: ['credit', 'debit'] },
   }],
-  UserId: { type: Schema.Types.ObjectId },
+  UserId: { 
+    type: Schema.Types.ObjectId,
+    ref: 'User' 
+  },
+}, {
+  timestamps: true 
 });
 
 const Wallet = mongoose.model('Wallet', WalletSchema);
 
 export default Wallet;
-
