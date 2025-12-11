@@ -17,8 +17,7 @@ const getWishlist = async (req, res) => {
 
     const userWishlist = await wishlist.findOne({ userId }).populate({
       path: "products.productId",
-      select:
-        "productName price oldPrice images brand category VariantItem isListed",
+      select: "productName images brand category VariantItem isListed",
     });
 
     let wishlistItems = [];
