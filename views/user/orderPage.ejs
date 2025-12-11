@@ -91,11 +91,11 @@
                 <tbody>
                   <% orders.forEach(order => { 
                      const status = order.orderStatus || "Pending";
-                     const orderShortId = order._id.toString().slice(-8).toUpperCase();
                   %>
                     <tr class="order-row border-b border-gray-100 hover:bg-gray-50">
                       <td class="py-4 px-3">
-                        <span class="order-id text-gray-800 font-medium">#<%= orderShortId %></span>
+                        <span class="order-id text-gray-800 font-medium"> #<%= order.orderId || order._id.toString().slice(-8) %>
+                      </span>
                       </td>
 
                       <td class="py-4 px-3">
