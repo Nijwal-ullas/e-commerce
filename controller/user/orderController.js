@@ -148,7 +148,7 @@ const getOrderDetails = async (req, res) => {
 
     orderDetails.status = orderDetails.orderStatus || "Pending";
     orderDetails.paymentMethod = orderDetails.payment || "COD";
-    orderDetails.deliveryCharge = 0;
+    orderDetails.deliveryCharge = (orderDetails.totalPrice-orderDetails.discount)>=500?0:50;
     orderDetails.couponApplied = orderDetails.couponId ? "Applied" : null;
 
     return res.render("user/orderDetailPage", {
@@ -175,7 +175,9 @@ const cancelOrder = async (req, res) => {
     const { orderId } = req.params;
     const { itemId, reason, cancelAll } = req.body;
 
-    const orderDoc = await Order.findOne({ _id: orderId, userId });
+    const orderDoc = await Order.findOne({ _id: orderId, userId })
+      .populate("couponId");
+    
     if (!orderDoc)
       return res
         .status(404)
@@ -187,95 +189,203 @@ const cancelOrder = async (req, res) => {
         message: `Cannot cancel order with status ${orderDoc.orderStatus}`,
       });
 
-    let cancelledAmount = 0;
-
     if (cancelAll === "true" || cancelAll === true) {
-      orderDoc.orderStatus = "Cancelled";
-      orderDoc.cancellationReason = reason || "";
-
-      for (const item of orderDoc.orderedItem) {
-        cancelledAmount += item.price * item.quantity;
-        item.status = "Cancelled";
-        item.cancellationReason = reason || "";
-        await restoreStock(item);
-      }
-
-      orderDoc.totalPrice = 0;
-      orderDoc.finalAmount = 0;
-      orderDoc.discount = 0;
-
-      await orderDoc.save();
-      return res.json({ 
-        success: true, 
-        message: "Order cancelled",
-        cancelledAmount: cancelledAmount
-      });
+      return await cancelAllItems(orderDoc, reason, res);
     }
 
-    const item = orderDoc.orderedItem.find((i) => i._id.toString() === itemId);
-    if (!item)
-      return res
-        .status(404)
-        .json({ success: false, message: "Item not found" });
-
-    if (!["Pending", "Processing"].includes(item.status))
-      return res
-        .status(400)
-        .json({ success: false, message: "Item cannot be cancelled now" });
-
-    const itemAmount = item.price * item.quantity;
-    cancelledAmount = itemAmount;
-
-    item.status = "Cancelled";
-    item.cancellationReason = reason || "";
-
-    await restoreStock(item);
-
-    let newTotalPrice = 0;
-    let activeItems = 0;
-
-    for (const orderItem of orderDoc.orderedItem) {
-      if (orderItem.status !== "Cancelled") {
-        newTotalPrice += orderItem.price * orderItem.quantity;
-        activeItems++;
-      }
-    }
-
-    orderDoc.totalPrice = newTotalPrice;
-    
-    const originalTotal = orderDoc.totalPrice + itemAmount;
-    let discountRatio = 1;
-    if (originalTotal > 0) {
-      discountRatio = newTotalPrice / originalTotal;
-    }
-    
-    orderDoc.discount = Math.round(orderDoc.discount * discountRatio * 100) / 100;
-    
-    orderDoc.finalAmount = orderDoc.totalPrice - orderDoc.discount;
-    
-    if (orderDoc.finalAmount < 0) orderDoc.finalAmount = 0;
-    if (orderDoc.discount < 0) orderDoc.discount = 0;
-
-    if (orderDoc.orderedItem.every((i) => i.status === "Cancelled")) {
-      orderDoc.orderStatus = "Cancelled";
-      orderDoc.totalPrice = 0;
-      orderDoc.discount = 0;
-      orderDoc.finalAmount = 0;
-    }
-
-    await orderDoc.save();
-
-    res.json({ 
-      success: true, 
-      message: "Item cancelled successfully",
-      cancelledAmount: cancelledAmount,
-      newTotal: orderDoc.finalAmount
-    });
+    return await cancelSingleItem(orderDoc, itemId, reason, res);
   } catch (error) {
     console.error("Cancel error:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+async function cancelAllItems(orderDoc, reason, res) {
+  orderDoc.orderStatus = "Cancelled";
+  orderDoc.cancellationReason = reason || "";
+
+  const cancellableStatuses = ["Pending", "Processing", "Shipped"];
+  const deliveredStatuses = ["Delivered"];
+
+  for (const item of orderDoc.orderedItem) {
+    if (cancellableStatuses.includes(item.status)) {
+      item.status = "Cancelled";
+      item.cancellationReason = reason || "";
+      item.paymentStatus = "Pending";
+      await restoreStock(item); 
+    } 
+    else if (deliveredStatuses.includes(item.status)) {
+      item.cancellationReason = "Already delivered – cannot cancel";
+      item.paymentStatus = "Paid";
+    }
+  }
+
+  const remainingItems = orderDoc.orderedItem.filter(
+    (item) => deliveredStatuses.includes(item.status)
+  );
+
+  const cancelledItems = orderDoc.orderedItem.filter(
+    (item) => item.status === "Cancelled"
+  );
+
+  if (remainingItems.length === 0) {
+    orderDoc.totalPrice = 0;
+    orderDoc.discount = 0;
+    orderDoc.finalAmount = 0;
+
+    await orderDoc.save();
+    return res.json({
+      success: true,
+      message: "Order fully cancelled",
+      cancelledItemsCount: cancelledItems.length,
+      nonCancellableItemsCount: 0
+    });
+  }
+
+  let newBaseTotal = 0;
+  let newOfferTotal = 0;
+
+  for (const item of remainingItems) {
+    const productDoc = await product.findById(item.productId);
+    if (!productDoc) continue;
+
+    let variant = null;
+
+    if (item.variantId) {
+      variant = productDoc.VariantItem.find(
+        (v) => v._id.toString() === item.variantId.toString()
+      );
+    }
+    if (!variant && item.ml) {
+      variant = productDoc.VariantItem.find((v) => v.Ml === item.ml);
+    }
+    if (!variant) continue;
+
+    const basePrice = variant.Price;
+    const offerPrice = variant.offerPrice || variant.Price;
+
+    newBaseTotal += basePrice * item.quantity;
+    newOfferTotal += offerPrice * item.quantity;
+  }
+
+  const newDiscount = newBaseTotal - newOfferTotal;
+  const newFinalAmount = newOfferTotal;
+
+  orderDoc.totalPrice = newBaseTotal;
+  orderDoc.discount = Math.max(newDiscount, 0);
+  orderDoc.finalAmount = Math.max(newFinalAmount, 0);
+
+  orderDoc.orderStatus = "Delivered";
+
+  await orderDoc.save();
+
+  return res.json({
+    success: true,
+    message: "Order partially cancelled. Delivered items cannot be cancelled.",
+    cancelledItemsCount: cancelledItems.length,
+    nonCancellableItemsCount: remainingItems.length
+  });
+}
+
+
+async function cancelSingleItem(orderDoc, itemId, reason, res) {
+  const item = orderDoc.orderedItem.find((i) => i._id.toString() === itemId);
+  if (!item) return res.status(404).json({ success: false, message: "Item not found" });
+
+  if (!["Pending", "Processing"].includes(item.status)) {
+    return res.status(400).json({ 
+      success: false, 
+      message: "Item cannot be cancelled now" 
+    });
+  }
+
+  item.status = "Cancelled";
+  item.cancellationReason = reason || "";
+  item.paymentStatus = "Pending";
+
+  await restoreStock(item);
+
+  const activeItems = orderDoc.orderedItem.filter(i => i.status !== "Cancelled");
+  
+  if (activeItems.length === 0) {
+    orderDoc.orderStatus = "Cancelled";
+    orderDoc.totalPrice = 0;
+    orderDoc.discount = 0;
+    orderDoc.finalAmount = 0;
+    await orderDoc.save();
+    
+    return res.json({ 
+      success: true, 
+      message: "All items cancelled. Order marked as cancelled."
+    });
+  }
+
+  
+  let newBasePrice = 0;
+  let newTotalDiscount = 0;
+  
+  for (const activeItem of activeItems) {
+    const productDoc = await product.findById(activeItem.productId).lean();
+    if (!productDoc) continue;
+    
+    let itemOriginalPrice = activeItem.price; 
+    let itemFinalPrice = activeItem.price;
+    
+    if (productDoc.VariantItem && productDoc.VariantItem.length > 0 && activeItem.variantId) {
+      const variant = productDoc.VariantItem.find(v => 
+        v._id.toString() === activeItem.variantId.toString()
+      );
+      
+      if (variant) {
+        itemOriginalPrice = variant.Price || variant.Price || activeItem.price;
+        itemFinalPrice = variant.offerPrice || variant.Price || activeItem.price;
+      }
+    }
+    
+    const itemOriginalTotal = itemOriginalPrice * activeItem.quantity;
+    const itemFinalTotal = itemFinalPrice * activeItem.quantity;
+    const itemDiscount = itemOriginalTotal - itemFinalTotal;
+    
+    newBasePrice += itemOriginalTotal;       
+    newTotalDiscount += itemDiscount;        
+    
+    activeItem.price = itemFinalPrice;
+    activeItem.originalPrice = itemOriginalPrice;
+  }
+  
+  console.log(`Recalculated - Base Price: ${newBasePrice}, Discount: ${newTotalDiscount}`);
+  
+  let couponDiscount = 0;
+  if (orderDoc.couponId) {
+    const coupon = await coupon.findById(orderDoc.couponId);
+    if (coupon && coupon.discount) {
+      const couponDiscountRate = (coupon.discount / newBasePrice) * 100;
+      couponDiscount = (newBasePrice * couponDiscountRate) / 100;
+      newTotalDiscount += couponDiscount;
+    }
+  }
+  
+  const afterDiscount = newBasePrice - newTotalDiscount;
+  const deliveryCharge = afterDiscount >= 500 ? 0 : 50;
+  const newFinalAmount = afterDiscount + deliveryCharge;
+  
+  console.log(`After discount: ${afterDiscount}, Delivery: ${deliveryCharge}, Final: ${newFinalAmount}`);
+  
+  orderDoc.totalPrice = newBasePrice;        
+  orderDoc.discount = newTotalDiscount;     
+  orderDoc.finalAmount = newFinalAmount;     
+  
+  await orderDoc.save();
+
+  return res.json({ 
+    success: true, 
+    message: "Item cancelled successfully",
+    newBasePrice: orderDoc.totalPrice.toFixed(2),
+    newDiscount: orderDoc.discount.toFixed(2),
+    newFinalAmount: orderDoc.finalAmount.toFixed(2),
+    activeItemsCount: activeItems.length
+  });
+}
 
 
 async function restoreStock(item) {
@@ -332,65 +442,237 @@ export const downloadInvoice = async (req, res) => {
       `attachment; filename="${invoiceName}"`
     );
 
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margin: 50, size: "A4" });
     doc.pipe(res);
 
-    doc.fontSize(22).text("Rube Collection", { align: "center" }).moveDown(0.5);
-
-    doc.fontSize(14).text("INVOICE", { align: "center" }).moveDown(1);
+    doc
+      .fontSize(24)
+      .font("Helvetica-Bold")
+      .text("Rube Collection", { align: "center" })
+      .moveDown(0.3);
 
     doc
-      .fontSize(12)
-      .text(`Order ID : ${orderDoc.orderId}`)
-      .text(`Date     : ${orderDoc.createdAt.toDateString()}`)
+      .fontSize(10)
+      .font("Helvetica")
+      .text("Premium Fragrances & Perfumes", { align: "center" })
+      .moveDown(0.8);
+
+    doc
+      .fontSize(18)
+      .font("Helvetica-Bold")
+      .fillColor("#333333")
+      .text("INVOICE", { align: "center" })
       .moveDown(1);
 
-    doc.fontSize(14).text("Billing / Shipping Details:", { underline: true });
+    const orderDetailsY = doc.y;
+    const leftCol = 50;
+    const rightCol = 320;
+
+    doc
+      .fontSize(10)
+      .font("Helvetica-Bold")
+      .fillColor("#000000")
+      .text("Order ID:", leftCol, orderDetailsY, { continued: true })
+      .font("Helvetica")
+      .text(` ${orderDoc.orderId}`);
+
+    doc
+      .font("Helvetica-Bold")
+      .text("Invoice Date:", leftCol, orderDetailsY + 15, { continued: true })
+      .font("Helvetica")
+      .text(` ${orderDoc.createdAt.toLocaleDateString("en-GB")}`);
+
+    doc
+      .font("Helvetica-Bold")
+      .text("Payment Method:", rightCol, orderDetailsY)
+      .font("Helvetica")
+      .text(`${orderDoc.payment || "COD"}`, rightCol + 115, orderDetailsY);
+
+    doc
+      .font("Helvetica-Bold")
+      .text("Payment Status:", rightCol, orderDetailsY + 15)
+      .font("Helvetica")
+      .text(`${orderDoc.paymentStatus || "Pending"}`, rightCol + 115, orderDetailsY + 15);
+
+    doc.moveDown(3);
 
     const address = orderDoc?.shippingAddress?.[0] || {};
+    const billingY = doc.y;
 
     doc
       .fontSize(12)
-      .text(`Name      : ${userData?.name || "Customer"}`)
-      .text(
-        `Address   : ${address.flatNumber || ""} ${address.streetName || ""}`
-      )
-      .text(`Landmark  : ${address.landMark || ""}`)
-      .text(`City      : ${address.city || ""}`)
-      .text(`State     : ${address.state || ""}`)
-      .text(`Pincode   : ${address.pincode || ""}`)
-      .text(`Phone     : ${address.phone || ""}`)
-      .moveDown(1);
-
-    doc.fontSize(14).text("Items:", { underline: true }).moveDown(0.5);
-
-    orderDoc.orderedItem.forEach((item, i) => {
-      doc
-        .fontSize(12)
-        .text(`${i + 1}. ${item.productId.productName}`)
-        .text(`   ML: ${item.ml || "-"}`)
-        .text(`   Qty: ${item.quantity}`)
-        .text(`   Price: ₹${item.price}`)
-        .moveDown(0.5);
-    });
-
-    doc.moveDown(1);
-
-    doc
-      .fontSize(14)
-      .text("Payment Summary:", { underline: true })
+      .font("Helvetica-Bold")
+      .text("Billing & Shipping Address:", 50, billingY)
       .moveDown(0.5);
 
     doc
-      .fontSize(12)
-      .text(`Subtotal     : ₹${orderDoc.totalPrice}`)
-      .text(`Discount     : ₹${orderDoc.discount}`)
-      .text(`Final Amount : ₹${orderDoc.finalAmount}`)
-      .moveDown(2);
+      .fontSize(10)
+      .font("Helvetica")
+      .text(`${userData?.name || "Customer"}`, 50)
+      .text(`${address.flatNumber || ""} ${address.streetName || ""}`.trim(), 50)
+      .text(address.landMark ? `Landmark: ${address.landMark}` : "", 50)
+      .text(`${address.city || ""}, ${address.state || ""} - ${address.pincode || ""}`.replace(/^, | - $|^- $/, ""), 50)
+      .text(`Phone: ${address.phone || ""}`, 50)
+      .moveDown(1.5);
 
-    doc.text("Thank you for shopping with Rube Collection!", {
-      align: "center",
+    const tableTop = doc.y + 10;
+    const tableLeft = 50;
+    const tableWidth = 500;
+
+    const cols = {
+      sno: { x: tableLeft + 5, width: 35 },
+      product: { x: tableLeft + 45, width: 195 },
+      size: { x: tableLeft + 245, width: 55 },
+      qty: { x: tableLeft + 305, width: 45 },
+      price: { x: tableLeft + 355, width: 70 },
+      total: { x: tableLeft + 430, width: 70 }
+    };
+
+    doc
+      .rect(tableLeft, tableTop, tableWidth, 25)
+      .fillAndStroke("#4B5563", "#4B5563");
+
+    doc
+      .fontSize(10)
+      .font("Helvetica-Bold")
+      .fillColor("#FFFFFF")
+      .text("S.No", cols.sno.x + 5, tableTop + 8, { width: cols.sno.width - 10, align: "center" })
+      .text("Product Name", cols.product.x + 5, tableTop + 8, { width: cols.product.width - 10, align: "left" })
+      .text("Size", cols.size.x, tableTop + 8, { width: cols.size.width, align: "center" })
+      .text("Qty", cols.qty.x, tableTop + 8, { width: cols.qty.width, align: "center" })
+      .text("Price", cols.price.x, tableTop + 8, { width: cols.price.width - 5, align: "right" })
+      .text("Total", cols.total.x, tableTop + 8, { width: cols.total.width - 5, align: "right" });
+
+    let currentY = tableTop + 25;
+    doc.fillColor("#000000").font("Helvetica");
+
+    orderDoc.orderedItem.forEach((item, i) => {
+      const rowHeight = 30;
+      
+      if (i % 2 === 0) {
+        doc
+          .rect(tableLeft, currentY, tableWidth, rowHeight)
+          .fillAndStroke("#F9FAFB", "#E5E7EB");
+      } else {
+        doc
+          .rect(tableLeft, currentY, tableWidth, rowHeight)
+          .stroke("#E5E7EB");
+      }
+
+      const itemTotal = (item.price * item.quantity).toFixed(2);
+      const textY = currentY + 10;
+
+      doc
+        .fontSize(9)
+        .fillColor("#000000")
+        .text(i + 1, cols.sno.x + 5, textY, { width: cols.sno.width - 10, align: "center" })
+        .text(
+          item.productId?.productName || "Product",
+          cols.product.x + 5,
+          textY,
+          { width: cols.product.width - 10, align: "left", ellipsis: true }
+        )
+        .text(
+          item.ml ? `${item.ml} ML` : "-",
+          cols.size.x,
+          textY,
+          { width: cols.size.width, align: "center" }
+        )
+        .text(
+          item.quantity.toString(),
+          cols.qty.x,
+          textY,
+          { width: cols.qty.width, align: "center" }
+        )
+        .text(
+          `Rs. ${item.price.toFixed(2)}`,
+          cols.price.x,
+          textY,
+          { width: cols.price.width - 5, align: "right" }
+        )
+        .text(
+          `Rs. ${itemTotal}`,
+          cols.total.x,
+          textY,
+          { width: cols.total.width - 5, align: "right" }
+        );
+
+      currentY += rowHeight;
     });
+
+    doc
+      .moveTo(tableLeft, currentY)
+      .lineTo(tableLeft + tableWidth, currentY)
+      .stroke("#E5E7EB");
+
+    currentY += 30;
+
+    const summaryBoxLeft = tableLeft + 300;
+    const summaryBoxWidth = 200;
+    
+    const summaryBoxTop = currentY - 5;
+    const summaryBoxHeight = orderDoc.discount && orderDoc.discount > 0 ? 115 : 90;
+    
+    doc
+      .rect(summaryBoxLeft, summaryBoxTop, summaryBoxWidth, summaryBoxHeight)
+      .fillAndStroke("#F9FAFB", "#E5E7EB");
+
+    currentY += 5;
+
+    doc
+      .fontSize(10)
+      .font("Helvetica")
+      .fillColor("#000000");
+
+    const labelX = summaryBoxLeft + 10;
+    const valueX = summaryBoxLeft + summaryBoxWidth - 10;
+    
+    doc
+      .text("Subtotal:", labelX, currentY, { width: 100, align: "left" })
+      .text(`Rs. ${orderDoc.totalPrice.toFixed(2)}`, valueX - 80, currentY, { width: 80, align: "right" });
+
+    currentY += 20;
+
+    if (orderDoc.discount && orderDoc.discount > 0) {
+      doc
+        .fillColor("#059669")
+        .text("Discount:", labelX, currentY, { width: 100, align: "left" })
+        .text(`- Rs. ${orderDoc.discount.toFixed(2)}`, valueX - 80, currentY, { width: 80, align: "right" })
+        .fillColor("#000000");
+
+      currentY += 20;
+    }
+
+    doc
+      .moveTo(summaryBoxLeft + 10, currentY + 5)
+      .lineTo(summaryBoxLeft + summaryBoxWidth - 10, currentY + 5)
+      .stroke("#9CA3AF");
+
+    currentY += 15;
+
+    doc
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .fillColor("#1F2937")
+      .text("Total Amount:", labelX, currentY, { width: 100, align: "left" })
+      .text(`Rs. ${orderDoc.finalAmount.toFixed(2)}`, valueX - 80, currentY, { width: 80, align: "right" })
+      .fillColor("#000000");
+
+    doc
+      .moveDown(4)
+      .fontSize(10)
+      .font("Helvetica-Oblique")
+      .fillColor("#6B7280")
+      .text("Thank you for shopping with Rube Collection!", { align: "center" })
+      .moveDown(0.5)
+      .fontSize(8)
+      .text("For any queries, please contact our customer support", { align: "center" });
+
+    const borderPadding = 40;
+    const borderHeight = Math.min(doc.y + 20, 750); 
+    doc
+      .rect(borderPadding, borderPadding, 515, borderHeight - borderPadding)
+      .stroke("#D1D5DB");
 
     doc.end();
   } catch (err) {
@@ -406,7 +688,7 @@ const requestOrderReturn = async (req, res) => {
       return res.status(401).json({ success: false, message: "Login first" });
 
     const { orderId } = req.params;
-    const { reason, itemId, returnAll } = req.body;
+    const { reason, itemId } = req.body;
 
     const orderDoc = await Order.findOne({ _id: orderId, userId });
     if (!orderDoc)
@@ -414,45 +696,7 @@ const requestOrderReturn = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Order not found" });
 
-    if (orderDoc.orderStatus !== "Delivered") {
-      return res.status(400).json({
-        success: false,
-        message: "Only delivered orders can be returned",
-      });
-    }
-
-    const latestDeliveryDate = orderDoc.orderedItem.reduce((latest, item) => {
-      if (item.deliveredDate && item.deliveredDate > latest) {
-        return item.deliveredDate;
-      }
-      return latest;
-    }, orderDoc.deliveredDate || orderDoc.updatedAt);
-
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    if (latestDeliveryDate < sevenDaysAgo) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Return window closed. Returns must be requested within 7 days of delivery.",
-      });
-    }
-
-    if (
-      [
-        "Return Requested",
-        "Return Approved",
-        "Return Rejected",
-        "Returned",
-      ].includes(orderDoc.orderStatus)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Return request already submitted for this order",
-      });
-    }
-
+    
     if (!reason || reason.trim() === "") {
       return res.status(400).json({
         success: false,
@@ -460,25 +704,10 @@ const requestOrderReturn = async (req, res) => {
       });
     }
 
-    if (returnAll === "true" || returnAll === true) {
-      orderDoc.orderedItem.forEach((item) => {
-        if (item.status === "Delivered") {
-          item.status = "Return Requested";
-          item.returnReason = reason.trim();
-          item.returnRequestDate = new Date();
-        }
-      });
-
-      orderDoc.orderStatus = "Return Requested";
-      orderDoc.returnRequestDate = new Date();
-      orderDoc.returnReason = reason.trim();
-
-      await orderDoc.save();
-
-      return res.json({
-        success: true,
-        message:
-          "Return request submitted for entire order. Awaiting admin approval.",
+    if (!itemId) {
+      return res.status(400).json({
+        success: false,
+        message: "Item ID is required for return request",
       });
     }
 
@@ -491,30 +720,48 @@ const requestOrderReturn = async (req, res) => {
     if (item.status !== "Delivered") {
       return res.status(400).json({
         success: false,
-        message: "Only delivered items can be returned",
+        message: `This item cannot be returned. Current status: ${item.status}. Only delivered items can be returned.`,
+      });
+    }
+
+    if (["Return Requested", "Return Approved", "Returned"].includes(item.status)) {
+      return res.status(400).json({
+        success: false,
+        message: "This item is already in return process",
+      });
+    }
+
+    const itemDeliveryDate = item.deliveredDate || orderDoc.deliveredDate || orderDoc.updatedAt;
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    if (itemDeliveryDate < sevenDaysAgo) {
+      return res.status(400).json({
+        success: false,
+        message: "Return window closed. Returns must be requested within 7 days of item delivery.",
       });
     }
 
     item.status = "Return Requested";
     item.returnReason = reason.trim();
     item.returnRequestDate = new Date();
+    item.paymentStatus = "Return Requested";
 
-    orderDoc.returnRequestDate = new Date();
-    orderDoc.orderStatus = "Return Requested";
-    orderDoc.returnReason = reason.trim();
+    
 
     await orderDoc.save();
 
     res.json({
       success: true,
-      message:
-        "Return request submitted successfully. Awaiting admin approval.",
+      message: "Return request submitted successfully. Awaiting admin approval.",
+      item: item,
     });
   } catch (error) {
     console.error("Return request error:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 export default {
   getOrder,
