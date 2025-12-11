@@ -1,7 +1,9 @@
 import express from 'express';
 import checkoutController from '../../controller/user/checkoutController.js';
+import auth from '../../middleware/auth.js'
 
 const router = express.Router();
+router.use(auth.checkUser)
 
 router.get('/checkout', checkoutController.getCheckout);
 router.post('/checkout/place-order',checkoutController.placeOrder);
