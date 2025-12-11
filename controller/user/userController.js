@@ -8,31 +8,28 @@ dotenv.config();
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{6,}$/;
-const nameRegex =/^[A-Za-z]{6,20}$/;
+const nameRegex = /^[A-Za-z]{6,20}$/;
 
-
-const aboutPage =async (req, res) =>{
+const aboutPage = async (req, res) => {
   try {
-      return res.render("user/aboutPage")
+    return res.render("user/aboutPage");
   } catch (error) {
     console.log("Error loading homepage:", error.message);
     return res.status(500).send("Internal Server Error");
   }
-}
+};
 
-
-const contactPage= async(req,res)=>{
+const contactPage = async (req, res) => {
   try {
-    return res.render("user/contact")
+    return res.render("user/contact");
   } catch (error) {
     console.log("Error loading homepage:", error.message);
     return res.status(500).send("Internal Server Error");
   }
-}
+};
 
 const loadHomePage = async (req, res) => {
   try {
-
     const categories = await category.find({ isListed: true });
 
     let newArrivalProducts = await product
@@ -47,16 +44,70 @@ const loadHomePage = async (req, res) => {
       .populate("brand")
       .lean();
 
+    const productsWithVariantData = newArrivalProducts.map((productItem) => {
+      let minOfferPrice = 0;
+      let minOriginalPrice = 0;
+      let hasStock = false;
+      let variantCount = 0;
+
+      if (productItem.VariantItem && productItem.VariantItem.length > 0) {
+        const inStockVariants = productItem.VariantItem.filter(
+          (v) => v.Quantity > 0
+        );
+        hasStock = inStockVariants.length > 0;
+        variantCount = productItem.VariantItem.length;
+
+        if (inStockVariants.length > 0) {
+          minOfferPrice = Math.min(
+            ...inStockVariants.map((v) => v.offerPrice || 0)
+          );
+
+          const originalPrices = inStockVariants.map(
+            (v) => v.Price || v.offerPrice || 0
+          );
+          minOriginalPrice = Math.min(...originalPrices);
+        } else {
+          minOfferPrice = Math.min(
+            ...productItem.VariantItem.map((v) => v.offerPrice || 0)
+          );
+          minOriginalPrice = Math.min(
+            ...productItem.VariantItem.map((v) => v.Price || v.offerPrice || 0)
+          );
+        }
+      }
+
+      let discountPercentage = 0;
+      if (minOriginalPrice > 0 && minOriginalPrice > minOfferPrice) {
+        discountPercentage = Math.round(
+          ((minOriginalPrice - minOfferPrice) / minOriginalPrice) * 100
+        );
+      }
+
+      return {
+        ...productItem,
+        price: minOfferPrice,
+        oldPrice: minOriginalPrice > minOfferPrice ? minOriginalPrice : null,
+        hasStock: hasStock,
+        variantCount: variantCount,
+        discount: discountPercentage,
+        VariantItem: productItem.VariantItem || [],
+      };
+    });
+
+    let userData = null;
+    let userWishlist = [];
+
     if (req.session.user) {
-      const userData = await user.findById(req.session.user._id);
-      return res.render("user/home", {
-        user: userData,
-        products: newArrivalProducts,
-        categories,
-      });
+      userData = await user.findById(req.session.user._id);
+      if (userData && userData.wishlist) {
+        userWishlist = userData.wishlist.map((id) => id.toString());
+      }
     }
+
     return res.render("user/home", {
-      products: newArrivalProducts,
+      user: userData,
+      userWishlist: userWishlist,
+      products: productsWithVariantData,
       categories,
     });
   } catch (error) {
@@ -67,7 +118,6 @@ const loadHomePage = async (req, res) => {
 
 const loadLoginPage = async (req, res) => {
   try {
-
     if (req.session.user) {
       return res.redirect("/");
     }
@@ -125,7 +175,6 @@ const login = async (req, res) => {
       email: existingUser.email,
     };
 
-
     return res.status(200).json({
       success: true,
       message: "Login successful!",
@@ -140,10 +189,8 @@ const login = async (req, res) => {
   }
 };
 
-
 const loadRegisterPage = async (req, res) => {
   try {
-
     if (req.session.user) {
       return res.redirect("/");
     }
@@ -173,29 +220,30 @@ const register = async (req, res) => {
       });
     }
 
-    if(!emailRegex.test(email.trim())){
+    if (!emailRegex.test(email.trim())) {
       return res.status(400).json({
-        success : false,
-        message : "Please enter a valid email address."
-      })
+        success: false,
+        message: "Please enter a valid email address.",
+      });
     }
 
-    if(!nameRegex.test(name.trim())){
+    if (!nameRegex.test(name.trim())) {
       return res.status(400).json({
-        success : false,
-        message : "Name must be 6–20 letters long and contain only alphabets"
-      })
+        success: false,
+        message: "Name must be 6–20 letters long and contain only alphabets",
+      });
     }
 
-
-    if(phone.length!==10){
+    if (phone.length !== 10) {
       return res.status(400).json({
-        success : false,
-        message : "number must 10 digit"
-      })
+        success: false,
+        message: "number must 10 digit",
+      });
     }
 
-    const existingUser = await user.findOne({ email : {$regex : new RegExp(`^${email.trim()}$`,"i") } });
+    const existingUser = await user.findOne({
+      email: { $regex: new RegExp(`^${email.trim()}$`, "i") },
+    });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -203,13 +251,12 @@ const register = async (req, res) => {
       });
     }
 
-    if(!passwordRegex.test(password.trim())){
+    if (!passwordRegex.test(password.trim())) {
       return res.status(400).json({
-        success : false,
-        message : "please enter valid password"
-      })
+        success: false,
+        message: "please enter valid password",
+      });
     }
-
 
     if (password !== confirmPassword) {
       return res.status(400).json({
@@ -241,11 +288,8 @@ const register = async (req, res) => {
   }
 };
 
-
-
 const loadRegisterOtpPage = async (req, res) => {
   try {
-
     if (req.session.user) {
       return res.redirect("/");
     }
@@ -370,7 +414,6 @@ const logout = async (req, res) => {
 
 const loadForgotPasswordPage = async (req, res) => {
   try {
-
     if (req.session.user) {
       return res.redirect("/");
     }
@@ -426,7 +469,6 @@ const forgotPassword = async (req, res) => {
 
 const loadForgotOtpPage = async (req, res) => {
   try {
-
     if (req.session.user) {
       return res.redirect("/");
     }
@@ -474,7 +516,6 @@ const forgotOtpVerify = async (req, res) => {
 };
 
 const loadResetPasswordPage = (req, res) => {
-
   if (req.session.user) {
     return res.redirect("/");
   }
@@ -488,11 +529,11 @@ const resetPassword = async (req, res) => {
   try {
     const { password, confirmPassword } = req.body;
 
-    if(!passwordRegex.test(password.trim())){
+    if (!passwordRegex.test(password.trim())) {
       return res.status(400).json({
-        success : false,
-        message : "Enter valid password"
-      })
+        success: false,
+        message: "Enter valid password",
+      });
     }
 
     if (password !== confirmPassword) {
