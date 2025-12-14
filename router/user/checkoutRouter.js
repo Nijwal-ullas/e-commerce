@@ -13,6 +13,10 @@ router.get('/address/:id', checkoutController.getAddress);
 router.post('/checkout/addAddress',checkoutController.addAddress)
 router.put("/checkout/editAddress/:id",checkoutController.editAddress)
 router.delete("/checkout/deleteAddress/:id",checkoutController.deleteAddress);
+router.post("/checkout/apply-coupon", checkoutController.applyCoupon);
+router.post("/checkout/remove-coupon", checkoutController.removeCoupon);
+
+
 
 
 export default router;

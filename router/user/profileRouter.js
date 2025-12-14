@@ -18,6 +18,7 @@ router.post("/changeEmail-otp",profileController.registerOtpPage)
 router.post("/resend-otps",profileController.resendOtp)
 router.get("/profile/change-password",profileController.loadchangePassword);
 router.post("/profile/change-password",profileController.registerChangePassword);
+router.get("/referral",profileController.getReferral);
 
 
 
