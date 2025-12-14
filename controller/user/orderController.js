@@ -1,6 +1,7 @@
 import user from "../../model/userSchema.js";
 import Order from "../../model/orderSchema.js";
 import product from "../../model/productSchema.js";
+import wallet from "../../model/walletSchema.js"
 import PDFDocument from "pdfkit";
 
 const getOrder = async (req, res) => {
@@ -175,13 +176,9 @@ const cancelOrder = async (req, res) => {
     const { orderId } = req.params;
     const { itemId, reason, cancelAll } = req.body;
 
-    const orderDoc = await Order.findOne({ _id: orderId, userId })
-      .populate("couponId");
-    
+    const orderDoc = await Order.findOne({ _id: orderId, userId });
     if (!orderDoc)
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+      return res.status(404).json({ success: false, message: "Order not found" });
 
     if (!["Pending", "Processing"].includes(orderDoc.orderStatus))
       return res.status(400).json({
@@ -189,11 +186,11 @@ const cancelOrder = async (req, res) => {
         message: `Cannot cancel order with status ${orderDoc.orderStatus}`,
       });
 
-    if (cancelAll === "true" || cancelAll === true) {
+    if (cancelAll === "true" || cancelAll === true)
       return await cancelAllItems(orderDoc, reason, res);
-    }
 
     return await cancelSingleItem(orderDoc, itemId, reason, res);
+
   } catch (error) {
     console.error("Cancel error:", error);
     res.status(500).json({ success: false, message: "Server error" });
@@ -210,36 +207,48 @@ async function cancelAllItems(orderDoc, reason, res) {
   for (const item of orderDoc.orderedItem) {
     if (cancellableStatuses.includes(item.status)) {
       item.status = "Cancelled";
-      item.cancellationReason = reason || "";
       item.paymentStatus = "Pending";
-      await restoreStock(item); 
-    } 
-    else if (deliveredStatuses.includes(item.status)) {
-      item.cancellationReason = "Already delivered – cannot cancel";
-      item.paymentStatus = "Paid";
+      item.cancellationReason = reason || "";
+      await restoreStock(item);
     }
   }
 
-  const remainingItems = orderDoc.orderedItem.filter(
-    (item) => deliveredStatuses.includes(item.status)
-  );
-
-  const cancelledItems = orderDoc.orderedItem.filter(
-    (item) => item.status === "Cancelled"
-  );
+  const cancelledItems = orderDoc.orderedItem.filter(i => i.status === "Cancelled");
+  const remainingItems = orderDoc.orderedItem.filter(i => deliveredStatuses.includes(i.status));
 
   if (remainingItems.length === 0) {
+
+    const walletUsed = parseFloat(orderDoc.walletUsed || 0);
+
     orderDoc.totalPrice = 0;
     orderDoc.discount = 0;
     orderDoc.finalAmount = 0;
+    orderDoc.walletUsed = 0;
 
     await orderDoc.save();
+
+    if (walletUsed > 0) {
+      await refundToWallet(orderDoc.userId, walletUsed);
+    }
+
     return res.json({
       success: true,
-      message: "Order fully cancelled",
-      cancelledItemsCount: cancelledItems.length,
-      nonCancellableItemsCount: 0
+      message: "Order fully cancelled and refunded",
+      refundedToWallet: walletUsed
     });
+  }
+
+  let cancelledSum = cancelledItems.reduce(
+    (sum, item) => sum + (item.price * item.quantity),
+    0
+  );
+
+  const walletUsedBefore = parseFloat(orderDoc.walletUsed || 0);
+  const refundAmount = Math.min(cancelledSum, walletUsedBefore);
+
+  if (refundAmount > 0) {
+    await refundToWallet(orderDoc.userId, refundAmount);
+    orderDoc.walletUsed = walletUsedBefore - refundAmount;
   }
 
   let newBaseTotal = 0;
@@ -250,30 +259,24 @@ async function cancelAllItems(orderDoc, reason, res) {
     if (!productDoc) continue;
 
     let variant = null;
+    if (item.variantId)
+      variant = productDoc.VariantItem.find(v => v._id.toString() === item.variantId.toString());
 
-    if (item.variantId) {
-      variant = productDoc.VariantItem.find(
-        (v) => v._id.toString() === item.variantId.toString()
-      );
-    }
-    if (!variant && item.ml) {
-      variant = productDoc.VariantItem.find((v) => v.Ml === item.ml);
-    }
+    if (!variant && item.ml)
+      variant = productDoc.VariantItem.find(v => v.Ml === item.ml);
+
     if (!variant) continue;
 
     const basePrice = variant.Price;
-    const offerPrice = variant.offerPrice || variant.Price;
+    const finalPrice = variant.offerPrice || variant.Price;
 
     newBaseTotal += basePrice * item.quantity;
-    newOfferTotal += offerPrice * item.quantity;
+    newOfferTotal += finalPrice * item.quantity;
   }
 
-  const newDiscount = newBaseTotal - newOfferTotal;
-  const newFinalAmount = newOfferTotal;
-
   orderDoc.totalPrice = newBaseTotal;
-  orderDoc.discount = Math.max(newDiscount, 0);
-  orderDoc.finalAmount = Math.max(newFinalAmount, 0);
+  orderDoc.discount = newBaseTotal - newOfferTotal;
+  orderDoc.finalAmount = newOfferTotal;
 
   orderDoc.orderStatus = "Delivered";
 
@@ -281,112 +284,114 @@ async function cancelAllItems(orderDoc, reason, res) {
 
   return res.json({
     success: true,
-    message: "Order partially cancelled. Delivered items cannot be cancelled.",
-    cancelledItemsCount: cancelledItems.length,
-    nonCancellableItemsCount: remainingItems.length
+    message: "Order partially cancelled",
+    refundedToWallet: refundAmount
   });
 }
 
-
 async function cancelSingleItem(orderDoc, itemId, reason, res) {
-  const item = orderDoc.orderedItem.find((i) => i._id.toString() === itemId);
-  if (!item) return res.status(404).json({ success: false, message: "Item not found" });
+  const item = orderDoc.orderedItem.find(i => i._id.toString() === itemId);
+  if (!item)
+    return res.status(404).json({ success: false, message: "Item not found" });
 
   if (!["Pending", "Processing"].includes(item.status)) {
-    return res.status(400).json({ 
-      success: false, 
-      message: "Item cannot be cancelled now" 
+    return res.status(400).json({
+      success: false,
+      message: "Item cannot be cancelled now",
     });
   }
 
   item.status = "Cancelled";
   item.cancellationReason = reason || "";
-  item.paymentStatus = "Pending";
-
   await restoreStock(item);
 
+  const cancelledPrice = item.price * item.quantity;
+  const walletUsedBefore = parseFloat(orderDoc.walletUsed || 0);
+  const refundAmount = Math.min(cancelledPrice, walletUsedBefore);
+
+  if (refundAmount > 0) {
+    await refundToWallet(orderDoc.userId, refundAmount);
+    orderDoc.walletUsed = walletUsedBefore - refundAmount;
+  }
+
   const activeItems = orderDoc.orderedItem.filter(i => i.status !== "Cancelled");
-  
+
   if (activeItems.length === 0) {
     orderDoc.orderStatus = "Cancelled";
     orderDoc.totalPrice = 0;
     orderDoc.discount = 0;
     orderDoc.finalAmount = 0;
+
     await orderDoc.save();
-    
-    return res.json({ 
-      success: true, 
-      message: "All items cancelled. Order marked as cancelled."
+
+    return res.json({
+      success: true,
+      message: "Item cancelled and order closed",
+      refundedToWallet: refundAmount
     });
   }
 
-  
-  let newBasePrice = 0;
-  let newTotalDiscount = 0;
-  
+  let newBase = 0;
+  let newDiscount = 0;
+
   for (const activeItem of activeItems) {
-    const productDoc = await product.findById(activeItem.productId).lean();
+    const productDoc = await product.findById(activeItem.productId);
     if (!productDoc) continue;
-    
-    let itemOriginalPrice = activeItem.price; 
-    let itemFinalPrice = activeItem.price;
-    
-    if (productDoc.VariantItem && productDoc.VariantItem.length > 0 && activeItem.variantId) {
-      const variant = productDoc.VariantItem.find(v => 
-        v._id.toString() === activeItem.variantId.toString()
-      );
-      
-      if (variant) {
-        itemOriginalPrice = variant.Price || variant.Price || activeItem.price;
-        itemFinalPrice = variant.offerPrice || variant.Price || activeItem.price;
-      }
-    }
-    
-    const itemOriginalTotal = itemOriginalPrice * activeItem.quantity;
-    const itemFinalTotal = itemFinalPrice * activeItem.quantity;
-    const itemDiscount = itemOriginalTotal - itemFinalTotal;
-    
-    newBasePrice += itemOriginalTotal;       
-    newTotalDiscount += itemDiscount;        
-    
-    activeItem.price = itemFinalPrice;
-    activeItem.originalPrice = itemOriginalPrice;
+
+    let variant = null;
+   
+    if (!variant && activeItem.ml)
+      variant = productDoc.VariantItem.find(v => v.Ml === activeItem.ml);
+
+    const basePrice = variant ? variant.Price : activeItem.price;
+    const finalPrice = variant ? (variant.offerPrice || variant.Price) : activeItem.price;
+
+    newBase += basePrice * activeItem.quantity;
+    newDiscount += (basePrice - finalPrice) * activeItem.quantity;
   }
-  
-  console.log(`Recalculated - Base Price: ${newBasePrice}, Discount: ${newTotalDiscount}`);
-  
-  let couponDiscount = 0;
-  if (orderDoc.couponId) {
-    const coupon = await coupon.findById(orderDoc.couponId);
-    if (coupon && coupon.discount) {
-      const couponDiscountRate = (coupon.discount / newBasePrice) * 100;
-      couponDiscount = (newBasePrice * couponDiscountRate) / 100;
-      newTotalDiscount += couponDiscount;
-    }
-  }
-  
-  const afterDiscount = newBasePrice - newTotalDiscount;
-  const deliveryCharge = afterDiscount >= 500 ? 0 : 50;
-  const newFinalAmount = afterDiscount + deliveryCharge;
-  
-  console.log(`After discount: ${afterDiscount}, Delivery: ${deliveryCharge}, Final: ${newFinalAmount}`);
-  
-  orderDoc.totalPrice = newBasePrice;        
-  orderDoc.discount = newTotalDiscount;     
-  orderDoc.finalAmount = newFinalAmount;     
-  
+
+  const afterDiscount = newBase - newDiscount;
+  const delivery = afterDiscount >= 500 ? 0 : 50;
+
+  orderDoc.totalPrice = newBase;
+  orderDoc.discount = newDiscount;
+  orderDoc.finalAmount = afterDiscount + delivery;
+
   await orderDoc.save();
 
-  return res.json({ 
-    success: true, 
-    message: "Item cancelled successfully",
-    newBasePrice: orderDoc.totalPrice.toFixed(2),
-    newDiscount: orderDoc.discount.toFixed(2),
-    newFinalAmount: orderDoc.finalAmount.toFixed(2),
-    activeItemsCount: activeItems.length
+  return res.json({
+    success: true,
+    message: "Item cancelled and wallet refunded",
+    refundedToWallet: refundAmount,
+    newFinalAmount: orderDoc.finalAmount
   });
 }
 
+async function refundToWallet(userId, amount) {
+  if (!amount || amount <= 0) return;
+
+  let userWallet = await wallet.findOne({ UserId: userId });
+
+  if (!userWallet) {
+    userWallet = new wallet({
+      UserId: userId,
+      Balance: "0",
+      Wallet_transaction: []
+    });
+  }
+
+  const balance = parseFloat(userWallet.Balance) || 0;
+  userWallet.Balance = (balance + amount).toString();
+
+  userWallet.Wallet_transaction.push({
+    Amount: amount.toString(),
+    Type: "credit",
+    CreatedAt: new Date(),
+    Description: "Refund for cancelled item"
+  });
+
+  await userWallet.save();
+}
 
 async function restoreStock(item) {
   try {
@@ -396,19 +401,12 @@ async function restoreStock(item) {
     if (productDoc.VariantItem?.length > 0) {
       let variant = null;
 
-      if (item.variantId) {
-        variant = productDoc.VariantItem.find(
-          (v) => v._id.toString() === item.variantId.toString()
-        );
-      }
+      
+      if (!variant && item.ml)
+        variant = productDoc.VariantItem.find(v => v.Ml === item.ml);
 
-      if (!variant) {
-        variant = productDoc.VariantItem.find((v) => v.Ml === item.ml);
-      }
+      if (variant) variant.Quantity += item.quantity;
 
-      if (variant) {
-        variant.Quantity += item.quantity;
-      }
     } else {
       productDoc.stock += item.quantity;
     }
@@ -761,6 +759,7 @@ const requestOrderReturn = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 
 export default {

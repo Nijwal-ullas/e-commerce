@@ -218,7 +218,7 @@ const addCart = async (req, res) => {
       const newTotalPrice = productPrice * newQuantity;
 
       userCart.cart_items[existingItemIndex].quantity = newQuantity;
-      userCart.cart_items[existingItemIndex].price = productPrice; // Update price in case it changed
+      userCart.cart_items[existingItemIndex].price = productPrice; 
       userCart.cart_items[existingItemIndex].originalPrice = originalPrice;
       userCart.cart_items[existingItemIndex].totalPrice = newTotalPrice;
       userCart.cart_items[existingItemIndex].addedAt = new Date();

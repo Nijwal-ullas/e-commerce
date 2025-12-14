@@ -285,7 +285,7 @@ export const verifyPayment = async (req, res) => {
     }
 
     orderDoc.paymentStatus = "Paid";
-    orderDoc.orderStatus = "Processing";
+    orderDoc.orderStatus = "Pending";
     orderDoc.razorpayPaymentId = razorpay_payment_id;
     orderDoc.razorpaySignature = razorpay_signature;
     orderDoc.paymentDate = new Date();
@@ -361,9 +361,9 @@ export const verifyPayment = async (req, res) => {
       });
     }
 
-    res.json({ 
-      success: true, 
-      message: "Order not found or already processed" 
+    return res.json({
+      success: true,
+      redirect: `/failurePage/${Order._id}`
     });
 
   } catch (err) {
@@ -375,8 +375,26 @@ export const verifyPayment = async (req, res) => {
 };
 
 
+const orderFailurePage = async (req, res) => {
+  const userId = req.session.user;
+  if (!userId) return res.redirect("/login");
+
+  const { id } = req.params;
+
+  const order = await Order.findOne({
+    _id: id,
+    userId
+  });
+
+  if (!order) return res.redirect("/orders");
+
+  res.render("user/orderFailurePage", { order });
+};
+
+
 export default {
   createRazorpayOrder,
   verifyPayment,
   handlePaymentFailure,
+  orderFailurePage
 };

@@ -1,4 +1,5 @@
 import User from "../../model/userSchema.js";
+import wallet from "../../model/walletSchema.js";
 import bcrypt from "bcrypt";
 import { otp as generateOtp, emailer } from "../../utilities/otpGenerator.js";
 import {
@@ -406,6 +407,19 @@ const registerChangePassword = async (req, res) => {
   }
 };
 
+
+const getReferral = async (req,res)=>{
+  try {
+    const userId = req.session.user;
+    if(!userId){
+      return res.redirect("/login")
+    }
+    return res.render("user/referralPage")
+  } catch (error) {
+    
+  }
+}
+
 export default {
   profilePage,
   loadEditProfile,
@@ -417,4 +431,5 @@ export default {
   resendOtp,
   loadchangePassword,
   registerChangePassword,
+  getReferral
 };

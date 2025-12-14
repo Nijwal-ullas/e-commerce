@@ -1,10 +1,16 @@
 import user from "../../model/userSchema.js";
 import category from "../../model/categorySchema.js";
 import product from "../../model/productSchema.js";
+import wallet from "../../model/walletSchema.js";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import { otp as generateOtp, emailer } from "../../utilities/otpGenerator.js";
 dotenv.config();
+
+const generateReferralCode = () => {
+  return crypto.randomBytes(4).toString("hex").toUpperCase();
+};
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{6,}$/;
@@ -211,7 +217,7 @@ const register = async (req, res) => {
       });
     }
 
-    const { name, email, phone, password, confirmPassword } = req.body;
+    const { name, email, phone, password, confirmPassword,referral } = req.body;
 
     if (!email || !password || !name || !phone) {
       return res.status(400).json({
@@ -230,7 +236,7 @@ const register = async (req, res) => {
     if (!nameRegex.test(name.trim())) {
       return res.status(400).json({
         success: false,
-        message: "Name must be 6–20 letters long and contain only alphabets",
+        message: "Name must be 6-20 letters long and contain only alphabets",
       });
     }
 
@@ -264,6 +270,21 @@ const register = async (req, res) => {
         message: "Passwords do not match",
       });
     }
+
+    let referrer = null;
+
+    if (referral) {
+      referrer = await user.findOne({ referralCode : referral });
+
+      if (!referrer) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid referral code"
+        });
+      }
+    }
+
+   req.session.referrerId = referrer ? referrer._id : null;
 
     const otp = generateOtp();
     console.log(`${email} otp : ${otp}`);
@@ -334,11 +355,15 @@ const registerOtpPage = async (req, res) => {
     }
 
     const hashedPassword = await securePassword(userData.password);
+    const referrerId = req.session.referrerId || null;
+
     const newUser = new user({
       name: userData.name,
       email: userData.email,
       phone: userData.phone,
       password: hashedPassword,
+      referralCode: generateReferralCode(),
+      referredBy: referrerId
     });
 
     await newUser.save();
@@ -346,6 +371,50 @@ const registerOtpPage = async (req, res) => {
     req.session.userOtp = null;
     req.session.userData = null;
     req.session.otpExpire = null;
+    req.session.referrerId = null;
+
+    if(referrerId){
+       const referrer = await user.findById(referrerId)
+
+       if(referrer){
+          let walletDoc = await wallet.findOne({UserId :referrer._id})
+          if(!walletDoc){
+             walletDoc = new wallet({
+              UserId : referrer._id,
+              Balance :0,
+              Wallet_transaction : []
+             });
+          }
+          walletDoc.Balance += 100;
+          walletDoc.Wallet_transaction.push({
+              Amount :100,
+              Type : "credit",
+              Description : "referral reward"
+          })
+          await walletDoc.save()
+       }
+    }
+
+    let newUserWallet = await wallet.findOne({ UserId: newUser._id });
+
+          if (!newUserWallet) {
+            newUserWallet = new wallet({
+              UserId: newUser._id,
+              Balance: 0,
+              Wallet_transaction: []
+            });
+          }
+
+          newUserWallet.Balance += 50;
+          newUserWallet.Wallet_transaction.push({
+            Amount: 50,
+            Type: "credit",
+            Description: "Signup referral bonus"
+          });
+
+          await newUserWallet.save();
+
+
 
     return res.status(200).json({
       success: true,
