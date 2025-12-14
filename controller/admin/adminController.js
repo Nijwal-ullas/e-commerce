@@ -1,5 +1,9 @@
 import bcrypt from "bcrypt";
 import admin from "../../model/adminSchema.js";
+import order from "../../model/orderSchema.js";
+import product from "../../model/productSchema.js";
+import user from "../../model/userSchema.js";
+import coupon from "../../model/couponSchema.js";
 
 const loadAdminLoginPage = async (req, res) => {
   try {
@@ -68,14 +72,65 @@ const login = async (req, res) => {
 
 const loadDashboardPage = async (req, res) => {
   try {
-   
-    if (req.session.adminId) {
-      const adminData = await admin.findById(req.session.adminId);
-      const adminName = adminData ? adminData.email : "Admin";
-      return res.render("admin/dashboard", { adminName });
-    } else {
+    const adminId = req.session.adminId;
+    if (!adminId) {
       return res.redirect("/admin/login");
     }
+
+    const adminData = await admin.findById(adminId);
+    const adminName = adminData ? adminData.email : "Admin";
+
+    const orders = await order.find({
+      paymentStatus: "Paid",
+      orderStatus : {$nin:["Cancelled","Pending","Shipped","Processing"]} 
+    });
+
+    let salesCount = orders.length;
+    let totalSalesAmount = 0;
+    let totalDiscount = 0;
+    let couponDiscount = 0;
+
+    orders.forEach(order => {
+      totalSalesAmount += order.finalAmount || 0;
+      totalDiscount += order.discount || 0;
+      couponDiscount += order.couponDiscount || 0;
+    });
+
+    const totalProducts = await product.countDocuments();
+    const totalUsers = await user.countDocuments();
+    const activeCoupons = await coupon.countDocuments({ 
+      status: true,
+      expireAt: { $gte: new Date() }
+    });
+
+    const recentOrders = await order.find()
+      .populate('userId', 'name')
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('orderId userId finalAmount orderStatus createdAt')
+      .lean();
+
+    const formattedRecentOrders = recentOrders.map(order => ({
+      orderId: order.orderId,
+      userName: order.userId?.name || 'Guest',
+      totalAmount: order.finalAmount,
+      status: order.orderStatus,
+      createdAt: order.createdAt
+    }));
+
+   
+    return res.render("admin/dashboard", {
+      adminName,
+      salesCount,
+      totalSalesAmount,
+      totalDiscount,
+      couponDiscount,
+      totalProducts,
+      totalUsers,
+      activeCoupons,
+      recentOrders: formattedRecentOrders,
+    });
+
   } catch (error) {
     console.log(error.message);
     res.status(500).send("Internal Server Error");

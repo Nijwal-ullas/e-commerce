@@ -1,12 +1,11 @@
 import Order from "../../model/orderSchema.js";
 import user from "../../model/userSchema.js";
 import product from "../../model/productSchema.js";
+import wallet from "../../model/walletSchema.js";
+
 
 const FLOW_STATUSES = ["Pending", "Processing", "Shipped", "Delivered"];
 
-// ─────────────────────────────────────────────
-// LIST ORDERS
-// ─────────────────────────────────────────────
 const getOrdersPage = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -86,9 +85,6 @@ const getOrdersPage = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
-// ORDER DETAIL PAGE
-// ─────────────────────────────────────────────
 const getDetailPage = async (req, res) => {
   try {
     const { id } = req.params;
@@ -128,10 +124,6 @@ const getDetailPage = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
-// HELPER: VALID NEXT STATUSES FOR MAIN ORDER
-// NO CANCEL OPTION - orders can only be cancelled by customers
-// ─────────────────────────────────────────────
 const getNextValidStatuses = (currentStatus) => {
   if (currentStatus === "Delivered" || currentStatus === "Cancelled") {
     return [];
@@ -144,15 +136,10 @@ const getNextValidStatuses = (currentStatus) => {
     nextStatuses.push(FLOW_STATUSES[idx + 1]);
   }
 
-  // REMOVED: "Cancelled" option - admin cannot cancel orders
 
   return [...new Set(nextStatuses)];
 };
 
-// ─────────────────────────────────────────────
-// HELPER: VALID NEXT STATUSES FOR ITEM
-// NO CANCEL OPTION - items can only be cancelled by customers
-// ─────────────────────────────────────────────
 function getItemNextValidStatuses(currentItemStatus, orderStatus) {
   const hardFinal = ["Cancelled", "Returned", "Return Approved"];
 
@@ -179,14 +166,11 @@ function getItemNextValidStatuses(currentItemStatus, orderStatus) {
     next.push(FLOW_STATUSES[idx + 1]);
   }
 
-  // REMOVED: "Cancelled" option - admin cannot cancel items
 
   return next;
 }
 
-// ─────────────────────────────────────────────
-// HELPER: RECALCULATE ORDER STATUS FROM ITEMS
-// ─────────────────────────────────────────────
+
 function recalculateOrderStatus(orderDoc) {
   const items = orderDoc.orderedItem || [];
 
@@ -224,9 +208,7 @@ function recalculateOrderStatus(orderDoc) {
   }
 }
 
-// ─────────────────────────────────────────────
-// HELPER: RECALCULATE ORDER PAYMENT STATUS
-// ─────────────────────────────────────────────
+
 function recalculateOrderPaymentStatus(orderDoc) {
   const items = orderDoc.orderedItem || [];
   
@@ -282,9 +264,6 @@ function recalculateOrderPaymentStatus(orderDoc) {
   }
 }
 
-// ─────────────────────────────────────────────
-// HELPER: CALCULATE REFUND AMOUNT FOR ITEM
-// ─────────────────────────────────────────────
 function calculateItemRefundAmount(item, orderDoc) {
   const itemTotal = item.price * item.quantity;
   
@@ -297,9 +276,7 @@ function calculateItemRefundAmount(item, orderDoc) {
   return itemTotal;
 }
 
-// ─────────────────────────────────────────────
-// MAIN ORDER STATUS UPDATE (NO CANCEL OPTION)
-// ─────────────────────────────────────────────
+
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -322,7 +299,6 @@ const updateOrderStatus = async (req, res) => {
 
     const currentStatus = currentOrder.orderStatus;
 
-    // Block updates for cancelled or returned orders
     if (["Cancelled", "Returned"].includes(currentStatus)) {
       return res.status(400).json({
         success: false,
@@ -337,7 +313,6 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // REMOVED: Cancel validation - admin cannot cancel
 
     const validNext = getNextValidStatuses(currentStatus);
     if (!validNext.includes(status)) {
@@ -347,7 +322,6 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // Update all active items to the new status
     const finalItemStates = ["Cancelled", "Returned", "Return Approved"];
 
     for (const item of currentOrder.orderedItem) {
@@ -389,9 +363,7 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
-// ITEM STATUS UPDATE (NO CANCEL OPTION)
-// ─────────────────────────────────────────────
+
 const updateItemStatus = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
@@ -441,7 +413,6 @@ const updateItemStatus = async (req, res) => {
       });
     }
 
-    // REMOVED: Cancel logic - admin cannot cancel items
 
     currentItem.status = status;
 
@@ -489,9 +460,7 @@ const updateItemStatus = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
-// APPROVE RETURN FOR SPECIFIC ITEM
-// ─────────────────────────────────────────────
+
 const approveItemReturn = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
@@ -543,9 +512,7 @@ const approveItemReturn = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
-// REJECT RETURN FOR SPECIFIC ITEM
-// ─────────────────────────────────────────────
+
 const rejectItemReturn = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
@@ -596,9 +563,7 @@ const rejectItemReturn = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
-// REFUND SPECIFIC ITEM
-// ─────────────────────────────────────────────
+
 const refundItem = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
@@ -628,8 +593,18 @@ const refundItem = async (req, res) => {
 
     await restoreStock(item);
 
-    let newTotalPrice = 0;  
-    let newFinalTotal = 0;  
+    if (orderDoc.walletUsed > 0) {
+      const itemValue = item.price * item.quantity;
+      const refundAmount = Math.min(itemValue, orderDoc.walletUsed);
+
+      if (refundAmount > 0) {
+        await refundToWallet(orderDoc.userId, refundAmount);
+        orderDoc.walletUsed -= refundAmount; 
+      }
+    }
+
+    let newTotalPrice = 0;
+    let newFinalTotal = 0;
 
     for (const itm of orderDoc.orderedItem) {
       if (itm.status === "Returned" || itm.status === "Cancelled") continue;
@@ -672,7 +647,7 @@ const refundItem = async (req, res) => {
 
     return res.json({
       success: true,
-      message: "Refund processed and totals recalculated successfully",
+      message: "Refund processed successfully and amount added back to wallet",
       order: orderDoc,
     });
 
@@ -685,9 +660,37 @@ const refundItem = async (req, res) => {
   }
 };
 
-// ─────────────────────────────────────────────
-// STOCK RESTORE HELPER
-// ─────────────────────────────────────────────
+
+async function refundToWallet(userId, amount) {
+  if (!amount || amount <= 0) return;
+
+  let userWallet = await wallet.findOne({ UserId: userId });
+
+  if (!userWallet) {
+    userWallet = new wallet({
+      UserId: userId,
+      Balance: "0",
+      Wallet_transaction: []
+    });
+  }
+
+  const currentBalance = parseFloat(userWallet.Balance) || 0;
+  const newBalance = currentBalance + amount;
+
+  userWallet.Balance = newBalance.toString();
+
+  userWallet.Wallet_transaction.push({
+    Amount: amount.toString(),
+    Type: "credit",
+    CreatedAt: new Date(),
+    Description: "Refund for returned item"
+  });
+
+  await userWallet.save();
+}
+
+
+
 async function restoreStock(item) {
   try {
     const productDoc = await product.findById(item.productId);
