@@ -12,7 +12,9 @@ const UserSchema = new Schema({
   googleId: { type: String,unique: true, sparse: true},
   cloudinaryPublicIds: [{
   type: String
-}]
+}],
+referralCode : {type :String},
+referredBy : {type : mongoose.Schema.Types.ObjectId,req:"User"},
 },
 { timestamps: true }   
 );

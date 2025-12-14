@@ -97,7 +97,11 @@ const OrdersSchema = new Schema(
 
     totalPrice: { type: Number, required: true },
     discount: { type: Number, default: 0 },
-    finalAmount: { type: Number, required: true },
+    walletUsed: { type: Number, default: 0 }, 
+    finalAmount: { type: Number, required: true }, 
+    
+    // amountPaid: { type: Number, default: 0 }, 
+    // amountDue: { type: Number, default: 0 },
 
     couponId: { type: Schema.Types.ObjectId, ref: "Coupon" },
 

@@ -11,6 +11,7 @@ const WalletSchema = new Schema({
      Amount: { type: Number },
      CreatedAt: { type: Date, default: Date.now }, 
      Type: { type: String, enum: ['credit', 'debit'] },
+     Description : { type : String}
   }],
   UserId: { 
     type: Schema.Types.ObjectId,
