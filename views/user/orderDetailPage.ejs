@@ -175,12 +175,7 @@
               <h1 class="text-2xl font-semibold text-gray-800 mb-2">
                 <%= pageTitle %>
               </h1>
-              <!-- <p class="text-sm text-gray-600">
-                Order ID:
-                <span class="font-medium text-gray-800"
-                  >#<%= order._id.toString().slice(-8).toUpperCase() %></span
-                >
-              </p> -->
+
               <p class="text-sm text-gray-600">
                 Placed on:
                 <span class="font-medium text-gray-800"
@@ -216,7 +211,7 @@
                 <%= orderStatus %>
               </span>
               <p class="text-2xl font-bold text-gray-800">
-                ₹<%= parseFloat(order.finalAmount || order.totalPrice || 0).toFixed(2) %>
+                ₹<%= parseFloat(order.finalAmount || 0).toFixed(2) %>
               </p>
             </div>
           </div>
@@ -486,7 +481,7 @@
                 <div class="pt-3 border-t border-gray-200">
                   <div class="flex justify-between">
                     <span class="font-semibold text-gray-800">Total Amount</span>
-                    <span class="font-bold text-lg text-gray-900">₹<%= parseFloat(order.finalAmount || order.totalPrice || 0).toFixed(2) %></span>
+                    <span class="font-bold text-lg text-gray-900">₹<%= parseFloat(order.finalAmount || 0).toFixed(2) %></span>
                   </div>
                 </div>
               </div>
@@ -649,7 +644,6 @@
             <select id="itemReturnReason" 
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
               <option value="">Select a reason</option>
-              <option value="Product damaged">Product damaged/defective</option>
               <option value="Wrong item received">Wrong item received</option>
               <option value="Quality not as expected">Quality not as expected</option>
               <option value="Size/Color mismatch">Size/Color mismatch</option>
