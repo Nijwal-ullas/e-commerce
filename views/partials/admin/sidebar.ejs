@@ -6,7 +6,7 @@
   <nav class="p-4 space-y-1">
     <a
       href="/admin/dashboard"
-      class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+      class="flex items-center gap-3 px-4 py-2 <%= currentRoute === '/admin/dashboard' ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-600' : 'text-gray-700 hover:bg-gray-100' %> rounded"
     >
       <i class="fas fa-th-large"></i>
       <span>Dashboard</span>
@@ -14,7 +14,7 @@
 
     <a
       href="/admin/category"
-      class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+      class="flex items-center gap-3 px-4 py-2 <%= currentRoute === '/admin/category' ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-600' : 'text-gray-700 hover:bg-gray-100' %> rounded"
     >
       <i class="fas fa-tags"></i>
       <span>Category</span>
@@ -22,7 +22,7 @@
 
     <a
       href="/admin/brand"
-      class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+      class="flex items-center gap-3 px-4 py-2 <%= currentRoute === '/admin/brand' ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-600' : 'text-gray-700 hover:bg-gray-100' %> rounded"
     >
       <i class="fas fa-cube"></i>
       <span>Brands</span>
@@ -30,7 +30,7 @@
 
     <a
       href="/admin/product"
-      class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+      class="flex items-center gap-3 px-4 py-2 <%= currentRoute === '/admin/product' ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-600' : 'text-gray-700 hover:bg-gray-100' %> rounded"
     >
       <i class="fas fa-box"></i>
       <span>Products</span>
@@ -38,7 +38,7 @@
 
     <a
       href="/admin/users"
-      class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+      class="flex items-center gap-3 px-4 py-2 <%= currentRoute === '/admin/users' ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-600' : 'text-gray-700 hover:bg-gray-100' %> rounded"
     >
       <i class="fas fa-users"></i>
       <span>Customers</span>
@@ -46,7 +46,7 @@
 
     <a
       href="/admin/adminOrders"
-      class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+      class="flex items-center gap-3 px-4 py-2 <%= currentRoute === '/admin/adminOrders' ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-600' : 'text-gray-700 hover:bg-gray-100' %> rounded"
     >
       <i class="fas fa-shopping-cart"></i>
       <span>Orders</span>
@@ -54,7 +54,7 @@
 
     <a
       href="/admin/coupon"
-      class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+      class="flex items-center gap-3 px-4 py-2 <%= currentRoute === '/admin/coupon' ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-600' : 'text-gray-700 hover:bg-gray-100' %> rounded"
     >
       <i class="fas fa-ticket-alt"></i>
       <span>Coupons</span>
@@ -62,7 +62,7 @@
 
     <a
       href="/admin/logout"
-      class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
+      class="flex items-center gap-3 px-4 py-2 <%= currentRoute === '/admin/logout' ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-600' : 'text-gray-700 hover:bg-gray-100' %> rounded"
     >
       <i class="fas fa-sign-out-alt"></i>
       <span>Logout</span>
