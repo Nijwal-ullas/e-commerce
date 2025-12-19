@@ -204,7 +204,6 @@
                             <i class="fas fa-check-circle text-gray-300 text-xl"></i>
                         </div>
                         
-                        <!-- Wallet Option -->
                         <div class="payment-option border-2 border-gray-200 rounded-lg p-4 flex items-center justify-between cursor-pointer hover:shadow-md transition-all"
                              data-payment="wallet" onclick="selectPayment('wallet')">
                             <div class="flex items-center gap-3">
@@ -220,7 +219,6 @@
                         </div>
                     </div>
                     
-                    <!-- Wallet Balance Display -->
                     <div class="mt-4 p-4 bg-gray-50 rounded-lg">
                         <div class="flex justify-between items-center">
                             <div>
@@ -273,7 +271,6 @@
                             <span class="text-gray-900 font-medium" data-subtotal="<%= subtotal.toFixed(2) %>">₹<%= subtotal.toFixed(2) %></span>
                         </div>
 
-                        <!-- Coupon Discount (if applied) -->
                         <% if (couponDiscount > 0) { %>
                             <div class="flex justify-between py-2" id="couponDiscountRow">
                                 <span class="text-gray-600">Coupon Discount (<%= couponCode %>)</span>
@@ -299,7 +296,6 @@
                             </div>
                         <% } %>
 
-                        <!-- Wallet Usage (hidden by default) -->
                         <div class="flex justify-between py-2 hidden" id="walletUsageRow">
                             <span class="text-gray-600">Wallet Payment</span>
                             <span class="text-purple-600 font-medium" id="walletUsed">-₹0.00</span>
@@ -323,23 +319,42 @@
                         </div>
                     <% } %>
 
-                    <!-- Coupon Section -->
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Apply Coupon</label>
-                        <div class="flex gap-2">
-                            <input type="text"
-                                   id="couponCode"
-                                   placeholder="Enter coupon code"
-                                   class="flex-1 border border-gray-300 rounded-lg px-3 py-2 uppercase"
-                                   value="<%= couponCode || '' %>">
-                            <button onclick="applyCoupon()"
-                                    id="couponButton"
-                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
-                                <%= couponCode ? 'Remove' : 'Apply' %>
-                            </button>
-                        </div>
+                   <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Apply Coupon
+                    </label>
+
+                    <div class="flex flex-col gap-2">
                         
-                        <!-- Updated coupon message section -->
+                        <div class="flex gap-2">
+                        <input
+                            type="text"
+                            id="couponCode"
+                            placeholder="Enter coupon code"
+                            class="flex-1 border border-gray-300 rounded-lg px-3 py-2 uppercase focus:ring-2 focus:ring-green-500 focus:outline-none"
+                            value="<%= couponCode || '' %>"
+                        />
+
+                        <button
+                           onclick="applyCoupon()"
+                           id="couponButton"
+                           class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                           >
+                           <%= couponCode ? 'Remove' : 'Apply' %>
+                        </button>
+                        </div>
+
+                        <button
+                        onclick="openCouponModal()"
+                        class="text-sm text-green-700 hover:text-green-800 font-medium self-start"
+                        >
+                        View available coupons
+                        </button>
+
+                    </div>
+                    </div>
+
+                        
                         <div id="couponMessage" class="mt-2">
                             <% if (couponError) { %>
                                 <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -362,7 +377,6 @@
                             <% } %>
                         </div>
                         
-                        <!-- Coupon information display -->
                         <% if (appliedCoupon) { %>
                             <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                 <p class="text-sm text-blue-700 mb-1">
@@ -375,15 +389,14 @@
                                 </p>
                             </div>
                         <% } %>
-                    </div>
-
-                    <button onclick="placeOrder()" id="place-order-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-lg transition-colors duration-200" 
+                         <button onclick="placeOrder()" id="place-order-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-lg transition-colors duration-200" 
                         disabled style="opacity: 0.5; cursor: not-allowed;">
                         <i class="fas fa-shopping-bag mr-2"></i> Place Order
                     </button>
 
                     <div id="orderMessage" class="text-center text-sm mt-3">
                         <p class="text-red-600">Please select a delivery address first</p>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -475,6 +488,23 @@
         </div>
     </div>
 
+<div id="couponModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+  <div class="bg-white rounded-xl w-full max-w-md p-6 relative">
+
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-lg font-semibold text-gray-800">Available Coupons</h2>
+      <button onclick="closeCouponModal()" class="text-gray-500 hover:text-gray-700">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+    </div>
+
+    <div id="couponList" class="space-y-3 max-h-80 overflow-y-auto">
+    </div>
+
+  </div>
+</div>
+
+
     <%- include("../partials/user/footer.ejs") %>
 
     <script>
@@ -489,148 +519,133 @@
     }<% } else { %>null<% } %>;
     let productDiscount = <%= discount || 0 %>;
 
-    // Function to clear coupon error
     function clearCouponError() {
         const messageEl = document.getElementById('couponMessage');
         messageEl.innerHTML = '';
         
-        // Clear session coupon if there's an error
         if (!appliedCoupon) {
             axios.post('/checkout/remove-coupon').catch(() => {});
         }
     }
 
-    // SINGLE applyCoupon function - remove any duplicate
     async function applyCoupon() {
-        const codeInput = document.getElementById('couponCode');
-        const code = codeInput.value.trim().toUpperCase();
-        const messageEl = document.getElementById('couponMessage');
-        const couponBtn = document.getElementById('couponButton');
+    const codeInput = document.getElementById('couponCode');
+    const code = codeInput.value.trim().toUpperCase();
+    const messageEl = document.getElementById('couponMessage');
+    const couponBtn = document.getElementById('couponButton');
 
-        // Clear any previous messages
-        messageEl.innerHTML = '';
+    messageEl.innerHTML = '';
 
-        // Check if we're removing a coupon
-        if (appliedCoupon && (code === '' || code === appliedCoupon.code)) {
-            try {
-                const response = await axios.post('/checkout/remove-coupon');
-                if (response.data.success) {
-                    // Clear local state
-                    appliedCoupon = null;
-                    couponDiscountAmount = 0;
-                    
-                    // Clear input and update button
-                    codeInput.value = '';
-                    couponBtn.textContent = 'Apply';
-                    
-                    // Show success message
-                    messageEl.innerHTML = `
-                        <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
-                            <p class="text-sm text-green-700 flex items-center">
-                                <i class="fas fa-check-circle mr-2"></i>
-                                Coupon removed successfully
-                            </p>
-                        </div>
-                    `;
-                    
-                    // Hide coupon discount row
-                    document.getElementById('couponDiscountRow').classList.add('hidden');
-                    
-                    // Update order summary
-                    updateOrderSummary();
-                    return;
-                }
-            } catch (error) {
-                console.error('Remove coupon error:', error);
+    if (appliedCoupon && couponBtn.textContent === 'Remove') {
+        try {
+            const response = await axios.post('/checkout/remove-coupon');
+            if (response.data.success) {
+                appliedCoupon = null;
+                couponDiscountAmount = 0;
+                
+                codeInput.value = '';
+                couponBtn.textContent = 'Apply';
+                
                 messageEl.innerHTML = `
-                    <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p class="text-sm text-red-700 flex items-center">
-                            <i class="fas fa-times-circle mr-2"></i>
-                            Failed to remove coupon. Please try again.
+                    <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p class="text-sm text-green-700 flex items-center">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Coupon removed successfully
                         </p>
                     </div>
                 `;
+                
+                const couponDiscountRow = document.getElementById('couponDiscountRow');
+                if (couponDiscountRow) {
+                    couponDiscountRow.classList.add('hidden');
+                }
+                
+                updateOrderSummary();
                 return;
             }
-        }
-
-        // Check if input is empty (applying without code)
-        if (!code) {
+        } catch (error) {
+            console.error('Remove coupon error:', error);
             messageEl.innerHTML = `
-                <div class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p class="text-sm text-yellow-700 flex items-center">
-                        <i class="fas fa-exclamation-triangle mr-2"></i>
-                        Please enter a coupon code
+                <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p class="text-sm text-red-700 flex items-center">
+                        <i class="fas fa-times-circle mr-2"></i>
+                        Failed to remove coupon. Please try again.
                     </p>
                 </div>
             `;
             return;
         }
+    }
 
-        // Apply new coupon
-        try {
-            const subtotal = parseFloat(
-                document.querySelector('[data-subtotal]').getAttribute('data-subtotal')
-            );
+    if (!code) {
+        messageEl.innerHTML = `
+            <div class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p class="text-sm text-yellow-700 flex items-center">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Please enter a coupon code
+                </p>
+            </div>
+        `;
+        return;
+    }
 
-            const response = await axios.post('/checkout/apply-coupon', {
-                couponCode: code,
-                cartTotal: subtotal
-            });
+    try {
+        const subtotal = parseFloat(
+            document.querySelector('[data-subtotal]').getAttribute('data-subtotal')
+        );
 
-            if (response.data.success) {
-                // Update local state
-                appliedCoupon = response.data.coupon;
-                couponDiscountAmount = response.data.discount;
-                
-                // Update UI
-                document.getElementById('couponDiscount').textContent =
-                    `-₹${couponDiscountAmount.toFixed(2)}`;
-                
-                document.getElementById('couponDiscountRow').classList.remove('hidden');
-                codeInput.value = code;
-                couponBtn.textContent = 'Remove';
-                
-                // Show success message
-                messageEl.innerHTML = `
-                    <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <p class="text-sm text-green-700 flex items-center">
-                            <i class="fas fa-check-circle mr-2"></i>
-                            ${response.data.message}
-                        </p>
-                        <p class="text-xs text-green-600 mt-1">
-                            You saved ₹${couponDiscountAmount.toFixed(2)} with coupon "${code}"
-                        </p>
-                    </div>
-                `;
+        const response = await axios.post('/checkout/apply-coupon', {
+            couponCode: code,
+            cartTotal: subtotal
+        });
 
-                // Update order summary
-                updateOrderSummary();
-            }
-        } catch (error) {
-            // Show error message
-            const errorMsg = error.response?.data?.message || "Invalid coupon code";
+        if (response.data.success) {
+            appliedCoupon = response.data.coupon;
+            couponDiscountAmount = response.data.discount;
+            
+            document.getElementById('couponDiscount').textContent =
+                `-₹${couponDiscountAmount.toFixed(2)}`;
+            
+            document.getElementById('couponDiscountRow').classList.remove('hidden');
+            codeInput.value = code;
+            couponBtn.textContent = 'Remove';
             
             messageEl.innerHTML = `
-                <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <p class="text-sm text-red-700 flex items-center">
-                        <i class="fas fa-times-circle mr-2"></i>
-                        ${errorMsg}
+                <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p class="text-sm text-green-700 flex items-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        ${response.data.message}
                     </p>
-                    <button onclick="clearCouponError()" class="text-xs text-red-600 hover:text-red-800 mt-1">
-                        Clear
-                    </button>
+                    <p class="text-xs text-green-600 mt-1">
+                        You saved ₹${couponDiscountAmount.toFixed(2)} with coupon "${code}"
+                    </p>
                 </div>
             `;
 
-            // Reset state on error
-            appliedCoupon = null;
-            couponDiscountAmount = 0;
-            document.getElementById('couponDiscountRow').classList.add('hidden');
-            couponBtn.textContent = 'Apply';
             updateOrderSummary();
         }
+    } catch (error) {
+        const errorMsg = error.response?.data?.message || "Invalid coupon code";
+        
+        messageEl.innerHTML = `
+            <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p class="text-sm text-red-700 flex items-center">
+                    <i class="fas fa-times-circle mr-2"></i>
+                    ${errorMsg}
+                </p>
+                <button onclick="clearCouponError()" class="text-xs text-red-600 hover:text-red-800 mt-1">
+                    Clear
+                </button>
+            </div>
+        `;
+
+        appliedCoupon = null;
+        couponDiscountAmount = 0;
+        document.getElementById('couponDiscountRow').classList.add('hidden');
+        couponBtn.textContent = 'Apply';
+        updateOrderSummary();
     }
+}
 
         function selectAddress(addressId) {
             document.querySelectorAll('input[name="selectedAddress"]').forEach(radio => {
@@ -992,7 +1007,7 @@
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating order...';
                 btn.disabled = true;
 
-                const razorpayResponse = await axios.post('/razorpay/create-order', {
+                const razorpayResponse = await axios.post('/create-order', {
                     addressId: selectedAddressId,
                     couponCode: appliedCoupon?.code || null
                 });
@@ -1014,7 +1029,7 @@
                         try {
                             btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Verifying payment...';
                             
-                            const verificationResponse = await axios.post('/razorpay/verify-payment', {
+                            const verificationResponse = await axios.post('/verify-payment', {
                                 razorpay_payment_id: response.razorpay_payment_id,
                                 razorpay_order_id: response.razorpay_order_id,
                                 razorpay_signature: response.razorpay_signature,
@@ -1056,19 +1071,15 @@
                     modal: {
                         ondismiss: async function() {
                             try {
-                                await axios.post('/razorpay/payment-failure', {
+                                await axios.post('/payment-failure', {
                                     orderId: orderId
                                 });
                             } catch (error) {
                                 console.error("Failed to clean up order:", error);
                             }
                             
-                            Swal.fire({
-                                title: 'Payment Cancelled',
-                                text: 'You cancelled the payment. Your order has been cancelled.',
-                                icon: 'info',
-                                confirmButtonColor: '#3b82f6'
-                            });
+                            window.location.href = "/order-failure";
+
                             
                             btn.innerHTML = '<i class="fas fa-credit-card mr-2"></i> Proceed to Pay';
                             btn.disabled = false;
@@ -1082,7 +1093,7 @@
                     console.error('Payment failed:', response.error);
                     
                     try {
-                        await axios.post('/razorpay/payment-failure', {
+                        await axios.post('/payment-failure', {
                             orderId: orderId
                         });
                     } catch (error) {
@@ -1132,6 +1143,102 @@
             updateOrderSummary();
             updateOrderButton();
         });
+
+        function openCouponModal() {
+            document.getElementById("couponModal").classList.remove("hidden");
+            loadCoupons();
+        }
+
+        function closeCouponModal() {
+            document.getElementById("couponModal").classList.add("hidden");
+        }
+
+        async function loadCoupons() {
+        const couponList = document.getElementById("couponList");
+        couponList.innerHTML = `<p class="text-sm text-gray-500">Loading coupons...</p>`;
+
+        try {
+            const res = await axios.get("/coupon/available-coupon");
+            const { data } = res;
+
+            if (!data.success) {
+            if (data.message === "Please login to view coupons") {
+                couponList.innerHTML = `
+                <div class="text-center py-4">
+                    <p class="text-sm text-red-500 mb-2">${data.message}</p>
+                    <a href="/login" class="text-blue-600 hover:underline">Click here to login</a>
+                </div>
+                `;
+            } else {
+                couponList.innerHTML = `<p class="text-sm text-red-500">${data.message || "Failed to load coupons"}</p>`;
+            }
+            return;
+            }
+
+            if (data.coupons.length === 0) {
+            couponList.innerHTML = `<p class="text-sm text-gray-500 text-center py-4">No coupons available at the moment</p>`;
+            return;
+            }
+
+            couponList.innerHTML = "";
+
+            data.coupons.forEach(coupon => {
+            const expiryDate = new Date(coupon.expireAt).toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+            
+            couponList.innerHTML += `
+                <div class="border border-green-200 rounded-lg p-4 bg-green-50 mb-3">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="font-bold text-lg text-green-700">${coupon.code}</span>
+                        <span class="bg-green-200 text-green-800 text-xs px-2 py-1 rounded-full font-medium">
+                        Save ₹${coupon.discountValue}
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-700 mb-1">
+                        ${coupon.description || 'Get discount on your order'}
+                    </p>
+                    <p class="text-xs text-gray-600 mb-1">
+                        Minimum cart value: ₹${coupon.minCartValue}
+                    </p>
+                    <p class="text-xs text-gray-500">
+                        <i class="far fa-clock mr-1"></i>Valid till ${expiryDate}
+                    </p>
+                    </div>
+                    <button
+                    onclick="applyCouponFromModal('${coupon.code}')"
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium text-sm ml-4"
+                    >
+                    Apply
+                    </button>
+                </div>
+                </div>
+            `;
+            });
+
+        } catch (error) {
+            console.error("Error loading coupons:", error);
+            couponList.innerHTML = `
+            <div class="text-center py-4">
+                <p class="text-sm text-red-500 mb-2">Failed to load coupons. Please try again.</p>
+                <button onclick="loadCoupons()" class="text-blue-600 hover:underline">
+                Retry
+                </button>
+            </div>
+            `;
+        }
+        }
+
+        function applyCouponFromModal(code) {
+            document.getElementById("couponCode").value = code;
+            closeCouponModal();
+            applyCoupon(); 
+        }
+
     </script>
 </body>
 </html>
