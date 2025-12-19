@@ -60,7 +60,10 @@ const getWallet = async (req, res) => {
             return {
                 type: transaction.Type,
                 amount: parseFloat(transaction.Amount) || 0,
-                description: transaction.Type === 'credit' ? 'Money added to wallet' : 'Payment from wallet',
+                description: transaction.Description || (
+                 transaction.Type === 'credit'
+              ? 'Wallet credit'
+              : 'Wallet debit'),
                 orderId: transaction.orderId || null,
                 createdAt: transaction.CreatedAt,
                 balanceAfter: parseFloat(wallet.Balance) || 0

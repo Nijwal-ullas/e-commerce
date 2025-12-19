@@ -3,7 +3,7 @@ import cart from "../../model/cartSchema.js";
 import address from "../../model/addressSchema.js";
 import order from "../../model/orderSchema.js";
 import product from "../../model/productSchema.js";
-import wallet from "../../model/walletSchema.js"
+import wallet from "../../model/walletSchema.js";
 import Coupons from "../../model/couponSchema.js";
 
 const nameRegex = /^[A-Za-z\s]{6,30}$/;
@@ -24,12 +24,17 @@ const getCheckout = async (req, res) => {
 
     let cartData = null;
     let cartItems = [];
-    let totalPrice = 0; 
-    let subtotal = 0; 
-    let totalDiscount = 0; 
+    let totalPrice = 0;
+    let subtotal = 0;
+    let totalDiscount = 0;
     let hasOutOfStock = false;
     let isBuyNow = false;
     let buyNowItem = null;
+
+    let couponDiscount = 0;
+    let couponCode = '';
+    let couponError = '';
+    let appliedCoupon = null;
 
     if (req.session.buyNowItem) {
       isBuyNow = true;
@@ -58,9 +63,9 @@ const getCheckout = async (req, res) => {
       const itemTotal = currentPrice * (buyNowItem.quantity || 1);
       const itemOriginalTotal = originalPrice * (buyNowItem.quantity || 1);
       
-      totalPrice = itemOriginalTotal; 
-      subtotal = itemTotal; 
-      totalDiscount = itemOriginalTotal - itemTotal; 
+      totalPrice = itemOriginalTotal;
+      subtotal = itemTotal;
+      totalDiscount = itemOriginalTotal - itemTotal;
       
       if (variantDoc && variantDoc.Quantity < (buyNowItem.quantity || 1)) {
         hasOutOfStock = true;
@@ -116,9 +121,9 @@ const getCheckout = async (req, res) => {
         const itemOriginalTotal = originalPrice * item.quantity;
         const itemDiscount = itemOriginalTotal - itemTotal;
         
-        totalPrice += itemOriginalTotal; 
-        subtotal += itemTotal; 
-        totalDiscount += itemDiscount; 
+        totalPrice += itemOriginalTotal;
+        subtotal += itemTotal;
+        totalDiscount += itemDiscount;
 
         if (variantDoc && variantDoc.Quantity < item.quantity) {
           hasOutOfStock = true;
@@ -141,10 +146,19 @@ const getCheckout = async (req, res) => {
     }
 
     const shipping = subtotal >= 500 ? 0 : 50;
-    let couponDiscount = 0;
-    let couponCode = '';
-    let couponError = '';
-    let appliedCoupon = null;
+    
+    if (req.session.appliedCoupon) {
+      const appliedCouponData = req.session.appliedCoupon;
+      
+      if (subtotal >= appliedCouponData.minCartValue) {
+        couponDiscount = Math.min(appliedCouponData.discountValue, subtotal);
+        couponCode = appliedCouponData.code;
+        appliedCoupon = appliedCouponData;
+      } else {
+        couponError = `Minimum cart value ₹${appliedCouponData.minCartValue} required for this coupon. Your cart total is ₹${subtotal.toFixed(2)}`;
+        delete req.session.appliedCoupon;
+      }
+    }
 
     const afterCouponDiscount = subtotal - couponDiscount;
     const finalAmount = afterCouponDiscount + shipping;
@@ -160,6 +174,8 @@ const getCheckout = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
+      
+
     return res.render("user/checkoutPage", {
       user: userData,
       cart: cartData || { cart_items: cartItems },
@@ -169,11 +185,10 @@ const getCheckout = async (req, res) => {
       totalPage,
       isBuyNow,
       buyNowItem,
-      
-      totalPrice: totalPrice, 
-      discount: totalDiscount, 
+      totalPrice: totalPrice,
+      discount: totalDiscount,
       shipping: shipping,
-      finalAmount: finalAmount, 
+      finalAmount: finalAmount,
       subtotal: subtotal,
       couponDiscount: couponDiscount,
       couponCode: couponCode,
@@ -184,14 +199,14 @@ const getCheckout = async (req, res) => {
       walletBalance: walletBalance
     });
   } catch (error) {
-    console.log(error);
+    console.log("Get Checkout Error:", error);
     return res.status(500).send("Server Error");
   }
 };
 
 const applyCoupon = async (req, res) => {
   try {
-    const { couponCode, cartTotal } = req.body;
+    const { couponCode } = req.body;
     const userId = req.session.user;
 
     if (!userId) {
@@ -201,15 +216,15 @@ const applyCoupon = async (req, res) => {
       });
     }
 
-    if (!couponCode || cartTotal <= 0) {
+    if (!couponCode || couponCode.trim() === '') {
       return res.status(400).json({
         success: false,
-        message: "Invalid request"
+        message: "Coupon code is required"
       });
     }
 
     const coupon = await Coupons.findOne({
-      code: couponCode,
+      code: couponCode.trim().toUpperCase(),
       status: true,
       expireAt: { $gt: new Date() }
     });
@@ -217,44 +232,87 @@ const applyCoupon = async (req, res) => {
     if (!coupon) {
       return res.status(400).json({
         success: false,
-        message: "Coupon is invalid or expired"
+        message: "Invalid or expired coupon code"
       });
     }
 
     const userOrdersWithCoupon = await order.countDocuments({
       userId: userId,
-      'coupon.code': couponCode
+      couponCode: coupon.code,
+      orderStatus: { $nin: ["Cancelled"] },
+      paymentStatus: { $nin: ["Refunded"] }
     });
 
-    const DEFAULT_USAGE_LIMIT = 1;
-    if (userOrdersWithCoupon >= DEFAULT_USAGE_LIMIT) {
+    if (userOrdersWithCoupon >= 1) {
       return res.status(400).json({
         success: false,
         message: "You have already used this coupon"
       });
     }
 
+    let cartTotal = 0;
+    
+    if (req.session.buyNowItem) {
+      const buyNowItem = req.session.buyNowItem;
+      const productData = await product.findById(buyNowItem.productId);
+      
+      if (productData) {
+        let variantDoc = null;
+        if (productData.VariantItem && productData.VariantItem.length > 0) {
+          if (buyNowItem.variantId) {
+            variantDoc = productData.VariantItem.find(
+              v => v._id.toString() === buyNowItem.variantId.toString()
+            );
+          }
+          if (!variantDoc && buyNowItem.variantMl) {
+            variantDoc = productData.VariantItem.find(v => v.Ml === parseInt(buyNowItem.variantMl));
+          }
+        }
+        
+        const currentPrice = variantDoc ? (variantDoc.offerPrice || variantDoc.Price) : buyNowItem.price;
+        cartTotal = currentPrice * (buyNowItem.quantity || 1);
+      }
+    } else {
+      const cartData = await cart.findOne({ userId: userId })
+        .populate("cart_items.packageProductId");
+      
+      if (cartData && cartData.cart_items && cartData.cart_items.length > 0) {
+        cartData.cart_items.forEach(item => {
+          const productDoc = item.packageProductId;
+          if (!productDoc) return;
+          
+          let variantDoc = null;
+          if (productDoc.VariantItem && productDoc.VariantItem.length > 0) {
+            if (item.variantId) {
+              variantDoc = productDoc.VariantItem.find(
+                v => v._id.toString() === item.variantId.toString()
+              );
+            }
+            if (!variantDoc && item.variantMl) {
+              variantDoc = productDoc.VariantItem.find(v => v.Ml === parseInt(item.variantMl));
+            }
+          }
+          
+          const currentPrice = variantDoc ? (variantDoc.offerPrice || variantDoc.Price) : (item.price || 0);
+          cartTotal += currentPrice * item.quantity;
+        });
+      }
+    }
+
     if (cartTotal < coupon.minCartValue) {
       return res.status(400).json({
         success: false,
-        message: `Minimum cart value ₹${coupon.minCartValue} required for this coupon. Your cart total is ₹${cartTotal}.`
+        message: `Minimum cart value ₹${coupon.minCartValue} required for this coupon. Your cart total is ₹${cartTotal.toFixed(2)}.`
       });
     }
 
     const discount = Math.min(coupon.discountValue, cartTotal);
     
-    if (discount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Coupon discount cannot be applied to this cart"
-      });
-    }
-
     req.session.appliedCoupon = {
       code: coupon.code,
       discountValue: coupon.discountValue,
       minCartValue: coupon.minCartValue,
-      description: coupon.description
+      description: coupon.description || `Save ₹${coupon.discountValue}`
     };
 
     return res.json({
@@ -267,12 +325,16 @@ const applyCoupon = async (req, res) => {
         description: coupon.description
       },
       discount: discount,
+      cartTotal: cartTotal,
       finalAmount: cartTotal - discount
     });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Apply Coupon Error:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Server error while applying coupon" 
+    });
   }
 };
 
@@ -280,14 +342,17 @@ const removeCoupon = async (req, res) => {
   try {
     if (req.session.appliedCoupon) {
       delete req.session.appliedCoupon;
+      return res.json({
+        success: true,
+        message: "Coupon removed successfully"
+      });
     }
-    
     return res.json({
       success: true,
-      message: "Coupon removed successfully"
+      message: "No coupon to remove"
     });
   } catch (err) {
-    console.error(err);
+    console.error("Remove Coupon Error:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -427,11 +492,10 @@ const placeOrder = async (req, res) => {
 
       const userOrdersWithCoupon = await order.countDocuments({
         userId: userId,
-        'coupon.code': effectiveCouponCode
+        couponCode: effectiveCouponCode
       });
 
-      const DEFAULT_USAGE_LIMIT = 1;
-      if (userOrdersWithCoupon >= DEFAULT_USAGE_LIMIT) {
+      if (userOrdersWithCoupon >= 1) {
         return res.status(400).json({
           success: false,
           message: "You have already used this coupon"
@@ -441,7 +505,7 @@ const placeOrder = async (req, res) => {
       if (afterDiscount < coupon.minCartValue) {
         return res.status(400).json({
           success: false,
-          message: `Minimum cart value ₹${coupon.minCartValue} required`
+          message: `Minimum cart value ₹${coupon.minCartValue} required for this coupon. Your cart total is ₹${afterDiscount.toFixed(2)}`
         });
       }
 
@@ -451,7 +515,8 @@ const placeOrder = async (req, res) => {
       couponDetails = {
         code: coupon.code,
         discountValue: coupon.discountValue,
-        description: coupon.description
+        description: coupon.description,
+        minCartValue: coupon.minCartValue
       };
     }
 
@@ -563,11 +628,8 @@ const placeOrder = async (req, res) => {
       orderedItem,
       totalPrice: totalPrice,
       discount: totalDiscount,
-      coupon: couponDetails ? {
-        code: couponDetails.code,
-        discountValue: couponDiscount,
-        description: couponDetails.description
-      } : null,
+      couponId: appliedCouponId,
+      couponCode: couponCode || null,
       couponDiscount: couponDiscount,
       walletUsed: walletUsed,
       finalAmount: finalAmount,
@@ -670,6 +732,7 @@ const placeOrder = async (req, res) => {
       totalPrice: totalPrice,
       discount: totalDiscount,
       couponDiscount: couponDiscount,
+      couponCode: couponCode,
       shipping: deliveryCharge,
       walletUsed: walletUsed,
       finalAmount: finalAmount,

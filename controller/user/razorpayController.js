@@ -10,7 +10,7 @@ import crypto from "crypto";
 export const createRazorpayOrder = async (req, res) => {
   try {
     const userId = req.session.user;
-    const { addressId } = req.body;
+    const { addressId, couponCode: inputCouponCode } = req.body;
 
     if (!userId) {
       return res.status(401).json({ success: false, message: "Login first" });
@@ -122,8 +122,63 @@ export const createRazorpayOrder = async (req, res) => {
     }
 
     const afterDiscount = totalPrice - totalDiscount;
+
+    let couponDiscount = 0;
+    let appliedCouponId = null;
+    let couponCode = '';
+    let couponDetails = null;
+
+    let effectiveCouponCode = inputCouponCode || (req.session.appliedCoupon ? req.session.appliedCoupon.code : null);
+
+    if (effectiveCouponCode) {
+      const Coupons = (await import("../../model/couponSchema.js")).default;
+      
+      const coupon = await Coupons.findOne({
+        code: effectiveCouponCode,
+        status: true,
+        expireAt: { $gt: new Date() }
+      });
+
+      if (!coupon) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or expired coupon"
+        });
+      }
+
+      const userOrdersWithCoupon = await Order.countDocuments({
+        userId: userId,
+        couponCode: effectiveCouponCode
+      });
+
+      if (userOrdersWithCoupon >= 1) {
+        return res.status(400).json({
+          success: false,
+          message: "You have already used this coupon"
+        });
+      }
+
+      if (afterDiscount < coupon.minCartValue) {
+        return res.status(400).json({
+          success: false,
+          message: `Minimum cart value ₹${coupon.minCartValue} required for this coupon`
+        });
+      }
+
+      couponDiscount = Math.min(coupon.discountValue, afterDiscount);
+      appliedCouponId = coupon._id;
+      couponCode = coupon.code;
+      couponDetails = {
+        code: coupon.code,
+        discountValue: coupon.discountValue,
+        description: coupon.description,
+        minCartValue: coupon.minCartValue
+      };
+    }
+
     const deliveryCharge = afterDiscount >= 500 ? 0 : 50;
-    const finalAmount = afterDiscount + deliveryCharge;
+    const afterCouponDiscount = afterDiscount - couponDiscount;
+    const finalAmount = afterCouponDiscount + deliveryCharge;
 
     for (const cartItem of cartItems) {
       const productDoc = cartItem.packageProductId;
@@ -176,7 +231,11 @@ export const createRazorpayOrder = async (req, res) => {
       orderedItem,
       totalPrice: totalPrice,
       discount: totalDiscount,
+      couponId: appliedCouponId,
+      couponCode: couponCode || null,
+      couponDiscount: couponDiscount,
       finalAmount: finalAmount,
+      shippingCharge: deliveryCharge,
       shippingAddress: [
         {
           addressType: addressData.addressType,
@@ -202,17 +261,17 @@ export const createRazorpayOrder = async (req, res) => {
       receipt: `order_${newOrder._id}`,
       notes: {
         order_id: newOrder._id.toString(),
-        user_id: userId.toString()
+        user_id: userId.toString(),
+        coupon_code: couponCode || "none",
+        coupon_discount: couponDiscount
       }
     };
 
-    
     let razorpayOrder;
     try {
       razorpayOrder = await razorpay.orders.create(razorpayOptions);
-      
     } catch (razorpayError) {
-      console.error("Error message:", razorpayError.message);
+      console.error("Razorpay Error:", razorpayError);
       
       await Order.findByIdAndDelete(newOrder._id);
       
@@ -225,6 +284,7 @@ export const createRazorpayOrder = async (req, res) => {
     newOrder.razorpayOrderId = razorpayOrder.id;
     await newOrder.save();
 
+    delete req.session.appliedCoupon;
 
     res.json({
       success: true,
@@ -233,11 +293,14 @@ export const createRazorpayOrder = async (req, res) => {
       amount: razorpayOrder.amount,
       currency: razorpayOrder.currency,
       key_id: process.env.RAZORPAY_KEY_ID,
-      isBuyNow: isBuyNow
+      isBuyNow: isBuyNow,
+      couponApplied: couponCode ? true : false,
+      couponDiscount: couponDiscount,
+      finalAmount: finalAmount
     });
 
   } catch (err) {
-  
+    console.error("Create Razorpay Order Error:", err);
     res.status(500).json({ 
       success: false, 
       message: "Order creation failed. Please try again." 
@@ -291,7 +354,7 @@ export const verifyPayment = async (req, res) => {
     orderDoc.paymentDate = new Date();
     
     orderDoc.orderedItem.forEach(item => {
-      item.status = "Processing";
+      item.status = "Pending";
       item.paymentStatus = "Paid";
     });
 
@@ -303,13 +366,12 @@ export const verifyPayment = async (req, res) => {
         if (prod && prod.VariantItem) {
           const variant = prod.VariantItem.id(item.variantId);
           if (variant) {
-            const oldQuantity = variant.Quantity;
             variant.Quantity -= item.quantity;
             await prod.save();
           }
         }
       } catch (stockError) {
-        console.error(" Stock update error for product:", item.productId, stockError);
+        console.error("Stock update error for product:", item.productId, stockError);
       }
     }
 
@@ -324,14 +386,18 @@ export const verifyPayment = async (req, res) => {
       );
     }
 
+    delete req.session.appliedCoupon;
 
     res.json({ 
       success: true, 
       message: "Payment verified successfully", 
-      orderId 
+      orderId,
+      couponCode: orderDoc.couponCode,
+      couponDiscount: orderDoc.couponDiscount
     });
 
   } catch (err) {
+    console.error("Verify Payment Error:", err);
     res.status(500).json({ 
       success: false, 
       message: "Payment verification failed. Please contact support." 
@@ -361,9 +427,8 @@ export const verifyPayment = async (req, res) => {
       });
     }
 
-    return res.json({
-      success: true,
-      redirect: `/failurePage/${Order._id}`
+return res.json({
+      success: true
     });
 
   } catch (err) {
@@ -376,19 +441,7 @@ export const verifyPayment = async (req, res) => {
 
 
 const orderFailurePage = async (req, res) => {
-  const userId = req.session.user;
-  if (!userId) return res.redirect("/login");
-
-  const { id } = req.params;
-
-  const order = await Order.findOne({
-    _id: id,
-    userId
-  });
-
-  if (!order) return res.redirect("/orders");
-
-  res.render("user/orderFailurePage", { order });
+  res.render("user/orderFailurePage");
 };
 
 

@@ -9,6 +9,10 @@ const getCart = async (req, res) => {
       return res.redirect("/login");
     }
 
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
     if (req.session.buyNowItem) {
       delete req.session.buyNowItem;
     }
@@ -28,7 +32,11 @@ const getCart = async (req, res) => {
       });
     }
 
-    const safeCartItems = (cartData.cart_items || [])
+    const totalItems = cartData.cart_items.length;
+    const totalPage = Math.ceil(totalItems / limit);
+    const paginatedCartItems = cartData.cart_items.slice(skip, skip + limit);
+
+    const safeCartItems = (paginatedCartItems || [])
       .map((item) => {
         const productData = item.packageProductId;
 
@@ -47,11 +55,20 @@ const getCart = async (req, res) => {
         return {
           ...item.toObject(),
           variantData: variantData || null,
-          displayPrice: variantData?.offerPrice || variantData?.Price || item.price,
+          displayPrice:
+            variantData?.offerPrice || variantData?.Price || item.price,
           originalPrice: variantData?.Price || item.price,
-          hasDiscount: variantData?.offerPrice && variantData?.Price > variantData?.offerPrice,
-          discountPercentage: variantData?.offerPrice && variantData?.Price ? 
-            Math.round(((variantData.Price - variantData.offerPrice) / variantData.Price) * 100) : 0
+          hasDiscount:
+            variantData?.offerPrice &&
+            variantData?.Price > variantData?.offerPrice,
+          discountPercentage:
+            variantData?.offerPrice && variantData?.Price
+              ? Math.round(
+                  ((variantData.Price - variantData.offerPrice) /
+                    variantData.Price) *
+                    100
+                )
+              : 0,
         };
       })
       .filter((item) => !item.isInvalid);
@@ -59,16 +76,16 @@ const getCart = async (req, res) => {
     let totalCartPrice = 0;
     let totalOriginalPrice = 0;
     let totalDiscount = 0;
-    
+
     if (safeCartItems.length > 0) {
-      safeCartItems.forEach(item => {
+      safeCartItems.forEach((item) => {
         const itemPrice = item.displayPrice || item.price;
         const itemOriginalPrice = item.originalPrice || item.price;
-        
-        totalCartPrice += (parseFloat(itemPrice) * item.quantity);
-        totalOriginalPrice += (parseFloat(itemOriginalPrice) * item.quantity);
+
+        totalCartPrice += parseFloat(itemPrice) * item.quantity;
+        totalOriginalPrice += parseFloat(itemOriginalPrice) * item.quantity;
       });
-      
+
       totalDiscount = totalOriginalPrice - totalCartPrice;
     }
 
@@ -76,8 +93,11 @@ const getCart = async (req, res) => {
       user: userData,
       cartItems: safeCartItems,
       totalCartPrice: totalCartPrice,
-      totalOriginalPrice: totalOriginalPrice > totalCartPrice ? totalOriginalPrice : null,
+      totalOriginalPrice:
+        totalOriginalPrice > totalCartPrice ? totalOriginalPrice : null,
       totalDiscount: totalDiscount > 0 ? totalDiscount : null,
+      page,
+      totalPage,
     });
   } catch (error) {
     console.log("Error in getCart:", error);
@@ -91,8 +111,8 @@ const addCart = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Please login to add items to cart',
-        redirect: '/login'
+        message: "Please login to add items to cart",
+        redirect: "/login",
       });
     }
 
@@ -139,13 +159,13 @@ const addCart = async (req, res) => {
         (v) => v._id.toString() === variantId.toString()
       );
     }
-    
+
     if (!selectedVariant && variantMl) {
       selectedVariant = productData.VariantItem?.find(
         (v) => v.Ml === parseInt(variantMl)
       );
     }
-    
+
     if (!selectedVariant) {
       selectedVariant = productData.VariantItem?.find((v) => v.Quantity > 0);
     }
@@ -164,9 +184,10 @@ const addCart = async (req, res) => {
       });
     }
 
-    const productPrice = selectedVariant.offerPrice || selectedVariant.Price || 0;
+    const productPrice =
+      selectedVariant.offerPrice || selectedVariant.Price || 0;
     const originalPrice = selectedVariant.Price || productPrice;
-    
+
     const totalPrice = productPrice * quantity;
     const originalTotalPrice = originalPrice * quantity;
 
@@ -218,7 +239,7 @@ const addCart = async (req, res) => {
       const newTotalPrice = productPrice * newQuantity;
 
       userCart.cart_items[existingItemIndex].quantity = newQuantity;
-      userCart.cart_items[existingItemIndex].price = productPrice; 
+      userCart.cart_items[existingItemIndex].price = productPrice;
       userCart.cart_items[existingItemIndex].originalPrice = originalPrice;
       userCart.cart_items[existingItemIndex].totalPrice = newTotalPrice;
       userCart.cart_items[existingItemIndex].addedAt = new Date();
@@ -263,9 +284,9 @@ const addCart = async (req, res) => {
     });
   } catch (error) {
     console.error("Add cart error:", error);
-    return res.status(500).json({ 
-      success: false, 
-      message: "Server error" 
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
@@ -276,18 +297,18 @@ const removeFromCart = async (req, res) => {
     const itemId = req.params.id;
 
     if (!userId) {
-      return res.status(401).json({ 
-        success: false, 
+      return res.status(401).json({
+        success: false,
         message: "Login required",
-        redirect: '/login'
+        redirect: "/login",
       });
     }
 
     const userCart = await cart.findOne({ userId });
     if (!userCart) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Cart not found" 
+      return res.status(404).json({
+        success: false,
+        message: "Cart not found",
       });
     }
 
@@ -313,13 +334,13 @@ const removeFromCart = async (req, res) => {
       message: "Item removed from cart",
       cartCount: userCart.cart_items.length,
       cartTotal: cartTotal,
-      removedItemPrice: itemToRemove?.totalPrice || 0
+      removedItemPrice: itemToRemove?.totalPrice || 0,
     });
   } catch (error) {
     console.error("Remove from cart error:", error);
-    return res.status(500).json({ 
-      success: false, 
-      message: "Server error" 
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
@@ -330,11 +351,11 @@ const updateQuantity = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Login required',
-        redirect: '/login'
+        message: "Login required",
+        redirect: "/login",
       });
     }
-    
+
     const { itemId, action } = req.body;
 
     const cartData = await cart
@@ -342,30 +363,30 @@ const updateQuantity = async (req, res) => {
       .populate("cart_items.packageProductId");
 
     if (!cartData) {
-      return res.json({ 
-        success: false, 
-        message: "Cart not found" 
+      return res.json({
+        success: false,
+        message: "Cart not found",
       });
     }
 
     const item = cartData.cart_items.id(itemId);
     if (!item) {
-      return res.json({ 
-        success: false, 
-        message: "Item not found in cart" 
+      return res.json({
+        success: false,
+        message: "Item not found in cart",
       });
     }
 
     const product = item.packageProductId;
     if (!product) {
       cartData.cart_items = cartData.cart_items.filter(
-        item => item._id.toString() !== itemId
+        (item) => item._id.toString() !== itemId
       );
       await cartData.save();
-      
-      return res.json({ 
-        success: false, 
-        message: "Product not found, item removed from cart" 
+
+      return res.json({
+        success: false,
+        message: "Product not found, item removed from cart",
       });
     }
 
@@ -375,13 +396,13 @@ const updateQuantity = async (req, res) => {
 
     if (!variant) {
       cartData.cart_items = cartData.cart_items.filter(
-        item => item._id.toString() !== itemId
+        (item) => item._id.toString() !== itemId
       );
       await cartData.save();
-      
-      return res.json({ 
-        success: false, 
-        message: "Variant not found, item removed from cart" 
+
+      return res.json({
+        success: false,
+        message: "Variant not found, item removed from cart",
       });
     }
 
@@ -389,9 +410,9 @@ const updateQuantity = async (req, res) => {
 
     if (action === "increment") {
       if (item.quantity >= stock) {
-        return res.json({ 
-          success: false, 
-          message: "Stock limit reached" 
+        return res.json({
+          success: false,
+          message: "Stock limit reached",
         });
       }
 
@@ -405,17 +426,17 @@ const updateQuantity = async (req, res) => {
       item.quantity += 1;
     } else if (action === "decrement") {
       if (item.quantity <= 1) {
-        return res.json({ 
-          success: false, 
-          message: "Minimum quantity is 1" 
+        return res.json({
+          success: false,
+          message: "Minimum quantity is 1",
         });
       }
 
       item.quantity -= 1;
     } else {
-      return res.json({ 
-        success: false, 
-        message: "Invalid action" 
+      return res.json({
+        success: false,
+        message: "Invalid action",
       });
     }
 
@@ -430,7 +451,7 @@ const updateQuantity = async (req, res) => {
       0
     );
 
-    const shipping = subtotal > 1000 ? 0 : 0; 
+    const shipping = subtotal > 1000 ? 0 : 0;
     const total = subtotal + shipping;
 
     return res.json({
@@ -450,9 +471,9 @@ const updateQuantity = async (req, res) => {
     });
   } catch (error) {
     console.error("Update quantity error:", error);
-    return res.status(500).json({ 
-      success: false, 
-      message: "Server error" 
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
@@ -463,7 +484,7 @@ const buyNow = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Please login to proceed',
+        message: "Please login to proceed",
         redirect: "/login",
       });
     }
@@ -480,7 +501,7 @@ const buyNow = async (req, res) => {
     }
 
     let selectedVariant = null;
-    
+
     if (variantId) {
       selectedVariant = productData.VariantItem.find(
         (v) => v._id.toString() === variantId.toString()
@@ -490,9 +511,9 @@ const buyNow = async (req, res) => {
         (v) => v.Ml === parseInt(variantMl)
       );
     }
-    
+
     if (!selectedVariant) {
-      selectedVariant = productData.VariantItem.find(v => v.Quantity > 0);
+      selectedVariant = productData.VariantItem.find((v) => v.Quantity > 0);
     }
 
     if (!selectedVariant || selectedVariant.Quantity <= 0) {
@@ -503,7 +524,7 @@ const buyNow = async (req, res) => {
     }
 
     const qty = parseInt(quantity) || 1;
-    
+
     if (qty > selectedVariant.Quantity) {
       return res.json({
         success: false,
@@ -511,7 +532,8 @@ const buyNow = async (req, res) => {
       });
     }
 
-    const productPrice = selectedVariant.offerPrice || selectedVariant.Price || 0;
+    const productPrice =
+      selectedVariant.offerPrice || selectedVariant.Price || 0;
     const originalPrice = selectedVariant.Price || productPrice;
 
     req.session.buyNowItem = {
@@ -533,9 +555,9 @@ const buyNow = async (req, res) => {
     });
   } catch (error) {
     console.log("Buy Now error:", error);
-    return res.status(500).json({ 
-      success: false, 
-      message: "Server error" 
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 };
