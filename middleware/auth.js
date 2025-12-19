@@ -82,4 +82,12 @@ const setUser = (req, res, next) => {
   next();
 };
 
-export default { checkUser, adminAuth, isBlocked, setUser };
+const setCurrentRoute = (req, res, next) => {
+  if (!res) {
+    return next(); 
+  }
+  res.locals.currentRoute = req.path;
+  next();
+};
+
+export default { checkUser, adminAuth, isBlocked, setUser, setCurrentRoute };
