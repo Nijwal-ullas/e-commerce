@@ -27,6 +27,8 @@ const OrdersSchema = new Schema(
           required: true,
         },
 
+        productName : {type:String},
+
         variantId: { type: Schema.Types.ObjectId },
 
         ml: { type: Number },
@@ -70,7 +72,7 @@ const OrdersSchema = new Schema(
         returnApprovalDate: { type: Date },
         returnRejectionDate: { type: Date },
         returnedDate: { type: Date },
-        refundAmount: { type: Number }, 
+        refundAmount: { type: Number },
         refundDate: { type: Date },
         deliveredDate: { type: Date },
       },
@@ -78,7 +80,7 @@ const OrdersSchema = new Schema(
 
     payment: {
       type: String,
-      enum: ["COD", "Cod", "razorpay" , "Razorpay", "Wallet", "wallet"],
+      enum: ["COD", "Cod", "razorpay", "Razorpay", "Wallet", "wallet"],
       required: true,
     },
 
@@ -97,13 +99,21 @@ const OrdersSchema = new Schema(
 
     totalPrice: { type: Number, required: true },
     discount: { type: Number, default: 0 },
-    walletUsed: { type: Number, default: 0 }, 
-    finalAmount: { type: Number, required: true }, 
-    
-    // amountPaid: { type: Number, default: 0 }, 
-    // amountDue: { type: Number, default: 0 },
+    walletUsed: { type: Number, default: 0 },
+    finalAmount: { type: Number, required: true },
 
+    
     couponId: { type: Schema.Types.ObjectId, ref: "Coupon" },
+
+       couponCode: {
+      type: String,
+      default: null,
+    },
+
+    couponDiscount: {
+      type: Number,
+      default: 0,
+    },
 
     shippingAddress: [
       {
@@ -128,6 +138,8 @@ const OrdersSchema = new Schema(
         "Shipped",
         "Delivered",
         "Cancelled",
+        "Refunded",
+        "Returned"
       ],
       default: "Pending",
     },
