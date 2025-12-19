@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BnB Collection - Verify OTP</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+      .otpBox {
+        width: 48px;
+        height: 48px;
+        text-align: center;
+        font-size: 20px;
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        background-color: #f1f5f9;
+        transition: border-color 0.3s;
+      }
+      .otpBox:focus {
+        outline: none;
+        border-color: #dc2626;
+        background-color: #fff;
+      }
+      button:disabled,
+      a.disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+
+  <body class="bg-gray-100">
+    <%- include('../partials/user/header') %>
+
+    <main
+      class="flex items-center justify-center min-h-screen bg-gray-100 px-4"
+    >
+      <div
+        class="max-w-md w-full bg-white rounded-lg shadow-lg p-8 border border-gray-200"
+      >
+        <div class="flex justify-center mb-4">
+          <div class="bg-green-500 rounded-full p-6">
+            <svg
+              class="w-12 h-12 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="3"
+                d="M5 13l4 4L19 7"
+              ></path>
+            </svg>
+          </div>
+        </div>
+
+        <h2 class="text-center text-2xl font-semibold mb-4">Verify OTP</h2>
+
+        <div class="text-center mb-2">
+          <span class="text-sm text-gray-600">OTP sent to</span>
+          <span class="text-sm text-red-600">
+            <%= email || 'your email' %>
+          </span>
+        </div>
+
+        <div id="timer" class="text-center text-sm text-gray-700 mb-6">
+          1:00
+        </div>
+
+        <div class="flex justify-center gap-2 mb-6">
+          <input type="text" maxlength="1" class="otpBox" id="otp1" />
+          <input type="text" maxlength="1" class="otpBox" id="otp2" />
+          <input type="text" maxlength="1" class="otpBox" id="otp3" />
+          <input type="text" maxlength="1" class="otpBox" id="otp4" />
+          <input type="text" maxlength="1" class="otpBox" id="otp5" />
+          <input type="text" maxlength="1" class="otpBox" id="otp6" />
+        </div>
+
+        <div class="text-center mb-4">
+          <a
+            href="#"
+            id="resendBtn"
+            class="text-sm text-gray-600 hover:text-gray-800 disabled"
+          >
+            Resend OTP
+          </a>
+        </div>
+
+        <button
+          id="verifyBtn"
+          class="w-full bg-red-600 text-white py-2 rounded hover:bg-red-700 transition"
+        >
+          Verify OTP
+        </button>
+      </div>
+    </main>
+
+    <%- include('../partials/user/footer') %>
+
+    <script>
+      const otpInputs = document.querySelectorAll(".otpBox");
+      const verifyBtn = document.getElementById("verifyBtn");
+      const resendBtn = document.getElementById("resendBtn");
+      const timerEl = document.getElementById("timer");
+
+      resendBtn.classList.add("disabled");
+
+      otpInputs.forEach((input, index) => {
+        input.addEventListener("keyup", (e) => {
+          if (/^[0-9]$/.test(e.key) && index < otpInputs.length - 1) {
+            otpInputs[index + 1].focus();
+          } else if (e.key === "Backspace" && index > 0) {
+            otpInputs[index - 1].focus();
+          }
+        });
+      });
+
+      otpInputs[0].focus();
+
+      let timeLeft = 59;
+      let timer = setInterval(updateTimer, 1000);
+
+      function updateTimer() {
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          timerEl.textContent = "OTP expired! Please resend.";
+          disableOtpInputs(true);
+          resendBtn.classList.remove("disabled");
+        } else {
+          timerEl.textContent = `00:${
+            timeLeft < 10 ? "0" + timeLeft : timeLeft
+          }`;
+          timeLeft--;
+        }
+      }
+
+      function disableOtpInputs(state) {
+        otpInputs.forEach((box) => (box.disabled = state));
+        verifyBtn.disabled = state;
+      }
+
+      verifyBtn.addEventListener("click", async () => {
+        const otp = Array.from(otpInputs)
+          .map((input) => input.value)
+          .join("");
+
+        if (otp.length < 6) {
+          return Swal.fire({
+            icon: "error",
+            title: "Invalid OTP",
+            text: "Please enter all 6 digits!",
+          });
+        }
+
+        try {
+          const res = await fetch("/verify-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ otp }),
+          });
+
+          const data = await res.json();
+
+          if (data.success) {
+            Swal.fire({
+              icon: "success",
+              title: "OTP Verified!",
+              text: "Your account has been successfully created.",
+            }).then(() => {
+              window.location.href = data.redirectUrl || "/";
+            });
+          } else {
+            Swal.fire({
+              icon: "error",
+              title: "Failed",
+              text: data.message,
+            });
+          }
+        } catch (error) {
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "Something went wrong!",
+          });
+        }
+      });
+
+      resendBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        resendBtn.classList.add("disabled");
+
+        try {
+          const res = await fetch("/resend-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+
+          const data = await res.json();
+
+          Swal.fire({
+            icon: data.success ? "success" : "error",
+            title: data.success ? "OTP Resent!" : "Failed",
+            text: data.message,
+          });
+
+          if (data.success) {
+            otpInputs.forEach((box) => {
+              box.value = "";
+              box.disabled = false;
+            });
+
+            verifyBtn.disabled = false;
+            otpInputs[0].focus();
+
+            timeLeft = 60;
+            clearInterval(timer);
+            timer = setInterval(updateTimer, 1000);
+          } else {
+            resendBtn.classList.remove("disabled");
+          }
+        } catch (error) {
+          Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: "Cannot resend right now.",
+          });
+
+          resendBtn.classList.remove("disabled");
+        }
+      });
+    </script>
+  </body>
+</html>

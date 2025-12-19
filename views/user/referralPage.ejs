@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Referrals - RnBB Collection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-gray-50">
+    <%- include("../partials/user/header.ejs") %>
+
+    <div class="max-w-full mx-auto px-6 lg:px-12 py-8">
+        <div class="flex flex-col lg:flex-row gap-8">
+            <div class="lg:w-64 flex-shrink-0">
+                <div class="sticky top-24">
+                    <%- include("../partials/user/profileSidebar.ejs") %>
+                </div>
+            </div>
+
+            <div class="flex-1">
+                <div class="bg-gray-100 rounded-lg p-6 lg:p-8">
+                    
+                    <div class="bg-gradient-to-r from-purple-600 to-purple-700 rounded-xl shadow-lg p-8 mb-8 text-white">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                            <div class="flex-1">
+                                <p class="text-purple-100 text-sm mb-2">Your Referral Code</p>
+                                <div class="flex items-center gap-4 mb-4">
+                                    <h2 class="text-4xl font-bold tracking-wider" id="referralCode"><%= user.referralCode || 'N/A' %></h2>
+                                    <button onclick="copyReferralCode()" class="bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg px-4 py-2 transition-all">
+                                        <i class="fas fa-copy mr-2"></i>Copy
+                                    </button>
+                                </div>
+                                <p class="text-purple-100 text-sm">Share this code with friends and earn rewards!</p>
+                            </div>
+                            <div class="bg-white bg-opacity-20 rounded-full p-4">
+                                <i class="fas fa-gift text-4xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm p-6 lg:p-8 mb-8">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-6">Share Your Code</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <button onclick="shareViaWhatsApp()" class="flex items-center justify-center gap-3 bg-green-500 hover:bg-green-600 text-white py-4 rounded-lg transition-colors">
+                                <i class="fab fa-whatsapp text-2xl"></i>
+                                <span class="font-semibold">WhatsApp</span>
+                            </button>
+                            <button onclick="shareViaEmail()" class="flex items-center justify-center gap-3 bg-blue-500 hover:bg-blue-600 text-white py-4 rounded-lg transition-colors">
+                                <i class="fas fa-envelope text-2xl"></i>
+                                <span class="font-semibold">Email</span>
+                            </button>
+                            <button onclick="shareLink()" class="flex items-center justify-center gap-3 bg-gray-700 hover:bg-gray-800 text-white py-4 rounded-lg transition-colors">
+                                <i class="fas fa-share-alt text-2xl"></i>
+                                <span class="font-semibold">Share Link</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm p-6 lg:p-8 mb-8">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-6">How Referrals Work</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="text-center">
+                                <div class="bg-purple-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                                    <span class="text-2xl font-bold text-purple-600">1</span>
+                                </div>
+                                <h3 class="font-semibold text-gray-800 mb-2">Share Your Code</h3>
+                                <p class="text-sm text-gray-600">Send your unique referral code to friends and family</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="bg-purple-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                                    <span class="text-2xl font-bold text-purple-600">2</span>
+                                </div>
+                                <h3 class="font-semibold text-gray-800 mb-2">They Sign Up</h3>
+                                <p class="text-sm text-gray-600">Your friend registers using your referral code</p>
+                            </div>
+                            <div class="text-center">
+                                <div class="bg-purple-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                                    <span class="text-2xl font-bold text-purple-600">3</span>
+                                </div>
+                                <h3 class="font-semibold text-gray-800 mb-2">Earn Rewards</h3>
+                                <p class="text-sm text-gray-600">Get instant rewards when they register with your code</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-6">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-star text-purple-600 text-xl mt-1"></i>
+                            <div>
+                                <h3 class="font-semibold text-purple-900 mb-3">Referral Benefits</h3>
+                                <ul class="text-sm text-purple-800 space-y-2">
+                                    <li><i class="fas fa-check-circle mr-2 text-purple-600"></i>Both you and your friend earn rewards instantly</li>
+                                    <li><i class="fas fa-check-circle mr-2 text-purple-600"></i>Rewards credited as soon as they sign up</li>
+                                    <li><i class="fas fa-check-circle mr-2 text-purple-600"></i>Money added directly to your wallet</li>
+                                    <li><i class="fas fa-check-circle mr-2 text-purple-600"></i>No limit on number of referrals</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <%- include("../partials/user/footer.ejs") %>
+
+    <script>
+        const SwalConfig = {
+            success: (title, text) => {
+                return Swal.fire({
+                    title: title,
+                    text: text,
+                    icon: 'success',
+                    confirmButtonColor: '#9333ea'
+                });
+            },
+            error: (title, text) => {
+                return Swal.fire({
+                    title: title,
+                    text: text,
+                    icon: 'error',
+                    confirmButtonColor: '#9333ea'
+                });
+            }
+        };
+
+        const referralCode = '<%= user.referralCode || "" %>';
+        const referralUrl = `${window.location.origin}/register?ref=${referralCode}`;
+
+        function copyReferralCode() {
+            if (!referralCode) {
+                SwalConfig.error('Error', 'No referral code available');
+                return;
+            }
+
+            navigator.clipboard.writeText(referralCode).then(() => {
+                SwalConfig.success('Copied!', 'Referral code copied to clipboard');
+            }).catch(err => {
+                SwalConfig.error('Error', 'Failed to copy referral code');
+            });
+        }
+
+        function shareViaWhatsApp() {
+            if (!referralCode) {
+                SwalConfig.error('Error', 'No referral code available');
+                return;
+            }
+
+            const message = `Hey! 👋 Join RnBB Collection using my referral code *${referralCode}* and get ₹50 OFF on your first order! 🎉\n\nSign up here: ${referralUrl}`;
+            const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        function shareViaEmail() {
+            if (!referralCode) {
+                SwalConfig.error('Error', 'No referral code available');
+                return;
+            }
+
+            const subject = 'Join RnBB Collection and Get ₹50 OFF!';
+            const body = `Hi there!\n\nI wanted to share RnBB Collection with you - an amazing online store for quality products!\n\nUse my referral code: ${referralCode}\nSign up here: ${referralUrl}\n\nYou'll get ₹50 OFF on your first order!\n\nHappy Shopping! 🛍️`;
+            
+            window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        }
+
+        function shareLink() {
+            if (!referralCode) {
+                SwalConfig.error('Error', 'No referral code available');
+                return;
+            }
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Join RnBB Collection',
+                    text: `Use my referral code ${referralCode} and get ₹50 OFF on your first order!`,
+                    url: referralUrl
+                }).catch(err => {
+                    console.log('Error sharing:', err);
+                    copyReferralLink();
+                });
+            } else {
+                copyReferralLink();
+            }
+        }
+
+        function copyReferralLink() {
+            navigator.clipboard.writeText(referralUrl).then(() => {
+                SwalConfig.success('Copied!', 'Referral link copied to clipboard');
+            }).catch(err => {
+                SwalConfig.error('Error', 'Failed to copy referral link');
+            });
+        }
+    </script>
+</body>
+</html>

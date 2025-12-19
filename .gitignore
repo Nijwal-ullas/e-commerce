@@ -1,2 +1,4 @@
 .env
-git rm -r --cached node_modules
+node_modules/
+public/uploads/*
+!public/uploads/.gitkeep

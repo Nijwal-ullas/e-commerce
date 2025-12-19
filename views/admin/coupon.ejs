@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coupon Management - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-gray-100">
+    <div class="flex h-screen">
+        <%- include('../partials/admin/sidebar') %>
+
+        <main class="flex-1 overflow-y-auto">
+            <%- include('../partials/admin/header') %>
+
+            <div class="p-6">
+                <div class="bg-white rounded-lg shadow">
+                    <div class="flex items-center justify-between p-6 border-b">
+                        <h1 class="text-2xl font-semibold text-gray-800">Coupon Management</h1>
+                    </div>
+
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Add Coupon Form -->
+                            <div class="lg:col-span-1">
+                                <div class="bg-gray-50 rounded-lg p-6 border border-gray-200">
+                                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Add Coupon Details</h2>
+                                    <form id="couponForm">
+                                        <input type="hidden" id="couponId" name="couponId" />
+
+                                        <div class="mb-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Coupon Code *</label>
+                                            <input type="text" 
+                                                   id="couponCode" 
+                                                   class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase" 
+                                                   placeholder="Enter coupon code" 
+                                                   >
+                                            <p id="codeError" class="text-red-500 text-sm mt-1 hidden">Coupon code is required</p>
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                                            <input type="text" 
+                                                   id="description" 
+                                                   class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                                   placeholder="Enter description">
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Min Cart Value (₹) *</label>
+                                            <input type="number" 
+                                                   id="minCartValue" 
+                                                   class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                                   placeholder="Enter minimum cart value" 
+                                                   min="0"
+                                                   step="0.01"
+                                                   >
+                                            <p id="minCartError" class="text-red-500 text-sm mt-1 hidden">Min cart value is required</p>
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Discount Value (₹) *</label>
+                                            <input type="number" 
+                                                   id="discountValue" 
+                                                   class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                                   placeholder="Enter discount value" 
+                                                   min="0"
+                                                   step="0.01"
+                                                   >
+                                            <p id="discountError" class="text-red-500 text-sm mt-1 hidden">Discount value is required</p>
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Expire At *</label>
+                                            <input type="date" 
+                                                   id="expireAt" 
+                                                   class="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                                   >
+                                            <p id="dateError" class="text-red-500 text-sm mt-1 hidden">Expiry date is required</p>
+                                        </div>
+
+                                        <button type="submit" 
+                                                id="submitBtn"
+                                                class="w-full bg-red-500 text-white px-6 py-3 rounded hover:bg-red-600 transition font-semibold">
+                                            ADD COUPON
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Coupon Table -->
+                            <div class="lg:col-span-2">
+                                <div class="overflow-x-auto">
+                                    <table class="w-full">
+                                        <thead class="bg-gray-50 border-b">
+                                            <tr>
+                                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Coupon Code</th>
+                                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Description</th>
+                                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Expiry Date</th>
+                                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Status</th>
+                                                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-200" id="couponTableBody">
+                                            <% if (coupons && coupons.length > 0) { %>
+                                                <% coupons.forEach(coupon => { %>
+                                                    <tr class="hover:bg-gray-50" data-coupon='<%- JSON.stringify(coupon) %>'>
+                                                        <td class="px-6 py-4">
+                                                            <div class="font-semibold text-gray-900"><%= coupon.code %></div>
+                                                            <div class="text-xs text-gray-500">Min: ₹<%= coupon.minCartValue %> | Discount: ₹<%= coupon.discountValue %></div>
+                                                        </td>
+                                                        <td class="px-6 py-4 text-gray-700">
+                                                            <%= coupon.description || 'No description' %>
+                                                        </td>
+                                                        <td class="px-6 py-4 text-gray-700">
+                                                            <%= new Date(coupon.expireAt).toLocaleDateString('en-GB') %>
+                                                        </td>
+                                                        <td class="px-6 py-4">
+                                                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold 
+                                                            <%= coupon.status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' %>">
+                                                            <%= coupon.status ? 'ACTIVE' : 'INACTIVE' %>
+                                                        </span>
+                                                        </td>
+
+                                                        <td class="px-6 py-4">
+                                                            <div class="flex space-x-3">
+                                                                <button class="edit-btn text-blue-600 hover:text-blue-900" title="Edit Coupon">
+                                                                    <i class="fas fa-pen-to-square"></i>
+                                                                </button>
+                                                                <button class="delete-btn text-red-600 hover:text-red-900" title="Delete Coupon">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                                <button class="toggle-status-btn <%= coupon.status ? 'text-yellow-600' : 'text-green-600' %>" 
+                                                                        title="<%= coupon.status ? 'Deactivate' : 'Activate' %>">
+                                                                    <i class="fas fa-power-off"></i>
+                                                                </button>
+
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                <% }) %>
+                                            <% } else { %>
+                                                <tr>
+                                                    <td colspan="5" class="px-6 py-8 text-center text-gray-500">No coupons found</td>
+                                                </tr>
+                                            <% } %>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <% if (totalPages > 1) { %>
+                                    <div class="flex items-center justify-between px-6 py-4 border-t bg-white mt-4">
+                                        <div class="flex items-center gap-3">
+                                            <span class="text-sm text-gray-700">Rows per page:</span>
+                                            <select id="rowsPerPage" class="border border-gray-300 rounded px-2 py-1 text-sm">
+                                                <option value="10" <%= limit === 10 ? 'selected' : '' %>>10</option>
+                                                <option value="25" <%= limit === 25 ? 'selected' : '' %>>25</option>
+                                                <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
+                                            </select>
+                                        </div>
+
+                                        <span class="text-sm text-gray-700">
+                                            <%= ((currentPage - 1) * limit) + 1 %>-<%= Math.min(currentPage * limit, totalCoupons) %> of <%= totalCoupons %>
+                                        </span>
+
+                                        <div class="flex space-x-2">
+                                            <% const pageUrl = (p) => `?page=${p}&limit=${limit}`; %>
+
+                                            <a href="<%= pageUrl(Math.max(1, currentPage - 1)) %>"
+                                               class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage <= 1 ? 'pointer-events-none opacity-50' : '' %>">
+                                                <i class="fas fa-chevron-left text-sm"></i>
+                                            </a>
+
+                                            <% for (let i = 1; i <= totalPages; i++) { %>
+                                                <a href="<%= pageUrl(i) %>"
+                                                   class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium <%= i === currentPage ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100 border border-gray-300' %>">
+                                                    <%= i %>
+                                                </a>
+                                            <% } %>
+
+                                            <a href="<%= pageUrl(Math.min(totalPages, currentPage + 1)) %>"
+                                               class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage >= totalPages ? 'pointer-events-none opacity-50' : '' %>">
+                                                <i class="fas fa-chevron-right text-sm"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let editingId = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const form = document.getElementById("couponForm");
+            const table = document.querySelector("table tbody");
+            const submitBtn = document.getElementById("submitBtn");
+            const rowsPerPageSelect = document.getElementById("rowsPerPage");
+
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('expireAt').setAttribute('min', today);
+
+            // Rows per page change handler
+            if (rowsPerPageSelect) {
+                rowsPerPageSelect.addEventListener('change', (e) => {
+                    const limit = e.target.value;
+                    window.location.href = `?page=1&limit=${limit}`;
+                });
+            }
+
+            function hideAllErrors() {
+                document.querySelectorAll('[id$="Error"]').forEach(error => error.classList.add("hidden"));
+            }
+
+            function resetForm() {
+                form.reset();
+                editingId = null;
+                hideAllErrors();
+                submitBtn.innerHTML = '<i class="fas fa-plus mr-2"></i> ADD COUPON';
+                submitBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                submitBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+                document.getElementById('couponId').value = '';
+                
+                // Reset min date
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('expireAt').setAttribute('min', today);
+            }
+
+            function validateForm() {
+                let isValid = true;
+                hideAllErrors();
+
+                const code = document.getElementById('couponCode').value.trim();
+                const minCart = parseFloat(document.getElementById('minCartValue').value);
+                const discount = parseFloat(document.getElementById('discountValue').value);
+                const expireAt = document.getElementById('expireAt').value;
+
+                if (!code || code.length < 3) {
+                    document.getElementById('codeError').textContent = 'Coupon code must be at least 3 characters';
+                    document.getElementById('codeError').classList.remove('hidden');
+                    isValid = false;
+                }
+
+                if (isNaN(minCart) || minCart < 0) {
+                    document.getElementById('minCartError').textContent = 'Min cart value must be 0 or greater';
+                    document.getElementById('minCartError').classList.remove('hidden');
+                    isValid = false;
+                }
+
+                if (isNaN(discount) || discount <= 0) {
+                    document.getElementById('discountError').textContent = 'Discount value must be greater than 0';
+                    document.getElementById('discountError').classList.remove('hidden');
+                    isValid = false;
+                }
+
+                if (discount > minCart) {
+                    document.getElementById('discountError').textContent = 'Discount cannot be greater than min cart value';
+                    document.getElementById('discountError').classList.remove('hidden');
+                    isValid = false;
+                }
+
+                if (!expireAt) {
+                    document.getElementById('dateError').classList.remove('hidden');
+                    isValid = false;
+                }
+
+                const selectedDate = new Date(expireAt);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                if (selectedDate < today) {
+                    document.getElementById('dateError').textContent = 'Expiry date cannot be in the past';
+                    document.getElementById('dateError').classList.remove('hidden');
+                    isValid = false;
+                }
+
+                return isValid;
+            }
+
+            form.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                
+                if (!validateForm()) return;
+
+                submitBtn.disabled = true;
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> SAVING...';
+
+                const formData = {
+                    couponCode: document.getElementById('couponCode').value.trim().toUpperCase(),
+                    description: document.getElementById('description').value.trim(),
+                    minCartValue: parseFloat(document.getElementById('minCartValue').value),
+                    discountValue: parseFloat(document.getElementById('discountValue').value),
+                    expireAt: document.getElementById('expireAt').value
+                };
+
+                try {
+                    let url, method;
+                    if (editingId) {
+                        url = `/admin/coupon/edit/${editingId}`;
+                        method = 'PUT';
+                    } else {
+                        url = '/admin/coupon/add';
+                        method = 'POST';
+                    }
+
+                    const response = await axios({
+                        method: method,
+                        url: url,
+                        data: formData
+                    });
+
+                    await Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: response.data.message,
+                        confirmButtonColor: '#3085d6'
+                    });
+
+                    resetForm();
+                    window.location.reload();
+                } catch (error) {
+                    console.error('Error:', error);
+                    const errorMsg = error.response?.data?.message || 'Operation failed';
+                    
+                    await Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: errorMsg,
+                        confirmButtonColor: '#d33'
+                    });
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            });
+
+            // Edit button handler
+            table.addEventListener("click", (e) => {
+                const editBtn = e.target.closest(".edit-btn");
+                if (editBtn) {
+                    const row = editBtn.closest("tr");
+                    const couponData = JSON.parse(row.getAttribute('data-coupon'));
+                    
+                    editingId = couponData._id;
+                    document.getElementById('couponId').value = couponData._id;
+                    document.getElementById('couponCode').value = couponData.code;
+                    document.getElementById('description').value = couponData.description || '';
+                    document.getElementById('minCartValue').value = couponData.minCartValue;
+                    document.getElementById('discountValue').value = couponData.discountValue;
+                    
+                    const expireDate = new Date(couponData.expireAt).toISOString().split('T')[0];
+                    document.getElementById('expireAt').value = expireDate;
+
+                    submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i> UPDATE COUPON';
+                    submitBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+                    submitBtn.classList.add('bg-blue-500', 'hover:bg-blue-600');
+
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            });
+
+            // Delete button handler
+            table.addEventListener("click", async (e) => {
+                const deleteBtn = e.target.closest(".delete-btn");
+                if (deleteBtn) {
+                    const row = deleteBtn.closest("tr");
+                    const couponData = JSON.parse(row.getAttribute('data-coupon'));
+                    
+                    const result = await Swal.fire({
+                        title: 'Are you sure?',
+                        text: "You won't be able to revert this!",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Yes, delete it!'
+                    });
+
+                    if (result.isConfirmed) {
+                        try {
+                            const response = await axios.delete(`/admin/coupon/delete/${couponData._id}`);
+                            
+                            await Swal.fire({
+                                title: 'Deleted!',
+                                text: response.data.message,
+                                icon: 'success',
+                                confirmButtonColor: '#3085d6'
+                            });
+                            
+                            window.location.reload();
+                        } catch (error) {
+                            console.error('Error:', error);
+                            
+                            await Swal.fire({
+                                title: 'Error!',
+                                text: error.response?.data?.message || 'Failed to delete coupon',
+                                icon: 'error',
+                                confirmButtonColor: '#d33'
+                            });
+                        }
+                    }
+                }
+            });
+
+            // Toggle status button handler
+            table.addEventListener("click", async (e) => {
+                const toggleBtn = e.target.closest(".toggle-status-btn");
+                if (toggleBtn) {
+                    const row = toggleBtn.closest("tr");
+                    const couponData = JSON.parse(row.getAttribute('data-coupon'));
+                    
+                    const action = couponData.status ? 'deactivate' : 'activate';
+                    const result = await Swal.fire({
+                        title: `${action.charAt(0).toUpperCase() + action.slice(1)} Coupon?`,
+                        text: `Are you sure you want to ${action} this coupon?`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: `Yes, ${action} it!`
+                    });
+
+                    if (result.isConfirmed) {
+                        try {
+                            const response = await axios.patch(`/admin/coupon/status/${couponData._id}`);
+                            
+                            await Swal.fire({
+                                title: 'Success!',
+                                text: response.data.message,
+                                icon: 'success',
+                                confirmButtonColor: '#3085d6'
+                            });
+                            
+                            window.location.reload();
+                        } catch (error) {
+                            console.error('Error:', error);
+                            
+                            await Swal.fire({
+                                title: 'Error!',
+                                text: error.response?.data?.message || 'Failed to update status',
+                                icon: 'error',
+                                confirmButtonColor: '#d33'
+                            });
+                        }
+                    }
+                }
+            });
+
+            document.getElementById('couponCode').addEventListener('input', (e) => {
+                e.target.value = e.target.value.toUpperCase();
+            });
+        });
+    </script>
+</body>
+</html>

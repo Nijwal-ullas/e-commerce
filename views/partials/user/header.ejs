@@ -1,0 +1,158 @@
+<header
+  class="bg-gray-800 text-white py-4 shadow-lg fixed top-0 left-0 w-full z-50"
+>
+  <div class="container mx-auto px-4 flex justify-between items-center">
+    <div class="text-red-500 font-serif text-2xl italic">Ruhe Collection</div>
+
+    <nav class="hidden md:flex space-x-6">
+      <a href="/" class="hover:text-gray-300 transition">Home</a>
+      <a href="/product" class="hover:text-gray-300 transition">Shop</a>
+      <a href="/aboutPage" class="hover:text-gray-300 transition">About Us</a>
+      <a href="/contactPage" class="hover:text-gray-300 transition">Contacts</a>
+    </nav>
+
+    <div class="flex space-x-4 text-lg items-center relative">
+      <% if (user) { %>
+      <div class="relative">
+        <button
+          id="userDropdownBtn"
+          class="hover:text-gray-300 flex items-center space-x-2 focus:outline-none"
+        >
+          <% if (user.profileImage) { %>
+          <img
+            src="<%= user.profileImage %>"
+            alt="Profile"
+            class="w-8 h-8 rounded-full border border-gray-300 object-cover"
+          />
+          <% } else { %>
+          <div class="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+            <i class="fas fa-user text-sm"></i>
+          </div>
+          <% } %>
+          <span class="hidden sm:block"><%= user.name || user.email.split('@')[0] || 'User' %></span>
+          <i class="fas fa-chevron-down text-sm hidden sm:block"></i>
+        </button>
+
+        <div
+          id="userDropdown"
+          class="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-lg shadow-lg py-2 hidden z-50 border border-gray-200"
+        >
+          <div class="px-4 py-2 border-b border-gray-100">
+            <p class="text-sm font-medium text-gray-900"><%= user.name || 'User' %></p>
+            <p class="text-xs text-gray-500 truncate"><%= user.email %></p>
+          </div>
+          <a
+            href="/profile"
+            class="block px-4 py-2 hover:bg-gray-100 transition text-sm flex items-center"
+          >
+            <i class="fas fa-user-circle mr-2 text-gray-600"></i>
+            My Profile
+          </a>
+          <a 
+            href="/orders" 
+            class="block px-4 py-2 hover:bg-gray-100 transition text-sm flex items-center"
+          >
+            <i class="fas fa-shopping-bag mr-2 text-gray-600"></i>
+            My Orders
+          </a>
+          <a 
+            href="/wishlist" 
+            class="block px-4 py-2 hover:bg-gray-100 transition text-sm flex items-center"
+          >
+            <i class="fas fa-heart mr-2 text-gray-600"></i>
+            Wishlist
+          </a>
+          <div class="border-t border-gray-100 my-1"></div>
+          <a href="/logout" class="block px-4 py-2 hover:bg-gray-100 transition text-sm flex items-center text-red-600">
+            <i class="fas fa-sign-out-alt mr-2"></i>
+            Logout
+          </a>
+        </div>
+      </div>
+      <% } else { %>
+      <div class="relative">
+        <button
+          id="authDropdownBtn"
+          class="hover:text-gray-300 flex items-center space-x-2 focus:outline-none"
+        >
+          <i class="fas fa-user"></i>
+          <span class="hidden sm:block">Account</span>
+          <i class="fas fa-chevron-down text-sm hidden sm:block"></i>
+        </button>
+
+        <div
+          id="authDropdown"
+          class="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-lg shadow-lg py-2 hidden z-50 border border-gray-200"
+        >
+          <a href="/login" class="block px-4 py-2 hover:bg-gray-100 transition text-sm flex items-center">
+            <i class="fas fa-sign-in-alt mr-2 text-gray-600"></i>
+            Sign In
+          </a>
+          <a
+            href="/register"
+            class="block px-4 py-2 hover:bg-gray-100 transition text-sm flex items-center"
+          >
+            <i class="fas fa-user-plus mr-2 text-gray-600"></i>
+            Sign Up
+          </a>
+        </div>
+      </div>
+      <% } %>
+
+      <button class="hover:text-gray-300 transition" title="Search">
+        <i class="fas fa-search"></i>
+      </button>
+      <a href="/wishlist" class="hover:text-gray-300 transition" title="Wishlist">
+        <i class="fas fa-heart"></i>
+      </a>
+      <a href="/cart" class="hover:text-gray-300 transition relative" title="Cart">
+        <i class="fas fa-shopping-bag"></i>
+      </a>
+    </div>
+  </div>
+</header>
+
+<style>
+  body {
+    padding-top: 60px;
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const dropdowns = [
+      { btnId: "userDropdownBtn", menuId: "userDropdown" },
+      { btnId: "authDropdownBtn", menuId: "authDropdown" },
+    ];
+
+    dropdowns.forEach(({ btnId, menuId }) => {
+      const btn = document.getElementById(btnId);
+      const menu = document.getElementById(menuId);
+      
+      if (btn && menu) {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          dropdowns.forEach(({ menuId: otherMenuId }) => {
+            if (otherMenuId !== menuId) {
+              const otherMenu = document.getElementById(otherMenuId);
+              if (otherMenu) otherMenu.classList.add('hidden');
+            }
+          });
+          menu.classList.toggle("hidden");
+        });
+
+        document.addEventListener("click", (e) => {
+          if (!btn.contains(e.target) && !menu.contains(e.target)) {
+            menu.classList.add("hidden");
+          }
+        });
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            menu.classList.add('hidden');
+          }
+        });
+      }
+    });
+  });
+</script>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Payment Failed</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    rel="stylesheet"
+  />
+</head>
+
+<body class="bg-gray-50">
+  <%- include("../partials/user/header.ejs") %>
+
+  <div class="min-h-[70vh] flex items-center justify-center px-4">
+    <div class="bg-white rounded-xl shadow-md p-8 max-w-md w-full text-center">
+
+      <div class="flex justify-center mb-4">
+        <div class="bg-red-100 p-4 rounded-full">
+          <i class="fas fa-times-circle text-red-600 text-4xl"></i>
+        </div>
+      </div>
+
+      <h1 class="text-2xl font-bold text-gray-800 mb-2">
+        Payment Failed
+      </h1>
+
+      <p class="text-gray-600 mb-6">
+        Unfortunately, your payment could not be completed.<br>
+        If any amount was deducted, it will be refunded automatically
+        within <span class="font-medium">3–5 business days</span>.
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a
+          href="/checkout"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition"
+        >
+          Try Again
+        </a>
+
+        <a
+          href="/orders"
+          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-semibold transition"
+        >
+          My Orders
+        </a>
+      </div>
+
+      <div class="mt-6 text-sm text-gray-500">
+        Need help?  
+        <a href="/contactPage" class="text-blue-600 hover:underline">
+          Contact Support
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <%- include("../partials/user/footer.ejs") %>
+</body>
+</html>

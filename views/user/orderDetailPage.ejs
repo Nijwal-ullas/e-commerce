@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= pageTitle %> - Ruhe Collection</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+      body {
+        font-family: "Lato", sans-serif;
+      }
+      .product-image {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 2px solid #e5e7eb;
+      }
+
+      .status-line {
+        display: flex;
+        align-items: center;
+        margin-top: 8px;
+        padding: 4px 0;
+        position: relative;
+      }
+      
+      .status-line::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #e5e7eb;
+        transform: translateY(-50%);
+        z-index: 1;
+      }
+      
+      .status-point {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-right: 40px;
+      }
+      
+      .status-dot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 3px solid white;
+        margin-bottom: 4px;
+      }
+      
+      .status-dot.completed {
+        background: #10b981;
+      }
+      
+      .status-dot.current {
+        background: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+      }
+      
+      .status-dot.pending {
+        background: #e5e7eb;
+      }
+      
+      .status-dot.cancelled {
+        background: #ef4444;
+      }
+      
+      .status-dot.return-requested {
+        background: #f59e0b;
+      }
+      
+      .status-dot.return-approved {
+        background: #8b5cf6;
+      }
+      
+      .status-dot.returned {
+        background: #7c3aed;
+      }
+      
+      .status-label {
+        font-size: 10px;
+        font-weight: 500;
+        text-align: center;
+        white-space: nowrap;
+        color: #6b7280;
+      }
+      
+      .status-label.active {
+        color: #1e40af;
+        font-weight: 600;
+      }
+      
+      .status-label.completed {
+        color: #065f46;
+      }
+      
+      .item-status-badge {
+        font-size: 11px;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      
+      .item-action-btn {
+        font-size: 11px;
+        padding: 3px 12px;
+        border-radius: 12px;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      
+      .item-action-btn.cancel {
+        background: #fee2e2;
+        color: #dc2626;
+      }
+      
+      .item-action-btn.cancel:hover {
+        background: #fecaca;
+      }
+      
+      .item-action-btn.return {
+        background: #fef3c7;
+        color: #d97706;
+      }
+      
+      .item-action-btn.return:hover {
+        background: #fde68a;
+      }
+    </style>
+  </head>
+
+  <body class="bg-gray-50">
+    <%- include("../partials/user/header.ejs") %>
+
+    <div class="max-w-full mx-auto px-6 lg:px-12 py-8">
+      <div class="mb-6">
+        <a
+          href="/orders"
+          class="inline-flex items-center text-red-700 hover:text-red-800 font-medium"
+        >
+          <i class="fas fa-arrow-left mr-2"></i>Back to Orders
+        </a>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-sm p-6 lg:p-10">
+        <div class="border-b border-gray-200 pb-6 mb-6">
+          <div
+            class="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+          >
+            <div>
+              <h1 class="text-2xl font-semibold text-gray-800 mb-2">
+                <%= pageTitle %>
+              </h1>
+
+              <p class="text-sm text-gray-600">
+                Placed on:
+                <span class="font-medium text-gray-800"
+                  ><%= new Date(order.createdAt).toLocaleDateString('en-US', {
+                  year: 'numeric', month: 'long', day: 'numeric' }) %></span
+                >
+              </p>
+            </div>
+            <div class="text-right">
+              <% 
+                let statusClass = 'bg-gray-100 text-gray-700'; 
+                const orderStatus = order.status || order.orderStatus || 'Pending'; 
+                
+                if (orderStatus.toLowerCase() === 'delivered') { 
+                  statusClass = 'bg-green-100 text-green-700'; 
+                } else if (orderStatus.toLowerCase() === 'shipped') { 
+                  statusClass = 'bg-blue-100 text-blue-700'; 
+                } else if (orderStatus.toLowerCase() === 'processing') { 
+                  statusClass = 'bg-yellow-100 text-yellow-700'; 
+                } else if (orderStatus.toLowerCase() === 'cancelled') { 
+                  statusClass = 'bg-red-100 text-red-700'; 
+                } else if (orderStatus.toLowerCase() === 'pending') { 
+                  statusClass = 'bg-orange-100 text-orange-700'; 
+                } else if (orderStatus.toLowerCase() === 'return requested') { 
+                  statusClass = 'bg-yellow-100 text-yellow-700'; 
+                } else if (orderStatus.toLowerCase() === 'returned') { 
+                  statusClass = 'bg-purple-100 text-purple-700'; 
+                } 
+              %>
+              <span
+                class="inline-block text-sm px-4 py-2 <%= statusClass %> rounded-full font-semibold capitalize mb-2"
+              >
+                <%= orderStatus %>
+              </span>
+              <p class="text-2xl font-bold text-gray-800">
+                ₹<%= parseFloat(order.finalAmount || 0).toFixed(2) %>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div class="lg:col-span-2 space-y-8">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                <i class="fas fa-box mr-2 text-red-700"></i>Order Items (<%= order.orderedItem?.length || 0 %>)
+              </h2>
+              <div class="space-y-4">
+                <% if (order.orderedItem && order.orderedItem.length > 0) { %>
+                  <% order.orderedItem.forEach(item => { %>
+                    <div class="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition">
+                      <div class="flex gap-4">
+                        <% 
+                          let imageSrc = '/images/placeholder.png'; 
+                          if (item.productId && item.productId.images && item.productId.images.length > 0) { 
+                            imageSrc = item.productId.images[0]; 
+                          } 
+                        %>
+                        <img
+                          src="<%= imageSrc %>"
+                          alt="<%= item.productId?.productName || 'Product' %>"
+                          class="product-image"
+                          onerror="this.src='/images/placeholder.png'"
+                        />
+
+                        <div class="flex-1">
+                          <h3 class="font-medium text-gray-800 mb-2">
+                            <%= item.productId?.productName || 'Product Name' %>
+                          </h3>
+
+                          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                            <div>
+                              <p class="text-gray-500">Size</p>
+                              <p class="font-medium text-gray-800">
+                                <%= item.ml || 'N/A' %> ML
+                              </p>
+                            </div>
+                            <div>
+                              <p class="text-gray-500">Quantity</p>
+                              <p class="font-medium text-gray-800">
+                                <%= item.quantity || 0 %>
+                              </p>
+                            </div>
+                            <div>
+                              <p class="text-gray-500">Price</p>
+                              <p class="font-medium text-gray-800">
+                                ₹<%= parseFloat(item.price || 0).toFixed(2) %>
+                              </p>
+                            </div>
+                            <div>
+                              <p class="text-gray-500">Subtotal</p>
+                              <p class="font-semibold text-gray-800">
+                                ₹<%= (parseFloat(item.price || 0) * (item.quantity || 0)).toFixed(2) %>
+                              </p>
+                            </div>
+                          </div>
+
+                          <!-- Individual Item Status -->
+                          <% 
+                            const itemStatus = item.status || order.status || order.orderStatus || 'Pending';
+                            const itemStatusLower = itemStatus.toLowerCase();
+                            
+                            // Determine status steps for this item
+                            let statusSteps = [];
+                            let currentStep = '';
+                            
+                            if (itemStatusLower === 'pending') {
+                              statusSteps = ['ordered', 'processing', 'shipped', 'delivered'];
+                              currentStep = 'ordered';
+                            } else if (itemStatusLower === 'processing') {
+                              statusSteps = ['ordered', 'processing', 'shipped', 'delivered'];
+                              currentStep = 'processing';
+                            } else if (itemStatusLower === 'shipped') {
+                              statusSteps = ['ordered', 'processing', 'shipped', 'delivered'];
+                              currentStep = 'shipped';
+                            } else if (itemStatusLower === 'delivered') {
+                              statusSteps = ['ordered', 'processing', 'shipped', 'delivered'];
+                              currentStep = 'delivered';
+                            } else if (itemStatusLower === 'return requested') {
+                              statusSteps = ['ordered', 'processing', 'shipped', 'delivered', 'return requested', 'return approved', 'returned'];
+                              currentStep = 'return requested';
+                            } else if (itemStatusLower === 'return approved') {
+                              statusSteps = ['ordered', 'processing', 'shipped', 'delivered', 'return requested', 'return approved', 'returned'];
+                              currentStep = 'return approved';
+                            } else if (itemStatusLower === 'returned') {
+                              statusSteps = ['ordered', 'processing', 'shipped', 'delivered', 'return requested', 'return approved', 'returned'];
+                              currentStep = 'returned';
+                            } else if (itemStatusLower === 'cancelled') {
+                              statusSteps = ['ordered', 'cancelled'];
+                              currentStep = 'cancelled';
+                            }
+                            
+                            // Action permissions
+                            const canCancelItem = ['pending', 'processing'].includes(itemStatusLower);
+                            const canReturnItem = itemStatusLower === 'delivered' && !item.returnReason;
+                            const hasReturnRequest = item.returnReason && itemStatusLower === 'return requested';
+                            const isReturnApproved = itemStatusLower === 'return approved';
+                            const isReturned = itemStatusLower === 'returned';
+                            const isCancelled = itemStatusLower === 'cancelled';
+                          %>
+
+                          <!-- Status Badge and Actions -->
+                          <div class="flex flex-wrap items-center gap-2 mt-3">
+                            <!-- Status Badge -->
+                            <% 
+                              let badgeClass = 'bg-gray-100 text-gray-800';
+                              if (itemStatusLower === 'delivered') badgeClass = 'bg-green-100 text-green-800';
+                              else if (itemStatusLower === 'shipped') badgeClass = 'bg-blue-100 text-blue-800';
+                              else if (itemStatusLower === 'processing') badgeClass = 'bg-yellow-100 text-yellow-800';
+                              else if (itemStatusLower === 'pending') badgeClass = 'bg-orange-100 text-orange-800';
+                              else if (itemStatusLower === 'cancelled') badgeClass = 'bg-red-100 text-red-800';
+                              else if (itemStatusLower === 'return requested') badgeClass = 'bg-yellow-100 text-yellow-800';
+                              else if (itemStatusLower === 'return approved') badgeClass = 'bg-blue-100 text-blue-800';
+                              else if (itemStatusLower === 'returned') badgeClass = 'bg-purple-100 text-purple-800';
+                            %>
+                            <span class="item-status-badge <%= badgeClass %>">
+                              <%= itemStatus %>
+                              <% if (item.deliveredDate && itemStatusLower === 'delivered') { %>
+                                <i class="fas fa-check text-xs"></i>
+                              <% } %>
+                              <% if (itemStatusLower === 'cancelled') { %>
+                                <i class="fas fa-times text-xs"></i>
+                              <% } %>
+                            </span>
+                            
+                            <!-- Action Buttons -->
+                            <% if (canCancelItem) { %>
+                              <button
+                                onclick="openCancelModal('<%= order._id %>', '<%= item._id %>', '<%= item.productId?.productName || "Item" %>')"
+                                class="item-action-btn cancel"
+                              >
+                                <i class="fas fa-times mr-1"></i>Cancel
+                              </button>
+                            <% } %>
+                            
+                            <% if (canReturnItem) { %>
+                              <button
+                                onclick="openItemReturnModal('<%= order._id %>', '<%= item._id %>', '<%= item.productId?.productName || "Item" %>')"
+                                class="item-action-btn return"
+                              >
+                                <i class="fas fa-undo-alt mr-1"></i>Return
+                              </button>
+                            <% } %>
+                            
+                            <% if (hasReturnRequest) { %>
+                              <span class="item-status-badge bg-yellow-100 text-yellow-800">
+                                <i class="fas fa-clock mr-1"></i>Return Requested
+                              </span>
+                            <% } %>
+                            
+                            <% if (isReturnApproved) { %>
+                              <span class="item-status-badge bg-blue-100 text-blue-800">
+                                <i class="fas fa-check-circle mr-1"></i>Return Approved
+                              </span>
+                            <% } %>
+                            
+                            <% if (isReturned) { %>
+                              <span class="item-status-badge bg-purple-100 text-purple-800">
+                                <i class="fas fa-check-double mr-1"></i>Returned
+                              </span>
+                            <% } %>
+                          </div>
+                          
+                          <!-- Status Timeline Line -->
+                          <div class="status-line mt-3">
+                            <% statusSteps.forEach((step, index) => { 
+                              let dotClass = 'pending';
+                              let labelClass = '';
+                              
+                              // Determine dot style
+                              if (step === currentStep) {
+                                dotClass = 'current';
+                                labelClass = 'active';
+                              } else if (statusSteps.indexOf(step) < statusSteps.indexOf(currentStep)) {
+                                dotClass = 'completed';
+                                labelClass = 'completed';
+                              }
+                              
+                              // Special dot classes for specific statuses
+                              if (step === 'cancelled') dotClass = 'cancelled';
+                              else if (step === 'return requested') dotClass = 'return-requested';
+                              else if (step === 'return approved') dotClass = 'return-approved';
+                              else if (step === 'returned') dotClass = 'returned';
+                              
+                              // Format label
+                              let stepLabel = step.charAt(0).toUpperCase() + step.slice(1);
+                              if (step === 'return requested') stepLabel = 'Return Req';
+                              else if (step === 'return approved') stepLabel = 'Return App';
+                            %>
+                              <div class="status-point">
+                                <div class="status-dot <%= dotClass %>"></div>
+                                <span class="status-label <%= labelClass %>">
+                                  <%= stepLabel %>
+                                  <% if (step === 'delivered' && item.deliveredDate && dotClass === 'completed') { %>
+                                    <br><span class="text-[9px]"><%= new Date(item.deliveredDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) %></span>
+                                  <% } %>
+                                </span>
+                              </div>
+                            <% }); %>
+                          </div>
+                          
+                          <!-- Additional Info -->
+                          <% if (item.returnReason && (hasReturnRequest || isReturnApproved || isReturned)) { %>
+                            <p class="text-xs text-gray-600 mt-2">
+                              <i class="fas fa-info-circle mr-1"></i>
+                              Reason: <%= item.returnReason %>
+                            </p>
+                          <% } %>
+                          
+                          <% if (item.cancellationReason && isCancelled) { %>
+                            <p class="text-xs text-gray-600 mt-2">
+                              <i class="fas fa-info-circle mr-1"></i>
+                              Reason: <%= item.cancellationReason %>
+                            </p>
+                          <% } %>
+                        </div>
+                      </div>
+                    </div>
+                  <% }); %>
+                <% } else { %>
+                  <p class="text-gray-500 text-center py-4">No items found</p>
+                <% } %>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right sidebar -->
+          <div class="lg:col-span-1 space-y-6">
+            <!-- Price Details -->
+            <div class="border border-gray-200 rounded-lg p-6">
+              <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                <i class="fas fa-receipt mr-2 text-red-700"></i>Price Details
+              </h2>
+              <div class="space-y-3">
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">Subtotal</span>
+                  <span class="font-medium text-gray-800">₹<%= parseFloat(order.totalPrice || 0).toFixed(2) %></span>
+                </div>
+
+                <% if (order.discount && order.discount > 0) { %>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-gray-600">Discount</span>
+                    <span class="font-medium text-green-600">-₹<%= parseFloat(order.discount).toFixed(2) %></span>
+                  </div>
+                <% } %>
+                
+                <% if (order.couponApplied) { %>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-gray-600">Coupon Applied</span>
+                    <span class="font-medium text-green-600 text-xs bg-green-50 px-2 py-1 rounded">
+                      <%= order.couponApplied %>
+                    </span>
+                  </div>
+                <% } %>
+
+                <div class="flex justify-between text-sm">
+                  <span class="text-gray-600">Delivery Charges</span>
+                  <span class="font-medium <%= order.deliveryCharge === 0 ? 'text-green-600' : 'text-gray-800' %>">
+                    <%= order.deliveryCharge === 0 ? 'FREE' : '₹' + parseFloat(order.deliveryCharge || 0).toFixed(2) %>
+                  </span>
+                </div>
+
+                <div class="pt-3 border-t border-gray-200">
+                  <div class="flex justify-between">
+                    <span class="font-semibold text-gray-800">Total Amount</span>
+                    <span class="font-bold text-lg text-gray-900">₹<%= parseFloat(order.finalAmount || 0).toFixed(2) %></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 pt-4 border-t border-gray-200">
+                <p class="text-xs text-gray-500">
+                  <i class="fas fa-info-circle mr-1"></i>
+                  Payment Method:
+                  <span class="font-medium text-gray-700 capitalize"><%= order.paymentMethod || order.payment || 'COD' %></span>
+                </p>
+                <% if (order.paymentStatus) { %>
+                  <p class="text-xs text-gray-500 mt-1">
+                    <i class="fas fa-credit-card mr-1"></i>
+                    Payment Status:
+                    <span class="font-medium capitalize <%= order.paymentStatus.toLowerCase() === 'paid' ? 'text-green-600' : 
+                                                           order.paymentStatus.toLowerCase() === 'refunded' ? 'text-purple-600' : 
+                                                           'text-orange-600' %>">
+                      <%= order.paymentStatus %>
+                    </span>
+                  </p>
+                <% } %>
+              </div>
+            </div>
+
+            <!-- Shipping Address -->
+            <div class="border border-gray-200 rounded-lg p-6">
+              <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                <i class="fas fa-map-marker-alt mr-2 text-red-700"></i>Shipping Address
+              </h2>
+
+              <% if (shippingAddress && typeof shippingAddress === 'object') { %>
+                <div class="text-sm space-y-3">
+                  <% if (shippingAddress.addressType) { %>
+                    <div class="mb-2">
+                      <span class="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-full capitalize">
+                        <i class="fas fa-tag mr-1"></i>
+                        <%= shippingAddress.addressType %> Address
+                      </span>
+                    </div>
+                  <% } %>
+
+                  <div class="flex items-start">
+                    <i class="fas fa-user mt-1 mr-3 text-gray-400"></i>
+                    <div>
+                      <p class="font-medium text-gray-800">
+                        <%= shippingAddress.name || 'Customer' %>
+                      </p>
+                      <div class="flex flex-wrap gap-2 mt-1">
+                        <span class="text-gray-600">
+                          <i class="fas fa-phone mr-1"></i>
+                          <%= shippingAddress.phone || 'No phone' %>
+                        </span>
+                        <% if (shippingAddress.alterPhone) { %>
+                          <span class="text-gray-600">
+                            <i class="fas fa-phone-alt mr-1"></i>
+                            <%= shippingAddress.alterPhone %>
+                          </span>
+                        <% } %>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flex items-start">
+                    <i class="fas fa-home mt-1 mr-3 text-gray-400"></i>
+                    <div>
+                      <p class="text-gray-600">
+                        <%= shippingAddress.flatNumber || 'Not specified' %>
+                        <% if (shippingAddress.streetName) { %>
+                          , <%= shippingAddress.streetName %>
+                        <% } %>
+                      </p>
+
+                      <% if (shippingAddress.landmark) { %>
+                        <p class="text-gray-600 mt-1">
+                          <i class="fas fa-map-pin mr-1"></i>
+                          Landmark: <%= shippingAddress.landmark %>
+                        </p>
+                      <% } %>
+                    </div>
+                  </div>
+
+                  <div class="flex items-start">
+                    <i class="fas fa-map-marker-alt mt-1 mr-3 text-gray-400"></i>
+                    <div>
+                      <p class="text-gray-600">
+                        <%= shippingAddress.city || 'Not specified' %>
+                        <% if (shippingAddress.state) { %>
+                          , <%= shippingAddress.state %>
+                        <% } %>
+                        <% if (shippingAddress.pincode) { %>
+                          - <%= shippingAddress.pincode %>
+                        <% } %>
+                      </p>
+                      <% if (shippingAddress.country && shippingAddress.country !== 'India') { %>
+                        <p class="text-gray-600 mt-1"><%= shippingAddress.country %></p>
+                      <% } %>
+                    </div>
+                  </div>
+                </div>
+              <% } else { %>
+                <div class="text-center py-4">
+                  <i class="fas fa-map-marker-alt text-3xl text-gray-300 mb-2"></i>
+                  <p class="text-gray-500">No shipping address information available</p>
+                  <p class="text-sm text-gray-400 mt-1">Please contact customer support for assistance</p>
+                </div>
+              <% } %>
+            </div>
+
+            <% 
+              const canCancelOrder = ['pending', 'processing'].includes((order.status || order.orderStatus || '').toLowerCase()); 
+              const invoiceDownloads = ['delivered', 'cancelled' , 'returned'].includes((order.status || order.orderStatus || '').toLowerCase()); 
+            %>
+
+            <% if (invoiceDownloads) { %>
+              <a
+                href="/order/invoice/<%= order._id %>"
+                target="_blank"
+                class="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                  </path>
+                </svg>
+                Download Invoice
+              </a>    
+            <% } %>
+            
+            <% if (canCancelOrder) { %>
+              <button
+                onclick="cancelEntireOrder('<%= order._id %>')"
+                class="w-full bg-red-700 text-white py-3 rounded-md hover:bg-red-800 transition font-medium"
+              >
+                <i class="fas fa-times-circle mr-2"></i>Cancel Entire Order
+              </button>
+            <% } %>
+
+            <a
+              href="/orders"
+              class="block w-full text-center border border-gray-300 py-3 rounded-md hover:bg-gray-50 transition font-medium text-gray-700"
+            >
+              <i class="fas fa-list mr-2"></i>View All Orders
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%- include("../partials/user/footer.ejs") %>
+
+    <div id="itemReturnModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+          <h3 id="itemReturnTitle" class="text-lg font-medium text-gray-900 mb-4">Request Return</h3>
+          
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Return Reason *
+            </label>
+            <select id="itemReturnReason" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+              <option value="">Select a reason</option>
+              <option value="Wrong item received">Wrong item received</option>
+              <option value="Quality not as expected">Quality not as expected</option>
+              <option value="Size/Color mismatch">Size/Color mismatch</option>
+              <option value="Item not as described">Item not as described</option>
+              <option value="Changed my mind">Changed my mind</option>
+              <option value="Other">Other reason</option>
+            </select>
+            
+            <div id="itemOtherReasonContainer" class="mt-3 hidden">
+              <textarea id="itemOtherReason" 
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm" 
+                        rows="3" 
+                        placeholder="Please specify your reason..."></textarea>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3">
+            <button onclick="closeItemReturnModal()" 
+                    class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition text-sm">
+              Cancel
+            </button>
+            <button onclick="submitItemReturn()" 
+                    id="submitItemReturnBtn"
+                    class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition text-sm">
+              Submit Return
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+   <script>
+  let currentOrderId = null;
+  let currentItemId = null;
+  let currentItemName = null;
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const itemReturnReasonSelect = document.getElementById('itemReturnReason');
+    if (itemReturnReasonSelect) {
+      itemReturnReasonSelect.addEventListener('change', function(e) {
+        const otherReasonContainer = document.getElementById('itemOtherReasonContainer');
+        if (e.target.value === 'Other') {
+          otherReasonContainer.classList.remove('hidden');
+        } else {
+          otherReasonContainer.classList.add('hidden');
+        }
+      });
+    }
+  });
+
+  function openItemReturnModal(orderId, itemId, itemName) {
+    currentOrderId = orderId;
+    currentItemId = itemId;
+    currentItemName = itemName;
+    
+    document.getElementById('itemReturnTitle').textContent = `Return Item: ${itemName}`;
+    document.getElementById('itemReturnModal').classList.remove('hidden');
+    
+    document.getElementById('itemReturnReason').value = '';
+    document.getElementById('itemOtherReasonContainer').classList.add('hidden');
+    document.getElementById('itemOtherReason').value = '';
+  }
+
+  function closeItemReturnModal() {
+    document.getElementById('itemReturnModal').classList.add('hidden');
+    currentOrderId = null;
+    currentItemId = null;
+    currentItemName = null;
+  }
+
+  async function submitItemReturn() {
+    const returnReason = document.getElementById('itemReturnReason').value;
+    const otherReason = document.getElementById('itemOtherReason')?.value || '';
+    
+    if (!returnReason) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Select Reason',
+        text: 'Please select a return reason',
+        confirmButtonColor: '#3085d6'
+      });
+      return;
+    }
+    
+    if (returnReason === 'Other' && !otherReason.trim()) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Specify Reason',
+        text: 'Please specify your return reason',
+        confirmButtonColor: '#3085d6'
+      });
+      return;
+    }
+    
+    const finalReason = returnReason === 'Other' ? otherReason : returnReason;
+    
+    const result = await Swal.fire({
+      title: 'Return This Item?',
+      html: `
+        <div class="text-left">
+          <p class="text-gray-600 mb-3">Are you sure you want to return "<strong>${currentItemName}</strong>"?</p>
+          <p class="text-sm text-gray-500"><strong>Reason:</strong> ${finalReason}</p>
+          <p class="text-xs text-gray-400 mt-2">Once submitted, you cannot modify this request.</p>
+        </div>
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, Return Item',
+      cancelButtonText: 'Cancel'
+    });
+    
+    if (!result.isConfirmed) return;
+    
+    try {
+      const submitBtn = document.getElementById('submitItemReturnBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...';
+      
+      const response = await axios.post(`/orders/${currentOrderId}/return`, {
+        reason: finalReason,
+        itemId: currentItemId
+      });
+      
+      if (response.data.success) {
+        closeItemReturnModal();
+        Swal.fire({
+          icon: 'success',
+          title: 'Request Submitted!',
+          text: response.data.message,
+          confirmButtonColor: '#3085d6'
+        }).then(() => {
+          window.location.reload();
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: response.data.message,
+          confirmButtonColor: '#d33'
+        });
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Return';
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.message || 'Failed to submit return request',
+        confirmButtonColor: '#d33'
+      });
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Return';
+    }
+  }
+
+  function openCancelModal(orderId, itemId, itemName) {
+    Swal.fire({
+      title: `Cancel ${itemName || 'Item'}`,
+      html: `
+      <div class="text-left">
+        <p class="text-sm text-gray-600 mb-3">Are you sure you want to cancel this item?</p>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Reason (Optional)</label>
+        <textarea id="cancelReason" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-600 focus:border-red-600" placeholder="Write your reason..." rows="3"></textarea>
+      </div>
+    `,
+      showCancelButton: true,
+      confirmButtonText: "Submit",
+      cancelButtonText: "Close",
+      confirmButtonColor: "#b91c1c",
+      cancelButtonColor: "#6b7280",
+      showLoaderOnConfirm: true,
+      preConfirm: () => {
+        return {
+          reason: document.getElementById("cancelReason").value || "",
+          itemId: itemId,
+        };
+      },
+      allowOutsideClick: () => !Swal.isLoading(),
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const { reason, itemId } = result.value;
+
+        axios
+          .post(
+            `/orders/cancel/${orderId}`,
+            {
+              itemId: itemId,
+              reason: reason,
+            },
+            {
+              headers: { "Content-Type": "application/json" },
+            }
+          )
+          .then((res) => {
+            if (res.data.success) {
+              Swal.fire({
+                icon: "success",
+                title: "Cancelled Successfully",
+                text: res.data.message,
+                timer: 2000,
+                showConfirmButton: false,
+              }).then(() => {
+                window.location.reload();
+              });
+            } else {
+              Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: res.data.message,
+                confirmButtonColor: "#b91c1c",
+              });
+            }
+          })
+          .catch((error) => {
+            Swal.fire({
+              icon: "error",
+              title: "Error",
+              text: error.response?.data?.message || "Something went wrong",
+              confirmButtonColor: "#b91c1c",
+            });
+          });
+      }
+    });
+  }
+
+  function cancelEntireOrder(orderId) {
+    Swal.fire({
+      title: "Cancel Entire Order?",
+      html: `
+      <div class="text-left">
+        <p class="text-sm text-gray-600 mb-3">This will cancel all items in this order.</p>
+        <label class="block text-sm font-medium text-gray-700 mb-2">Reason (Optional)</label>
+        <textarea id="cancelOrderReason" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-600 focus:border-red-600" placeholder="Write your reason..." rows="3"></textarea>
+      </div>
+    `,
+      showCancelButton: true,
+      confirmButtonText: "Yes, Cancel Order",
+      cancelButtonText: "No, Keep It",
+      confirmButtonColor: "#b91c1c",
+      cancelButtonColor: "#6b7280",
+      showLoaderOnConfirm: true,
+      preConfirm: () => {
+        return {
+          reason: document.getElementById("cancelOrderReason").value || "",
+          cancelAll: true,
+        };
+      },
+      allowOutsideClick: () => !Swal.isLoading(),
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const { reason, cancelAll } = result.value;
+
+        axios
+          .post(
+            `/orders/cancel/${orderId}`,
+            {
+              reason: reason,
+              cancelAll: cancelAll,
+            },
+            {
+              headers: { "Content-Type": "application/json" },
+            }
+          )
+          .then((res) => {
+            if (res.data.success) {
+              Swal.fire({
+                icon: "success",
+                title: "Order Cancelled",
+                text: res.data.message,
+                timer: 2000,
+                showConfirmButton: false,
+              }).then(() => {
+                window.location.reload();
+              });
+            } else {
+              Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: res.data.message,
+                confirmButtonColor: "#b91c1c",
+              });
+            }
+          })
+          .catch((error) => {
+            Swal.fire({
+              icon: "error",
+              title: "Error",
+              text: error.response?.data?.message || "Something went wrong",
+              confirmButtonColor: "#b91c1c",
+            });
+          });
+      }
+    });
+  }
+</script>
+  </body>
+</html>
