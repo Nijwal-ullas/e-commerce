@@ -103,7 +103,7 @@ const getDetailPage = async (req, res) => {
         "address",
         "name houseName locality city state pincode phone email"
       )
-      .populate("couponId");
+      // .populate("couponId");
 
     if (!orderData) {
       return res.status(404).json({
@@ -126,7 +126,7 @@ const getDetailPage = async (req, res) => {
 
 const getNextValidStatuses = (currentStatus) => {
   if (currentStatus === "Delivered" || currentStatus === "Cancelled") {
-    return [];
+    return ["Return requested"];
   }
 
   const idx = FLOW_STATUSES.indexOf(currentStatus);
@@ -174,21 +174,43 @@ function getItemNextValidStatuses(currentItemStatus, orderStatus) {
 function recalculateOrderStatus(orderDoc) {
   const items = orderDoc.orderedItem || [];
 
+  // Check if ALL items are returned
+  const allItemsReturned = items.length > 0 && items.every(item => 
+    item.status === "Returned"
+  );
+
+  // Check if ALL items are cancelled
+  const allItemsCancelled = items.length > 0 && items.every(item => 
+    item.status === "Cancelled"
+  );
+
+  // Check if some items are returned or cancelled
   const activeItems = items.filter(item => 
     !["Cancelled", "Returned", "Return Approved", "Return Requested"].includes(item.status)
   );
 
-  if (activeItems.length === 0) {
-    if (items.every(item => item.status === "Cancelled")) {
-      orderDoc.orderStatus = "Cancelled";
-    } else if (items.every(item => item.status === "Returned")) {
-      orderDoc.orderStatus = "Delivered";
-    } else {
-      orderDoc.orderStatus = "Delivered";
+  // If ALL items are returned, set order status to "Returned"
+  if (allItemsReturned) {
+    orderDoc.orderStatus = "Returned";
+    if (!orderDoc.returnedDate) {
+      orderDoc.returnedDate = new Date();
     }
     return;
   }
 
+  // If ALL items are cancelled
+  if (allItemsCancelled) {
+    orderDoc.orderStatus = "Cancelled";
+    return;
+  }
+
+  // If no active items (all are in return/cancelled states)
+  if (activeItems.length === 0) {
+    orderDoc.orderStatus = "Delivered";
+    return;
+  }
+
+  // For mixed status orders
   let minIdx = Infinity;
   activeItems.forEach((i) => {
     const status = i.status || "Pending";
@@ -202,6 +224,7 @@ function recalculateOrderStatus(orderDoc) {
     orderDoc.orderStatus = FLOW_STATUSES[minIdx];
   }
 
+  // Mark as delivered if all active items are delivered
   const allActiveDelivered = activeItems.every(item => item.status === "Delivered");
   if (allActiveDelivered && !orderDoc.deliveredDate) {
     orderDoc.deliveredDate = new Date();
@@ -494,6 +517,9 @@ const approveItemReturn = async (req, res) => {
     item.refundAmount = calculateItemRefundAmount(item, orderDoc);
 
     recalculateOrderPaymentStatus(orderDoc);
+    recalculateOrderStatus(orderDoc);
+
+
 
     await orderDoc.save();
 
@@ -641,6 +667,7 @@ const refundItem = async (req, res) => {
     orderDoc.discount = Math.max(newDiscount, 0);
     orderDoc.finalAmount = Math.max(newFinalTotal, 0);
 
+    recalculateOrderStatus(orderDoc); 
     recalculateOrderPaymentStatus(orderDoc);
 
     await orderDoc.save();
