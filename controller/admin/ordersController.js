@@ -3,7 +3,6 @@ import user from "../../model/userSchema.js";
 import product from "../../model/productSchema.js";
 import wallet from "../../model/walletSchema.js";
 
-
 const FLOW_STATUSES = ["Pending", "Processing", "Shipped", "Delivered"];
 
 const getOrdersPage = async (req, res) => {
@@ -102,8 +101,7 @@ const getDetailPage = async (req, res) => {
       .populate(
         "address",
         "name houseName locality city state pincode phone email"
-      )
-      // .populate("couponId");
+      );
 
     if (!orderData) {
       return res.status(404).json({
@@ -126,16 +124,15 @@ const getDetailPage = async (req, res) => {
 
 const getNextValidStatuses = (currentStatus) => {
   if (currentStatus === "Delivered" || currentStatus === "Cancelled") {
-    return ["Return requested"];
+    return [];
   }
 
   const idx = FLOW_STATUSES.indexOf(currentStatus);
   const nextStatuses = [];
 
-  if (idx !== -1 && idx + 1 < statusFlow.length) {
+  if (idx !== -1 && idx + 1 < FLOW_STATUSES.length) {
     nextStatuses.push(FLOW_STATUSES[idx + 1]);
   }
-
 
   return [...new Set(nextStatuses)];
 };
@@ -148,7 +145,7 @@ function getItemNextValidStatuses(currentItemStatus, orderStatus) {
   }
 
   if (currentItemStatus === "Delivered" && orderStatus === "Delivered") {
-    return ["Return Requested"];
+    return [];
   }
 
   if (currentItemStatus === "Return Requested") {
@@ -156,7 +153,7 @@ function getItemNextValidStatuses(currentItemStatus, orderStatus) {
   }
 
   if (currentItemStatus === "Return Approved") {
-    return ["Returned", "Return Requested"];
+    return ["Returned"];
   }
 
   const idx = FLOW_STATUSES.indexOf(currentItemStatus);
@@ -166,30 +163,32 @@ function getItemNextValidStatuses(currentItemStatus, orderStatus) {
     next.push(FLOW_STATUSES[idx + 1]);
   }
 
-
   return next;
 }
-
 
 function recalculateOrderStatus(orderDoc) {
   const items = orderDoc.orderedItem || [];
 
-  // Check if ALL items are returned
-  const allItemsReturned = items.length > 0 && items.every(item => 
-    item.status === "Returned"
+  const hasReturned = items.some(item => item.status === "Returned");
+  const allReturnedOrCancelled =
+    items.length > 0 &&
+    items.every(item =>
+      ["Returned", "Cancelled"].includes(item.status)
+    );
+
+  const allItemsReturned =
+    items.length > 0 &&
+    items.every(item => item.status === "Returned");
+
+  const allItemsCancelled =
+    items.length > 0 &&
+    items.every(item => item.status === "Cancelled");
+
+  const activeItems = items.filter(item =>
+    !["Cancelled", "Returned", "Return Approved", "Return Requested"]
+      .includes(item.status)
   );
 
-  // Check if ALL items are cancelled
-  const allItemsCancelled = items.length > 0 && items.every(item => 
-    item.status === "Cancelled"
-  );
-
-  // Check if some items are returned or cancelled
-  const activeItems = items.filter(item => 
-    !["Cancelled", "Returned", "Return Approved", "Return Requested"].includes(item.status)
-  );
-
-  // If ALL items are returned, set order status to "Returned"
   if (allItemsReturned) {
     orderDoc.orderStatus = "Returned";
     if (!orderDoc.returnedDate) {
@@ -198,22 +197,27 @@ function recalculateOrderStatus(orderDoc) {
     return;
   }
 
-  // If ALL items are cancelled
+  if (hasReturned && allReturnedOrCancelled) {
+    orderDoc.orderStatus = "Returned";
+    if (!orderDoc.returnedDate) {
+      orderDoc.returnedDate = new Date();
+    }
+    return;
+  }
+
   if (allItemsCancelled) {
     orderDoc.orderStatus = "Cancelled";
     return;
   }
 
-  // If no active items (all are in return/cancelled states)
   if (activeItems.length === 0) {
     orderDoc.orderStatus = "Delivered";
     return;
   }
 
-  // For mixed status orders
   let minIdx = Infinity;
-  activeItems.forEach((i) => {
-    const status = i.status || "Pending";
+  activeItems.forEach(item => {
+    const status = item.status || "Pending";
     const idx = FLOW_STATUSES.indexOf(status);
     if (idx !== -1 && idx < minIdx) {
       minIdx = idx;
@@ -224,8 +228,10 @@ function recalculateOrderStatus(orderDoc) {
     orderDoc.orderStatus = FLOW_STATUSES[minIdx];
   }
 
-  // Mark as delivered if all active items are delivered
-  const allActiveDelivered = activeItems.every(item => item.status === "Delivered");
+  const allActiveDelivered = activeItems.every(
+    item => item.status === "Delivered"
+  );
+
   if (allActiveDelivered && !orderDoc.deliveredDate) {
     orderDoc.deliveredDate = new Date();
   }
@@ -299,7 +305,6 @@ function calculateItemRefundAmount(item, orderDoc) {
   return itemTotal;
 }
 
-
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -335,7 +340,6 @@ const updateOrderStatus = async (req, res) => {
         message: "Cannot update status of a delivered order",
       });
     }
-
 
     const validNext = getNextValidStatuses(currentStatus);
     if (!validNext.includes(status)) {
@@ -386,7 +390,6 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-
 const updateItemStatus = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
@@ -396,6 +399,13 @@ const updateItemStatus = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Order ID, Item ID, and status are required",
+      });
+    }
+
+    if (status === "Return Requested") {
+      return res.status(403).json({
+        success: false,
+        message: "Only customers can request returns. Please wait for customer to request return.",
       });
     }
 
@@ -429,13 +439,6 @@ const updateItemStatus = async (req, res) => {
       });
     }
 
-    if (status === "Return Requested" && orderDoc.orderStatus !== "Delivered") {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot request return until entire order is delivered",
-      });
-    }
-
 
     currentItem.status = status;
 
@@ -444,9 +447,6 @@ const updateItemStatus = async (req, res) => {
       if (!currentItem.deliveredDate) {
         currentItem.deliveredDate = new Date();
       }
-    } else if (status === "Return Requested") {
-      currentItem.paymentStatus = "Return Requested";
-      currentItem.returnRequestDate = new Date();
     } else if (status === "Return Approved") {
       currentItem.paymentStatus = "Refund Approved";
       currentItem.returnApprovalDate = new Date();
@@ -483,7 +483,6 @@ const updateItemStatus = async (req, res) => {
   }
 };
 
-
 const approveItemReturn = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
@@ -519,8 +518,6 @@ const approveItemReturn = async (req, res) => {
     recalculateOrderPaymentStatus(orderDoc);
     recalculateOrderStatus(orderDoc);
 
-
-
     await orderDoc.save();
 
     res.json({
@@ -537,7 +534,6 @@ const approveItemReturn = async (req, res) => {
     });
   }
 };
-
 
 const rejectItemReturn = async (req, res) => {
   try {
@@ -588,7 +584,6 @@ const rejectItemReturn = async (req, res) => {
     });
   }
 };
-
 
 const refundItem = async (req, res) => {
   try {
@@ -687,7 +682,6 @@ const refundItem = async (req, res) => {
   }
 };
 
-
 async function refundToWallet(userId, amount) {
   if (!amount || amount <= 0) return;
 
@@ -715,8 +709,6 @@ async function refundToWallet(userId, amount) {
 
   await userWallet.save();
 }
-
-
 
 async function restoreStock(item) {
   try {

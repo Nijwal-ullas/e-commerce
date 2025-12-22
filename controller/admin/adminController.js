@@ -72,10 +72,9 @@ const login = async (req, res) => {
   }
 };
 
-
 const getTopSellingProducts = async () => {
   return await order.aggregate([
-    { $match: { orderStatus: "Delivered",paymentStatus:"Paid" } },
+    { $match: { orderStatus: "Delivered", paymentStatus: "Paid" } },
     { $unwind: "$orderedItem" },
     {
       $group: {
@@ -83,20 +82,20 @@ const getTopSellingProducts = async () => {
         sold: { $sum: "$orderedItem.quantity" },
         totalRevenue: {
           $sum: {
-            $multiply: ["$orderedItem.quantity", "$orderedItem.price"]
-          }
-        }
-      }
+            $multiply: ["$orderedItem.quantity", "$orderedItem.price"],
+          },
+        },
+      },
     },
     { $sort: { sold: -1 } },
     { $limit: 5 },
     {
       $lookup: {
-        from: "products", 
+        from: "products",
         localField: "_id",
         foreignField: "_id",
-        as: "product"
-      }
+        as: "product",
+      },
     },
     { $unwind: "$product" },
     {
@@ -105,9 +104,62 @@ const getTopSellingProducts = async () => {
         productId: "$product._id",
         name: "$product.productName",
         sold: 1,
-        totalRevenue: 1
-      }
-    }
+        totalRevenue: 1,
+      },
+    },
+  ]);
+};
+
+const topSellingCategory = async () => {
+  return await order.aggregate([
+    {
+      $match: { orderStatus: "Delivered", paymentStatus: "Paid" },
+    },
+    {
+      $unwind: "$orderedItem",
+    },
+    {
+      $lookup: {
+        from: "products",
+        localField: "orderedItem.productId",
+        foreignField: "_id",
+        as: "product",
+      },
+    },
+    {
+      $unwind: "$product",
+    },
+    {
+      $group: {
+        _id: "$product.category",
+        sold: { $sum: "$orderedItem.quantity" },
+      },
+    },
+    {
+      $lookup: {
+        from: "categories",
+        localField: "_id",
+        foreignField: "_id",
+        as: "category",
+      },
+    },
+    {
+      $unwind: "$category",
+    },
+    {
+      $sort: { sold: -1 },
+    },
+    {
+      $limit: 5,
+    },
+    {
+      $project: {
+        _id: 0,
+        categoryId: "$category._id",
+        categoryName: "$category.name",
+        totalSold: "$sold",
+      },
+    },
   ]);
 };
 
@@ -121,7 +173,7 @@ const loadDashboardPage = async (req, res) => {
     const adminData = await admin.findById(adminId);
     const adminName = adminData ? adminData.email : "Admin";
     const topProducts = await getTopSellingProducts();
-
+    const topCategory = await topSellingCategory();
 
     const orders = await order.find({
       paymentStatus: "Paid",
@@ -162,7 +214,6 @@ const loadDashboardPage = async (req, res) => {
       createdAt: order.createdAt,
     }));
 
-
     return res.render("admin/dashboard", {
       adminName,
       salesCount,
@@ -173,7 +224,8 @@ const loadDashboardPage = async (req, res) => {
       totalUsers,
       activeCoupons,
       recentOrders: formattedRecentOrders,
-      topProducts
+      topProducts,
+      topCategory,
     });
   } catch (error) {
     console.log(error.message);
@@ -212,9 +264,6 @@ const getOrderStatusReport = async (req, res) => {
   }
 };
 
-
-
-
 const getSalesReport = async (req, res) => {
   try {
     const { type, startDate, endDate } = req.query;
@@ -251,21 +300,20 @@ const getSalesReport = async (req, res) => {
     ]);
 
     const summary = report.reduce(
-  (acc, cur) => {
-    acc.salesCount += cur.orderCount;
-    acc.totalSalesAmount += cur.netSales;
-    acc.productDiscount += cur.totalDiscount;
-    acc.couponDiscount += cur.couponDiscount;
-    return acc;
-  },
-  {
-    salesCount: 0,
-    totalSalesAmount: 0,
-    productDiscount: 0,
-    couponDiscount: 0,
-  }
-);
-
+      (acc, cur) => {
+        acc.salesCount += cur.orderCount;
+        acc.totalSalesAmount += cur.netSales;
+        acc.productDiscount += cur.totalDiscount;
+        acc.couponDiscount += cur.couponDiscount;
+        return acc;
+      },
+      {
+        salesCount: 0,
+        totalSalesAmount: 0,
+        productDiscount: 0,
+        couponDiscount: 0,
+      }
+    );
 
     res.json({
       success: true,
@@ -293,7 +341,7 @@ const getDateWiseOrderProductAggregation = async (range) => {
 
     {
       $lookup: {
-        from: "users",           
+        from: "users",
         localField: "userId",
         foreignField: "_id",
         as: "user",
@@ -331,19 +379,13 @@ const getDateWiseOrderProductAggregation = async (range) => {
             quantity: "$orderedItem.quantity",
             price: "$orderedItem.price",
             total: {
-              $multiply: [
-                "$orderedItem.quantity",
-                "$orderedItem.price",
-              ],
+              $multiply: ["$orderedItem.quantity", "$orderedItem.price"],
             },
           },
         },
         orderTotal: {
           $sum: {
-            $multiply: [
-              "$orderedItem.quantity",
-              "$orderedItem.price",
-            ],
+            $multiply: ["$orderedItem.quantity", "$orderedItem.price"],
           },
         },
       },
@@ -369,7 +411,6 @@ const getDateWiseOrderProductAggregation = async (range) => {
   ]);
 };
 
-
 const downloadExcel = async (req, res) => {
   try {
     const { type, startDate, endDate } = req.query;
@@ -380,7 +421,6 @@ const downloadExcel = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Date Order Product Report");
 
-    // Define columns
     sheet.columns = [
       { header: "Date", width: 15 },
       { header: "Customer Name", width: 25 },
@@ -396,7 +436,7 @@ const downloadExcel = async (req, res) => {
       day.orders.forEach((order) => {
         order.products.forEach((p, index) => {
           sheet.addRow([
-            index === 0 ? day._id : "", 
+            index === 0 ? day._id : "",
             index === 0 ? order.customer?.name || "Guest" : "",
             index === 0 ? order.orderId : "",
             p.productName,
@@ -432,8 +472,6 @@ const downloadExcel = async (req, res) => {
         day.dateTotalAmount,
       ]);
 
-     
-
       sheet.addRow([]);
     });
 
@@ -453,7 +491,6 @@ const downloadExcel = async (req, res) => {
     res.status(500).send("Excel download failed");
   }
 };
-
 
 const downloadPdf = async (req, res) => {
   try {
@@ -479,14 +516,14 @@ const downloadPdf = async (req, res) => {
 
     const drawTable = (startY, headers, rows, columnWidths) => {
       const tableTop = startY;
-      const rowHeight = 35; 
+      const rowHeight = 35;
       let y = tableTop;
 
-      doc.fontSize(11).fillColor("white"); 
+      doc.fontSize(11).fillColor("white");
       let x = 40;
       headers.forEach((header, i) => {
         doc.rect(x, y, columnWidths[i], rowHeight).fill("#1f2937");
-        doc.fillColor("white").text(header, x + 5, y + 10, { 
+        doc.fillColor("white").text(header, x + 5, y + 10, {
           width: columnWidths[i] - 10,
           align: "left",
         });
@@ -498,13 +535,13 @@ const downloadPdf = async (req, res) => {
       rows.forEach((row, rowIndex) => {
         x = 40;
         const fillColor = rowIndex % 2 === 0 ? "#f9fafb" : "white";
-        
+
         row.forEach((cell, i) => {
           doc.rect(x, y, columnWidths[i], rowHeight).fill(fillColor);
           doc
             .fillColor("black")
-            .fontSize(10) 
-            .text(String(cell), x + 5, y + 10, { 
+            .fontSize(10)
+            .text(String(cell), x + 5, y + 10, {
               width: columnWidths[i] - 10,
               align: "left",
             });
@@ -512,7 +549,7 @@ const downloadPdf = async (req, res) => {
         });
 
         y += rowHeight;
-        
+
         if (y > 700) {
           doc.addPage();
           y = 40;
@@ -520,10 +557,13 @@ const downloadPdf = async (req, res) => {
           y = 40;
           headers.forEach((header, i) => {
             doc.rect(x, y, columnWidths[i], rowHeight).fill("#1f2937");
-            doc.fillColor("white").fontSize(11).text(header, x + 5, y + 10, {
-              width: columnWidths[i] - 10,
-              align: "left",
-            });
+            doc
+              .fillColor("white")
+              .fontSize(11)
+              .text(header, x + 5, y + 10, {
+                width: columnWidths[i] - 10,
+                align: "left",
+              });
             x += columnWidths[i];
           });
           y += rowHeight;
@@ -542,14 +582,22 @@ const downloadPdf = async (req, res) => {
 
       let currentY = doc.y;
 
-      const headers = ["Customer", "Order ID", "Product", "ML", "Qty", "Price", "Total"];
+      const headers = [
+        "Customer",
+        "Order ID",
+        "Product",
+        "ML",
+        "Qty",
+        "Price",
+        "Total",
+      ];
       const columnWidths = [80, 100, 100, 40, 40, 80, 80];
 
       const rows = [];
       day.orders.forEach((order) => {
         order.products.forEach((p, index) => {
           rows.push([
-            index === 0 ? (order.customer?.name || "Guest") : "",
+            index === 0 ? order.customer?.name || "Guest" : "",
             index === 0 ? String(order.orderId).substring(0, 12) + "..." : "",
             p.productName,
             p.ml || "-",
@@ -558,7 +606,7 @@ const downloadPdf = async (req, res) => {
             `Rs.${p.total}`,
           ]);
         });
-        
+
         rows.push([
           "",
           "",
@@ -580,9 +628,9 @@ const downloadPdf = async (req, res) => {
         .fillColor("#16a34a")
         .text(`Total Orders: ${day.totalOrders}`, { continued: true })
         .text(`  |  Date Total Amount: Rs.${day.dateTotalAmount}`);
-      
+
       doc.moveDown(2);
-      
+
       doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke("#e5e7eb");
       doc.moveDown(1);
     });
@@ -593,7 +641,6 @@ const downloadPdf = async (req, res) => {
     res.status(500).send("PDF download failed");
   }
 };
-
 
 const logout = async (req, res) => {
   try {
