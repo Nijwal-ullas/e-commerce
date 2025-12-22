@@ -2,7 +2,7 @@ import user from "../../model/userSchema.js";
 import Order from "../../model/orderSchema.js";
 import product from "../../model/productSchema.js";
 import wallet from "../../model/walletSchema.js";
-import Coupons from "../../model/couponSchema.js";  // Add this import
+import Coupons from "../../model/couponSchema.js";  
 import PDFDocument from "pdfkit";
 
 const getOrder = async (req, res) => {
