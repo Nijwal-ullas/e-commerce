@@ -1,7 +1,8 @@
 import user from "../../model/userSchema.js";
 import Order from "../../model/orderSchema.js";
 import product from "../../model/productSchema.js";
-import wallet from "../../model/walletSchema.js"
+import wallet from "../../model/walletSchema.js";
+import Coupons from "../../model/couponSchema.js";  // Add this import
 import PDFDocument from "pdfkit";
 
 const getOrder = async (req, res) => {
@@ -29,7 +30,6 @@ const getOrder = async (req, res) => {
       (sum, order) => sum + (order.orderedItem?.length || 0),
       0
     );
-
 
     const totalRevenue = allOrders.reduce((sum, order) => {
       return sum + parseFloat(order.finalAmount || order.totalPrice || 0);
@@ -73,8 +73,8 @@ const getOrderDetails = async (req, res) => {
 
     if (!orderDetails) {
       return res.status(400).json({
-        success : false,
-        message : " order not found"
+        success: false,
+        message: " order not found"
       });
     }
 
@@ -84,8 +84,8 @@ const getOrderDetails = async (req, res) => {
 
     if (!userData) {
       return res.status(400).json({
-        success : false,
-        message : " userData not found"
+        success: false,
+        message: " userData not found"
       });
     }
 
@@ -149,7 +149,7 @@ const getOrderDetails = async (req, res) => {
 
     orderDetails.status = orderDetails.orderStatus || "Pending";
     orderDetails.paymentMethod = orderDetails.payment || "COD";
-    orderDetails.deliveryCharge = (orderDetails.totalPrice-orderDetails.discount)>=500?0:50;
+    orderDetails.deliveryCharge = (orderDetails.totalPrice - orderDetails.discount) >= 500 ? 0 : 50;
     orderDetails.couponApplied = orderDetails.couponId ? "Applied" : null;
 
     return res.render("user/orderDetailPage", {
@@ -187,9 +187,9 @@ const cancelOrder = async (req, res) => {
       });
 
     if (cancelAll === "true" || cancelAll === true)
-      return await cancelAllItems(orderDoc, reason, res);
+      return await cancelAllItems(orderDoc, userId, reason, res);
 
-    return await cancelSingleItem(orderDoc, itemId, reason, res);
+    return await cancelSingleItem(orderDoc, userId, itemId, reason, res);
 
   } catch (error) {
     console.error("Cancel error:", error);
@@ -197,9 +197,17 @@ const cancelOrder = async (req, res) => {
   }
 };
 
-async function cancelAllItems(orderDoc, reason, res) {
+async function cancelAllItems(orderDoc, userId, reason, res) {
   orderDoc.orderStatus = "Cancelled";
   orderDoc.cancellationReason = reason || "";
+
+  const couponCode = orderDoc.couponCode;
+  const couponId = orderDoc.couponId;
+
+  orderDoc.couponCode = null;
+  orderDoc.couponId = null;
+  orderDoc.couponDiscount = 0;
+  orderDoc.couponUsed = false;
 
   const cancellableStatuses = ["Pending", "Processing", "Shipped"];
   const deliveredStatuses = ["Delivered"];
@@ -217,7 +225,6 @@ async function cancelAllItems(orderDoc, reason, res) {
   const remainingItems = orderDoc.orderedItem.filter(i => deliveredStatuses.includes(i.status));
 
   if (remainingItems.length === 0) {
-
     const walletUsed = parseFloat(orderDoc.walletUsed || 0);
 
     orderDoc.totalPrice = 0;
@@ -228,13 +235,18 @@ async function cancelAllItems(orderDoc, reason, res) {
     await orderDoc.save();
 
     if (walletUsed > 0) {
-      await refundToWallet(orderDoc.userId, walletUsed);
+      await refundToWallet(userId, walletUsed);
+    }
+
+    if (couponCode && couponId) {
+      await releaseCouponForUser(userId, orderDoc._id, couponId);
     }
 
     return res.json({
       success: true,
       message: "Order fully cancelled and refunded",
-      refundedToWallet: walletUsed
+      refundedToWallet: walletUsed,
+      couponReleased: couponCode ? true : false
     });
   }
 
@@ -247,8 +259,44 @@ async function cancelAllItems(orderDoc, reason, res) {
   const refundAmount = Math.min(cancelledSum, walletUsedBefore);
 
   if (refundAmount > 0) {
-    await refundToWallet(orderDoc.userId, refundAmount);
+    await refundToWallet(userId, refundAmount);
     orderDoc.walletUsed = walletUsedBefore - refundAmount;
+  }
+
+  if (couponCode && couponId) {
+    const coupon = await Coupons.findById(couponId);
+    if (coupon) {
+      let newBaseTotal = 0;
+      
+      for (const item of remainingItems) {
+        const productDoc = await product.findById(item.productId);
+        if (!productDoc) continue;
+
+        let variant = null;
+        if (item.variantId)
+          variant = productDoc.VariantItem.find(v => v._id.toString() === item.variantId.toString());
+
+        if (!variant && item.ml)
+          variant = productDoc.VariantItem.find(v => v.Ml === item.ml);
+
+        if (!variant) continue;
+
+        const basePrice = variant.Price;
+        newBaseTotal += basePrice * item.quantity;
+      }
+
+      if (newBaseTotal < coupon.minCartValue) {
+        await releaseCouponForUser(userId, orderDoc._id, couponId);
+        orderDoc.couponCode = null;
+        orderDoc.couponId = null;
+        orderDoc.couponDiscount = 0;
+        orderDoc.couponUsed = false;
+      } else {
+        const originalSubtotal = orderDoc.totalPrice;
+        const proportionalDiscount = (newBaseTotal / originalSubtotal) * orderDoc.couponDiscount;
+        orderDoc.couponDiscount = Math.round(proportionalDiscount * 100) / 100;
+      }
+    }
   }
 
   let newBaseTotal = 0;
@@ -276,7 +324,7 @@ async function cancelAllItems(orderDoc, reason, res) {
 
   orderDoc.totalPrice = newBaseTotal;
   orderDoc.discount = newBaseTotal - newOfferTotal;
-  orderDoc.finalAmount = newOfferTotal;
+  orderDoc.finalAmount = newOfferTotal - orderDoc.couponDiscount;
 
   orderDoc.orderStatus = "Delivered";
 
@@ -285,11 +333,12 @@ async function cancelAllItems(orderDoc, reason, res) {
   return res.json({
     success: true,
     message: "Order partially cancelled",
-    refundedToWallet: refundAmount
+    refundedToWallet: refundAmount,
+    couponAdjusted: couponCode ? true : false
   });
 }
 
-async function cancelSingleItem(orderDoc, itemId, reason, res) {
+async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
   const item = orderDoc.orderedItem.find(i => i._id.toString() === itemId);
   if (!item)
     return res.status(404).json({ success: false, message: "Item not found" });
@@ -305,12 +354,15 @@ async function cancelSingleItem(orderDoc, itemId, reason, res) {
   item.cancellationReason = reason || "";
   await restoreStock(item);
 
+  const couponCode = orderDoc.couponCode;
+  const couponId = orderDoc.couponId;
+
   const cancelledPrice = item.price * item.quantity;
   const walletUsedBefore = parseFloat(orderDoc.walletUsed || 0);
   const refundAmount = Math.min(cancelledPrice, walletUsedBefore);
 
   if (refundAmount > 0) {
-    await refundToWallet(orderDoc.userId, refundAmount);
+    await refundToWallet(userId, refundAmount);
     orderDoc.walletUsed = walletUsedBefore - refundAmount;
   }
 
@@ -318,17 +370,62 @@ async function cancelSingleItem(orderDoc, itemId, reason, res) {
 
   if (activeItems.length === 0) {
     orderDoc.orderStatus = "Cancelled";
+
+    orderDoc.couponCode = null;
+    orderDoc.couponId = null;
+    orderDoc.couponDiscount = 0;
+    orderDoc.couponUsed = false;
+
     orderDoc.totalPrice = 0;
     orderDoc.discount = 0;
     orderDoc.finalAmount = 0;
 
     await orderDoc.save();
 
+    if (couponCode && couponId) {
+      await releaseCouponForUser(userId, orderDoc._id, couponId);
+    }
+
     return res.json({
       success: true,
       message: "Item cancelled and order closed",
-      refundedToWallet: refundAmount
+      refundedToWallet: refundAmount,
+      couponReleased: couponCode ? true : false
     });
+  }
+
+  if (couponCode && couponId) {
+    const coupon = await Coupons.findById(couponId);
+    if (coupon) {
+      let remainingSubtotal = 0;
+      
+      for (const activeItem of activeItems) {
+        const productDoc = await product.findById(activeItem.productId);
+        if (!productDoc) continue;
+
+        let variant = null;
+        if (activeItem.variantId)
+          variant = productDoc.VariantItem.find(v => v._id.toString() === activeItem.variantId.toString());
+
+        if (!variant && activeItem.ml)
+          variant = productDoc.VariantItem.find(v => v.Ml === activeItem.ml);
+
+        const basePrice = variant ? variant.Price : activeItem.price;
+        remainingSubtotal += basePrice * activeItem.quantity;
+      }
+
+      if (remainingSubtotal < coupon.minCartValue) {
+        await releaseCouponForUser(userId, orderDoc._id, couponId);
+        orderDoc.couponCode = null;
+        orderDoc.couponId = null;
+        orderDoc.couponDiscount = 0;
+        orderDoc.couponUsed = false;
+      } else {
+        const originalSubtotal = orderDoc.totalPrice;
+        const proportionalDiscount = (remainingSubtotal / originalSubtotal) * orderDoc.couponDiscount;
+        orderDoc.couponDiscount = Math.round(proportionalDiscount * 100) / 100;
+      }
+    }
   }
 
   let newBase = 0;
@@ -339,7 +436,9 @@ async function cancelSingleItem(orderDoc, itemId, reason, res) {
     if (!productDoc) continue;
 
     let variant = null;
-   
+    if (activeItem.variantId)
+      variant = productDoc.VariantItem.find(v => v._id.toString() === activeItem.variantId.toString());
+
     if (!variant && activeItem.ml)
       variant = productDoc.VariantItem.find(v => v.Ml === activeItem.ml);
 
@@ -350,7 +449,7 @@ async function cancelSingleItem(orderDoc, itemId, reason, res) {
     newDiscount += (basePrice - finalPrice) * activeItem.quantity;
   }
 
-  const afterDiscount = newBase - newDiscount;
+  const afterDiscount = newBase - newDiscount - orderDoc.couponDiscount;
   const delivery = afterDiscount >= 500 ? 0 : 50;
 
   orderDoc.totalPrice = newBase;
@@ -363,8 +462,25 @@ async function cancelSingleItem(orderDoc, itemId, reason, res) {
     success: true,
     message: "Item cancelled and wallet refunded",
     refundedToWallet: refundAmount,
-    newFinalAmount: orderDoc.finalAmount
+    newFinalAmount: orderDoc.finalAmount,
+    couponAdjusted: couponCode ? true : false
   });
+}
+
+async function releaseCouponForUser(userId, orderId, couponId) {
+  try {
+    await Coupons.findByIdAndUpdate(couponId, {
+      $pull: { 
+        usedBy: { 
+          userId: userId,
+          orderId: orderId
+        } 
+      },
+      $inc: { totalUsage: -1 }
+    });
+  } catch (error) {
+    console.error("Error releasing coupon:", error);
+  }
 }
 
 async function refundToWallet(userId, amount) {
@@ -401,7 +517,9 @@ async function restoreStock(item) {
     if (productDoc.VariantItem?.length > 0) {
       let variant = null;
 
-      
+      if (item.variantId)
+        variant = productDoc.VariantItem.find(v => v._id.toString() === item.variantId.toString());
+
       if (!variant && item.ml)
         variant = productDoc.VariantItem.find(v => v.Ml === item.ml);
 
@@ -443,234 +561,6 @@ export const downloadInvoice = async (req, res) => {
     const doc = new PDFDocument({ margin: 50, size: "A4" });
     doc.pipe(res);
 
-    doc
-      .fontSize(24)
-      .font("Helvetica-Bold")
-      .text("Rube Collection", { align: "center" })
-      .moveDown(0.3);
-
-    doc
-      .fontSize(10)
-      .font("Helvetica")
-      .text("Premium Fragrances & Perfumes", { align: "center" })
-      .moveDown(0.8);
-
-    doc
-      .fontSize(18)
-      .font("Helvetica-Bold")
-      .fillColor("#333333")
-      .text("INVOICE", { align: "center" })
-      .moveDown(1);
-
-    const orderDetailsY = doc.y;
-    const leftCol = 50;
-    const rightCol = 320;
-
-    doc
-      .fontSize(10)
-      .font("Helvetica-Bold")
-      .fillColor("#000000")
-      .text("Order ID:", leftCol, orderDetailsY, { continued: true })
-      .font("Helvetica")
-      .text(` ${orderDoc.orderId}`);
-
-    doc
-      .font("Helvetica-Bold")
-      .text("Invoice Date:", leftCol, orderDetailsY + 15, { continued: true })
-      .font("Helvetica")
-      .text(` ${orderDoc.createdAt.toLocaleDateString("en-GB")}`);
-
-    doc
-      .font("Helvetica-Bold")
-      .text("Payment Method:", rightCol, orderDetailsY)
-      .font("Helvetica")
-      .text(`${orderDoc.payment || "COD"}`, rightCol + 115, orderDetailsY);
-
-    doc
-      .font("Helvetica-Bold")
-      .text("Payment Status:", rightCol, orderDetailsY + 15)
-      .font("Helvetica")
-      .text(`${orderDoc.paymentStatus || "Pending"}`, rightCol + 115, orderDetailsY + 15);
-
-    doc.moveDown(3);
-
-    const address = orderDoc?.shippingAddress?.[0] || {};
-    const billingY = doc.y;
-
-    doc
-      .fontSize(12)
-      .font("Helvetica-Bold")
-      .text("Billing & Shipping Address:", 50, billingY)
-      .moveDown(0.5);
-
-    doc
-      .fontSize(10)
-      .font("Helvetica")
-      .text(`${userData?.name || "Customer"}`, 50)
-      .text(`${address.flatNumber || ""} ${address.streetName || ""}`.trim(), 50)
-      .text(address.landMark ? `Landmark: ${address.landMark}` : "", 50)
-      .text(`${address.city || ""}, ${address.state || ""} - ${address.pincode || ""}`.replace(/^, | - $|^- $/, ""), 50)
-      .text(`Phone: ${address.phone || ""}`, 50)
-      .moveDown(1.5);
-
-    const tableTop = doc.y + 10;
-    const tableLeft = 50;
-    const tableWidth = 500;
-
-    const cols = {
-      sno: { x: tableLeft + 5, width: 35 },
-      product: { x: tableLeft + 45, width: 195 },
-      size: { x: tableLeft + 245, width: 55 },
-      qty: { x: tableLeft + 305, width: 45 },
-      price: { x: tableLeft + 355, width: 70 },
-      total: { x: tableLeft + 430, width: 70 }
-    };
-
-    doc
-      .rect(tableLeft, tableTop, tableWidth, 25)
-      .fillAndStroke("#4B5563", "#4B5563");
-
-    doc
-      .fontSize(10)
-      .font("Helvetica-Bold")
-      .fillColor("#FFFFFF")
-      .text("S.No", cols.sno.x + 5, tableTop + 8, { width: cols.sno.width - 10, align: "center" })
-      .text("Product Name", cols.product.x + 5, tableTop + 8, { width: cols.product.width - 10, align: "left" })
-      .text("Size", cols.size.x, tableTop + 8, { width: cols.size.width, align: "center" })
-      .text("Qty", cols.qty.x, tableTop + 8, { width: cols.qty.width, align: "center" })
-      .text("Price", cols.price.x, tableTop + 8, { width: cols.price.width - 5, align: "right" })
-      .text("Total", cols.total.x, tableTop + 8, { width: cols.total.width - 5, align: "right" });
-
-    let currentY = tableTop + 25;
-    doc.fillColor("#000000").font("Helvetica");
-
-    orderDoc.orderedItem.forEach((item, i) => {
-      const rowHeight = 30;
-      
-      if (i % 2 === 0) {
-        doc
-          .rect(tableLeft, currentY, tableWidth, rowHeight)
-          .fillAndStroke("#F9FAFB", "#E5E7EB");
-      } else {
-        doc
-          .rect(tableLeft, currentY, tableWidth, rowHeight)
-          .stroke("#E5E7EB");
-      }
-
-      const itemTotal = (item.price * item.quantity).toFixed(2);
-      const textY = currentY + 10;
-
-      doc
-        .fontSize(9)
-        .fillColor("#000000")
-        .text(i + 1, cols.sno.x + 5, textY, { width: cols.sno.width - 10, align: "center" })
-        .text(
-          item.productId?.productName || "Product",
-          cols.product.x + 5,
-          textY,
-          { width: cols.product.width - 10, align: "left", ellipsis: true }
-        )
-        .text(
-          item.ml ? `${item.ml} ML` : "-",
-          cols.size.x,
-          textY,
-          { width: cols.size.width, align: "center" }
-        )
-        .text(
-          item.quantity.toString(),
-          cols.qty.x,
-          textY,
-          { width: cols.qty.width, align: "center" }
-        )
-        .text(
-          `Rs. ${item.price.toFixed(2)}`,
-          cols.price.x,
-          textY,
-          { width: cols.price.width - 5, align: "right" }
-        )
-        .text(
-          `Rs. ${itemTotal}`,
-          cols.total.x,
-          textY,
-          { width: cols.total.width - 5, align: "right" }
-        );
-
-      currentY += rowHeight;
-    });
-
-    doc
-      .moveTo(tableLeft, currentY)
-      .lineTo(tableLeft + tableWidth, currentY)
-      .stroke("#E5E7EB");
-
-    currentY += 30;
-
-    const summaryBoxLeft = tableLeft + 300;
-    const summaryBoxWidth = 200;
-    
-    const summaryBoxTop = currentY - 5;
-    const summaryBoxHeight = orderDoc.discount && orderDoc.discount > 0 ? 115 : 90;
-    
-    doc
-      .rect(summaryBoxLeft, summaryBoxTop, summaryBoxWidth, summaryBoxHeight)
-      .fillAndStroke("#F9FAFB", "#E5E7EB");
-
-    currentY += 5;
-
-    doc
-      .fontSize(10)
-      .font("Helvetica")
-      .fillColor("#000000");
-
-    const labelX = summaryBoxLeft + 10;
-    const valueX = summaryBoxLeft + summaryBoxWidth - 10;
-    
-    doc
-      .text("Subtotal:", labelX, currentY, { width: 100, align: "left" })
-      .text(`Rs. ${orderDoc.totalPrice.toFixed(2)}`, valueX - 80, currentY, { width: 80, align: "right" });
-
-    currentY += 20;
-
-    if (orderDoc.discount && orderDoc.discount > 0) {
-      doc
-        .fillColor("#059669")
-        .text("Discount:", labelX, currentY, { width: 100, align: "left" })
-        .text(`- Rs. ${orderDoc.discount.toFixed(2)}`, valueX - 80, currentY, { width: 80, align: "right" })
-        .fillColor("#000000");
-
-      currentY += 20;
-    }
-
-    doc
-      .moveTo(summaryBoxLeft + 10, currentY + 5)
-      .lineTo(summaryBoxLeft + summaryBoxWidth - 10, currentY + 5)
-      .stroke("#9CA3AF");
-
-    currentY += 15;
-
-    doc
-      .fontSize(12)
-      .font("Helvetica-Bold")
-      .fillColor("#1F2937")
-      .text("Total Amount:", labelX, currentY, { width: 100, align: "left" })
-      .text(`Rs. ${orderDoc.finalAmount.toFixed(2)}`, valueX - 80, currentY, { width: 80, align: "right" })
-      .fillColor("#000000");
-
-    doc
-      .moveDown(4)
-      .fontSize(10)
-      .font("Helvetica-Oblique")
-      .fillColor("#6B7280")
-      .text("Thank you for shopping with Rube Collection!", { align: "center" })
-      .moveDown(0.5)
-      .fontSize(8)
-      .text("For any queries, please contact our customer support", { align: "center" });
-
-    const borderPadding = 40;
-    const borderHeight = Math.min(doc.y + 20, 750); 
-    doc
-      .rect(borderPadding, borderPadding, 515, borderHeight - borderPadding)
-      .stroke("#D1D5DB");
 
     doc.end();
   } catch (err) {
@@ -694,7 +584,6 @@ const requestOrderReturn = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Order not found" });
 
-    
     if (!reason || reason.trim() === "") {
       return res.status(400).json({
         success: false,
@@ -745,8 +634,6 @@ const requestOrderReturn = async (req, res) => {
     item.returnRequestDate = new Date();
     item.paymentStatus = "Return Requested";
 
-    
-
     await orderDoc.save();
 
     res.json({
@@ -759,8 +646,6 @@ const requestOrderReturn = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
-
 
 export default {
   getOrder,

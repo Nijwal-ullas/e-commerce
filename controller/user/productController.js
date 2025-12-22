@@ -20,11 +20,21 @@ const productPage = async (req, res) => {
     const brands = await brand.find();
     const categories = await category.find({ isListed: true });
     
+    // Add pagination
+    const page = 1;
+    const limit = 12;
+    const skip = (page - 1) * limit;
+    
+    // Get total count for pagination
+    const totalProductsCount = await product.countDocuments({ isListed: true });
+    const totalPages = Math.ceil(totalProductsCount / limit);
+    
     const products = await product.find({ isListed: true })
       .populate("category", "name")
       .populate("brand", "name")
       .sort({ createdAt: -1 })
-      .limit(12)
+      .skip(skip)
+      .limit(limit)
       .lean();
 
     const productsWithPrices = products.map(product => {
@@ -77,6 +87,9 @@ const productPage = async (req, res) => {
       categories,
       products: productsWithPrices,
       userWishlist,
+      totalProducts: totalProductsCount,
+      totalPages: totalPages,
+      currentPage: page,
     });
   } catch (err) {
     console.error("Error loading product page:", err);
@@ -226,6 +239,7 @@ const getProducts = async (req, res) => {
 
 const getProductDetails = async (req, res) => {
   try {
+    const userId = req.session.user
     const productId = req.params.id;
 
     if (
@@ -282,8 +296,8 @@ const getProductDetails = async (req, res) => {
     let userData = null;
     let userWishlist = [];
 
-    if (req.session.user) {
-      userData = await user.findById(req.session.user._id);
+    if (userId) {
+      userData = await user.findById(userId._id);
       if (userData && userData.wishlist) {
         userWishlist = userData.wishlist.map((id) => id.toString());
       }

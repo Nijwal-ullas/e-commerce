@@ -38,6 +38,11 @@ const loadHomePage = async (req, res) => {
   try {
     const categories = await category.find({ isListed: true });
 
+    // Get initial products with pagination
+    const page = 1;
+    const limit = 12;
+    const skip = (page - 1) * limit;
+
     let newArrivalProducts = await product
       .find({
         isListed: true,
@@ -46,9 +51,14 @@ const loadHomePage = async (req, res) => {
         createdAt: -1,
         updatedAt: -1,
       })
-      .limit(4)
+      .skip(skip)
+      .limit(limit)
       .populate("brand")
       .lean();
+
+    // Get total count for pagination
+    const totalProducts = await product.countDocuments({ isListed: true });
+    const totalPages = Math.ceil(totalProducts / limit);
 
     const productsWithVariantData = newArrivalProducts.map((productItem) => {
       let minOfferPrice = 0;
@@ -115,6 +125,9 @@ const loadHomePage = async (req, res) => {
       userWishlist: userWishlist,
       products: productsWithVariantData,
       categories,
+      totalProducts: totalProducts,
+      totalPages: totalPages,
+      currentPage: page,
     });
   } catch (error) {
     console.log("Error loading homepage:", error.message);

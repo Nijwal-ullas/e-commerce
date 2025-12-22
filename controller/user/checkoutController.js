@@ -174,8 +174,6 @@ const getCheckout = async (req, res) => {
       .skip(skip)
       .limit(limit);
 
-      
-
     return res.render("user/checkoutPage", {
       user: userData,
       cart: cartData || { cart_items: cartItems },
@@ -204,6 +202,37 @@ const getCheckout = async (req, res) => {
   }
 };
 
+const checkCouponAvailability = async (userId, couponCode) => {
+  const coupon = await Coupons.findOne({
+    code: couponCode,
+    status: true,
+    expireAt: { $gt: new Date() }
+  });
+
+  if (!coupon) {
+    return { available: false, reason: "Invalid or expired coupon" };
+  }
+
+  // if (coupon.maxUsage && coupon.totalUsage >= coupon.maxUsage) {
+  //   return { available: false, reason: "Coupon usage limit reached" };
+  // }
+
+  const userActiveUsage = await order.countDocuments({
+    userId: userId,
+    couponCode: coupon.code,
+    orderStatus: { $nin: ["Cancelled", "Returned"] }
+  });
+
+  if (userActiveUsage >= coupon.maxUsagePerUser) {
+    return { 
+      available: false, 
+      reason: `You can only use this coupon ${coupon.maxUsagePerUser} time${coupon.maxUsagePerUser > 1 ? 's' : ''}` 
+    };
+  }
+
+  return { available: true, coupon };
+};
+
 const applyCoupon = async (req, res) => {
   try {
     const { couponCode } = req.body;
@@ -223,32 +252,16 @@ const applyCoupon = async (req, res) => {
       });
     }
 
-    const coupon = await Coupons.findOne({
-      code: couponCode.trim().toUpperCase(),
-      status: true,
-      expireAt: { $gt: new Date() }
-    });
-
-    if (!coupon) {
+    const couponCheck = await checkCouponAvailability(userId, couponCode.trim().toUpperCase());
+    
+    if (!couponCheck.available) {
       return res.status(400).json({
         success: false,
-        message: "Invalid or expired coupon code"
+        message: couponCheck.reason || "Invalid coupon"
       });
     }
 
-    const userOrdersWithCoupon = await order.countDocuments({
-      userId: userId,
-      couponCode: coupon.code,
-      orderStatus: { $nin: ["Cancelled"] },
-      paymentStatus: { $nin: ["Refunded"] }
-    });
-
-    if (userOrdersWithCoupon >= 1) {
-      return res.status(400).json({
-        success: false,
-        message: "You have already used this coupon"
-      });
-    }
+    const coupon = couponCheck.coupon;
 
     let cartTotal = 0;
     
@@ -312,7 +325,8 @@ const applyCoupon = async (req, res) => {
       code: coupon.code,
       discountValue: coupon.discountValue,
       minCartValue: coupon.minCartValue,
-      description: coupon.description || `Save ₹${coupon.discountValue}`
+      description: coupon.description || `Save ₹${coupon.discountValue}`,
+      couponId: coupon._id
     };
 
     return res.json({
@@ -439,6 +453,8 @@ const placeOrder = async (req, res) => {
         totalPrice += itemOriginalTotal;
         totalDiscount += itemDiscount;
 
+        
+
         if (variantDoc && variantDoc.Quantity < item.quantity) {
           hasOutOfStock = true;
         }
@@ -477,30 +493,16 @@ const placeOrder = async (req, res) => {
     let effectiveCouponCode = inputCouponCode || (req.session.appliedCoupon ? req.session.appliedCoupon.code : null);
 
     if (effectiveCouponCode) {
-      const coupon = await Coupons.findOne({
-        code: effectiveCouponCode,
-        status: true,
-        expireAt: { $gt: new Date() }
-      });
-
-      if (!coupon) {
+      const couponCheck = await checkCouponAvailability(userId, effectiveCouponCode);
+      
+      if (!couponCheck.available) {
         return res.status(400).json({
           success: false,
-          message: "Invalid or expired coupon"
+          message: couponCheck.reason || "Invalid coupon"
         });
       }
 
-      const userOrdersWithCoupon = await order.countDocuments({
-        userId: userId,
-        couponCode: effectiveCouponCode
-      });
-
-      if (userOrdersWithCoupon >= 1) {
-        return res.status(400).json({
-          success: false,
-          message: "You have already used this coupon"
-        });
-      }
+      const coupon = couponCheck.coupon;
 
       if (afterDiscount < coupon.minCartValue) {
         return res.status(400).json({
@@ -523,6 +525,13 @@ const placeOrder = async (req, res) => {
     const deliveryCharge = afterDiscount >= 500 ? 0 : 50;
     const afterCouponDiscount = afterDiscount - couponDiscount;
     const totalAmount = afterCouponDiscount + deliveryCharge;
+
+    if (paymentMethod === 'cod' && totalAmount > 1000) {
+        return res.status(400).json({
+          success: false,
+          message: "Cash on Delivery is not available for orders above ₹1000."
+        });
+      }
 
     const userWallet = await wallet.findOne({ UserId: userId });
     const walletBalance = parseFloat(userWallet?.Balance) || 0;
@@ -631,6 +640,7 @@ const placeOrder = async (req, res) => {
       couponId: appliedCouponId,
       couponCode: couponCode || null,
       couponDiscount: couponDiscount,
+      couponUsed: couponCode ? true : false,
       walletUsed: walletUsed,
       finalAmount: finalAmount,
       shippingCharge: deliveryCharge,
@@ -652,6 +662,19 @@ const placeOrder = async (req, res) => {
     });
 
     await newOrder.save();
+
+    if (appliedCouponId) {
+      await Coupons.findByIdAndUpdate(appliedCouponId, {
+        $push: {
+          usedBy: {
+            userId: userId,
+            orderId: newOrder._id, 
+            usedAt: new Date()
+          }
+        },
+        $inc: { totalUsage: 1 }
+      });
+    }
 
     for (const cartItem of cartItems) {
       const productDoc = cartItem.packageProductId;
