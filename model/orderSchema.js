@@ -27,7 +27,7 @@ const OrdersSchema = new Schema(
           required: true,
         },
 
-        productName : {type:String},
+        productName: { type: String },
 
         variantId: { type: Schema.Types.ObjectId },
 
@@ -102,10 +102,9 @@ const OrdersSchema = new Schema(
     walletUsed: { type: Number, default: 0 },
     finalAmount: { type: Number, required: true },
 
-    
     couponId: { type: Schema.Types.ObjectId, ref: "Coupon" },
 
-       couponCode: {
+    couponCode: {
       type: String,
       default: null,
     },
@@ -113,6 +112,11 @@ const OrdersSchema = new Schema(
     couponDiscount: {
       type: Number,
       default: 0,
+    },
+
+    couponUsed: {
+      type: Boolean,
+      default: true,
     },
 
     shippingAddress: [
@@ -139,15 +143,15 @@ const OrdersSchema = new Schema(
         "Delivered",
         "Cancelled",
         "Refunded",
-        "Returned"
+        "Returned",
       ],
       default: "Pending",
     },
 
-    metadata: {
-      type: Object,
-      default: {},
-    },
+    // metadata: {
+    //   type: Object,
+    //   default: {},
+    // },
   },
   { timestamps: true }
 );
