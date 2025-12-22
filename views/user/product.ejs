@@ -247,25 +247,26 @@
 
         <div class="lg:w-3/4">
           <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 bg-white p-6 rounded-lg shadow">
-            <p class="text-gray-600 text-base">
-              Showing <span id="showing-count" class="font-semibold text-gray-800">
-                <% 
-                  const totalProducts = products.length;
-                  const showingEnd = Math.min(12, totalProducts);
-                %>
-                <%= totalProducts > 0 ? `1-${showingEnd}` : '0-0' %>
-              </span> of <span id="total-count" class="font-semibold text-gray-800"><%= totalProducts %></span> results
-            </p>
-            <div class="flex items-center gap-3">
-              <span class="text-gray-600 text-base hidden sm:block">Sort by:</span>
-              <select id="sort-select" class="border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-base">
-                <option value="latest" selected>Latest</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="name">Name: A to Z</option>
-              </select>
-            </div>
-          </header>
+  <p class="text-gray-600 text-base">
+    Showing <span id="showing-count" class="font-semibold text-gray-800">
+      <% 
+        const productsCount = products.length;
+        const showingStart = productsCount > 0 ? 1 : 0;
+        const showingEnd = productsCount;
+      %>
+      <%= showingStart %>-<%= showingEnd %>
+    </span> of <span id="total-count" class="font-semibold text-gray-800"><%= totalProducts %></span> results
+  </p>
+  <div class="flex items-center gap-3">
+    <span class="text-gray-600 text-base hidden sm:block">Sort by:</span>
+    <select id="sort-select" class="border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-base">
+      <option value="latest" selected>Latest</option>
+      <option value="price-low">Price: Low to High</option>
+      <option value="price-high">Price: High to Low</option>
+      <option value="name">Name: A to Z</option>
+    </select>
+  </div>
+</header>
 
           <section aria-label="Product listings" class="w-full">
             <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -363,18 +364,26 @@
           </section>
 
           <nav id="pagination-container" class="flex justify-center items-center mt-12 space-x-3" aria-label="Product pagination">
-            <% if (products.length > 0) { %>
-              <button id="prev-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium opacity-50 cursor-not-allowed" disabled>
-                ← Previous
-              </button>
-              <button class="page-btn px-5 py-3 border rounded-lg font-medium bg-red-600 text-white border-red-600" data-page="1">
-                1
-              </button>
-              <button id="next-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium opacity-50 cursor-not-allowed" disabled>
-                Next →
-              </button>
-            <% } %>
-          </nav>
+  <% if (totalProducts > 0) { %>
+    <% 
+      const hasNextPage = totalPages > 1;
+      const hasPrevPage = false; // First page
+    %>
+    <button id="prev-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium <%= hasPrevPage ? '' : 'opacity-50 cursor-not-allowed' %>" <%= hasPrevPage ? '' : 'disabled' %>>
+      ← Previous
+    </button>
+    
+    <% for (let i = 1; i <= Math.min(5, totalPages); i++) { %>
+      <button class="page-btn px-5 py-3 border rounded-lg font-medium <%= i === currentPage ? 'bg-red-600 text-white border-red-600' : 'border-gray-300 hover:bg-red-600 hover:text-white hover:border-red-600' %>" data-page="<%= i %>">
+        <%= i %>
+      </button>
+    <% } %>
+    
+    <button id="next-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium <%= hasNextPage ? '' : 'opacity-50 cursor-not-allowed' %>" <%= hasNextPage ? '' : 'disabled' %>>
+      Next →
+    </button>
+  <% } %>
+</nav>
         </div>
       </div>
     </div>
@@ -443,13 +452,22 @@
     };
 
     document.addEventListener('DOMContentLoaded', function() {
-      let currentPage = 1;
-      const limit = 12;
-      let totalProducts = <%= products.length %>;
-      let currentFilters = {};
-      
-      // Attach event listeners to initial products
-      attachProductEventListeners();
+  let currentPage = 1;
+  const limit = 12;
+  let totalProducts = <%= totalProducts || 0 %>;
+  let currentFilters = {};
+  
+  // Attach event listeners to initial products
+  attachProductEventListeners();
+  
+  // Initialize pagination if there are more products
+  if (totalProducts > limit) {
+    updatePagination({
+      totalPages: <%= totalPages || 1 %>,
+      currentPage: 1,
+      totalProducts: totalProducts
+    });
+  }
 
       const filterToggles = document.querySelectorAll('.filter-toggle');
       
@@ -602,161 +620,45 @@
       }
 
       async function filterProducts() {
-        const searchTerm = document.getElementById('search-input').value.trim();
-        const selectedBrands = Array.from(document.querySelectorAll('.brand-filter:checked'))
-          .map(cb => cb.value);
-        
-        const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked'))
-          .map(cb => cb.value);
-        
-        const selectedSize = document.querySelector('.size-btn.active')?.dataset.size;
-        const maxPrice = document.getElementById('price-range').value;
-        const sortBy = document.getElementById('sort-select').value;
+  const searchTerm = document.getElementById('search-input').value.trim();
+  const selectedBrands = Array.from(document.querySelectorAll('.brand-filter:checked'))
+    .map(cb => cb.value);
+  
+  const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked'))
+    .map(cb => cb.value);
+  
+  const selectedSize = document.querySelector('.size-btn.active')?.dataset.size;
+  const maxPrice = document.getElementById('price-range').value;
+  const sortBy = document.getElementById('sort-select').value;
 
-        // Check if any filter is active
-        const hasActiveFilters = searchTerm || 
-                                 selectedBrands.length > 0 || 
-                                 selectedCategories.length > 0 || 
-                                 selectedSize || 
-                                 maxPrice !== "5000" || 
-                                 sortBy !== "latest";
+  const filters = {};
+  
+  if (searchTerm) {
+    filters.search = searchTerm;
+  }
+  
+  if (selectedBrands.length > 0) {
+    filters.brands = selectedBrands.join(',');
+  }
+  
+  if (selectedCategories.length > 0) {
+    filters.categories = selectedCategories.join(',');
+  }
+  
+  if (selectedSize) {
+    filters.size = selectedSize;
+  }
+  
+  if (maxPrice) {
+    filters.maxPrice = maxPrice;
+  }
+  
+  filters.sortBy = sortBy;
 
-        if (!hasActiveFilters) {
-          // If no filters, show initial products
-          document.getElementById('product-grid').innerHTML = `
-            <% if (products && products.length > 0) { %>
-              <% products.forEach(product => { %>
-                <% 
-                  const productId = product._id;
-                  const productName = product.productName || 'Unnamed Product';
-                  const productPrice = typeof product.price === 'number' ? product.price : 0;
-                  const productOldPrice = product.oldPrice || null;
-                  const hasDiscount = productOldPrice && productOldPrice > productPrice;
-                  const productImages = Array.isArray(product.images) ? product.images : [];
-                  const mainImage = productImages.length > 0 ? productImages[0] : 'https://via.placeholder.com/300x400/f3f4f6/000?text=Perfume+Image';
-                  const hasStock = product.hasStock || false;
-                  const inStock = hasStock && product.isListed !== false;
-                  const brandName = product.brand?.name || '';
-                  const categoryName = product.category?.name || '';
-                  const isInWishlist = userWishlist.includes(productId.toString());
-                  const heartIconClass = isInWishlist ? 'fas fa-heart' : 'far fa-heart';
-                  const activeClass = isInWishlist ? 'active' : '';
-                %>
-                
-                <article class="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 product-card group h-full flex flex-col" data-product-id="<%= productId %>">
-                  <div class="relative h-80 rounded-t-lg overflow-hidden flex-shrink-0">
-                    <button 
-                      class="wishlist-btn absolute top-3 right-3 z-20 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-red-50 transition-all duration-300 <%= activeClass %>"
-                      data-product-id="<%= productId %>"
-                      aria-label="<%= isInWishlist ? 'Remove from wishlist' : 'Add to wishlist' %>"
-                    >
-                      <i class="<%= heartIconClass %> text-red-600 text-lg"></i>
-                    </button>
-
-                    <a href="/product/<%= productId %>" class="block h-full">
-                      <img 
-                        src="<%= mainImage %>" 
-                        alt="<%= productName %>"
-                        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        onerror="this.src='https://via.placeholder.com/300x400/f3f4f6/000?text=Perfume+Image'"
-                      >
-
-                      <% if (!inStock) { %>
-                        <div class="absolute top-4 left-4 bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-medium">
-                          Out of Stock
-                        </div>
-                      <% } %>
-
-                      <% if (product.bestDiscount && product.bestDiscount > 0) { %>
-                        <div class="absolute top-4 left-4 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
-                          <%= product.bestDiscount %>% OFF
-                        </div>
-                      <% } %>
-                    </a>
-                  </div>
-
-                  <div class="p-6 text-center flex-grow flex flex-col justify-end">
-                    <a href="/product/<%= productId %>" class="block">
-                      <h3 class="text-base font-semibold text-gray-800 mb-3 line-clamp-2 hover:text-red-600 transition-colors" title="<%= productName %>">
-                        <%= productName %>
-                      </h3>
-                    </a>
-                    
-                    <div class="flex items-center justify-center gap-2 mb-2">
-                      <p class="text-red-600 font-bold text-xl">₹<%= productPrice.toFixed(2) %></p>
-                      <% if (hasDiscount) { %>
-                        <p class="text-gray-500 line-through text-sm">₹<%= productOldPrice.toFixed(2) %></p>
-                      <% } %>
-                    </div>
-                    
-                    <% if (brandName) { %>
-                      <p class="text-gray-500 text-sm mb-1"><%= brandName %></p>
-                    <% } %>
-                    
-                    <% if (inStock) { %>
-                      <p class="text-green-600 text-sm mt-2 flex items-center justify-center">
-                        <i class="fas fa-check-circle mr-1"></i> In Stock
-                      </p>
-                    <% } else { %>
-                      <p class="text-red-500 text-sm mt-2 flex items-center justify-center">
-                        <i class="fas fa-times-circle mr-1"></i> Out of Stock
-                      </p>
-                    <% } %>
-                  </div>
-                </article>
-              <% }) %>
-            <% } %>
-          `;
-          
-          document.getElementById('pagination-container').innerHTML = `
-            <% if (products.length > 0) { %>
-              <button id="prev-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium opacity-50 cursor-not-allowed" disabled>
-                ← Previous
-              </button>
-              <button class="page-btn px-5 py-3 border rounded-lg font-medium bg-red-600 text-white border-red-600" data-page="1">
-                1
-              </button>
-              <button id="next-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium opacity-50 cursor-not-allowed" disabled>
-                Next →
-              </button>
-            <% } %>
-          `;
-          
-          document.getElementById('showing-count').textContent = '<%= products.length > 0 ? `1-${Math.min(12, products.length)}` : "0-0" %>';
-          document.getElementById('total-count').textContent = '<%= products.length %>';
-          
-          attachProductEventListeners();
-          return;
-        }
-
-        const filters = {};
-        
-        if (searchTerm) {
-          filters.search = searchTerm;
-        }
-        
-        if (selectedBrands.length > 0) {
-          filters.brands = selectedBrands.join(',');
-        }
-        
-        if (selectedCategories.length > 0) {
-          filters.categories = selectedCategories.join(',');
-        }
-        
-        if (selectedSize) {
-          filters.size = selectedSize;
-        }
-        
-        if (maxPrice) {
-          filters.maxPrice = maxPrice;
-        }
-        
-        filters.sortBy = sortBy;
-
-        currentFilters = filters;
-        currentPage = 1;
-        await loadProductsFromBackend(filters);
-      }
+  currentFilters = filters;
+  currentPage = 1; // Reset to page 1 when filtering
+  await loadProductsFromBackend(filters);
+}
 
       async function loadProductsFromBackend(filters = {}) {
         try {
@@ -1051,134 +953,32 @@
       }
 
       async function clearAllFilters() {
-        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-          checkbox.checked = false;
-        });
-        
-        document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
-        
-        document.getElementById('price-range').value = 5000;
-        document.getElementById('max-price').textContent = '5000';
-        
-        document.getElementById('search-input').value = '';
-        const clearSearchBtn = document.getElementById('clear-search');
-        if (clearSearchBtn) {
-          clearSearchBtn.classList.remove('opacity-100', 'pointer-events-auto');
-          clearSearchBtn.classList.add('opacity-0', 'pointer-events-none');
-        }
-        
-        document.getElementById('sort-select').value = 'latest';
-        
-        currentPage = 1;
-        currentFilters = {};
-        
-        // Reload initial products
-        document.getElementById('product-grid').innerHTML = `
-          <% if (products && products.length > 0) { %>
-            <% products.forEach(product => { %>
-              <% 
-                const productId = product._id;
-                const productName = product.productName || 'Unnamed Product';
-                const productPrice = typeof product.price === 'number' ? product.price : 0;
-                const productOldPrice = product.oldPrice || null;
-                const hasDiscount = productOldPrice && productOldPrice > productPrice;
-                const productImages = Array.isArray(product.images) ? product.images : [];
-                const mainImage = productImages.length > 0 ? productImages[0] : 'https://via.placeholder.com/300x400/f3f4f6/000?text=Perfume+Image';
-                const hasStock = product.hasStock || false;
-                const inStock = hasStock && product.isListed !== false;
-                const brandName = product.brand?.name || '';
-                const categoryName = product.category?.name || '';
-                const isInWishlist = userWishlist.includes(productId.toString());
-                const heartIconClass = isInWishlist ? 'fas fa-heart' : 'far fa-heart';
-                const activeClass = isInWishlist ? 'active' : '';
-              %>
-              
-              <article class="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 product-card group h-full flex flex-col" data-product-id="<%= productId %>">
-                <div class="relative h-80 rounded-t-lg overflow-hidden flex-shrink-0">
-                  <button 
-                    class="wishlist-btn absolute top-3 right-3 z-20 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-red-50 transition-all duration-300 <%= activeClass %>"
-                    data-product-id="<%= productId %>"
-                    aria-label="<%= isInWishlist ? 'Remove from wishlist' : 'Add to wishlist' %>"
-                  >
-                    <i class="<%= heartIconClass %> text-red-600 text-lg"></i>
-                  </button>
-
-                  <a href="/product/<%= productId %>" class="block h-full">
-                    <img 
-                      src="<%= mainImage %>" 
-                      alt="<%= productName %>"
-                      class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      onerror="this.src='https://via.placeholder.com/300x400/f3f4f6/000?text=Perfume+Image'"
-                    >
-
-                    <% if (!inStock) { %>
-                      <div class="absolute top-4 left-4 bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-medium">
-                        Out of Stock
-                      </div>
-                    <% } %>
-
-                    <% if (product.bestDiscount && product.bestDiscount > 0) { %>
-                      <div class="absolute top-4 left-4 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
-                        <%= product.bestDiscount %>% OFF
-                      </div>
-                    <% } %>
-                  </a>
-                </div>
-
-                <div class="p-6 text-center flex-grow flex flex-col justify-end">
-                  <a href="/product/<%= productId %>" class="block">
-                    <h3 class="text-base font-semibold text-gray-800 mb-3 line-clamp-2 hover:text-red-600 transition-colors" title="<%= productName %>">
-                      <%= productName %>
-                    </h3>
-                  </a>
-                  
-                  <div class="flex items-center justify-center gap-2 mb-2">
-                    <p class="text-red-600 font-bold text-xl">₹<%= productPrice.toFixed(2) %></p>
-                    <% if (hasDiscount) { %>
-                      <p class="text-gray-500 line-through text-sm">₹<%= productOldPrice.toFixed(2) %></p>
-                    <% } %>
-                  </div>
-                  
-                  <% if (brandName) { %>
-                    <p class="text-gray-500 text-sm mb-1"><%= brandName %></p>
-                  <% } %>
-                  
-                  <% if (inStock) { %>
-                    <p class="text-green-600 text-sm mt-2 flex items-center justify-center">
-                      <i class="fas fa-check-circle mr-1"></i> In Stock
-                    </p>
-                  <% } else { %>
-                    <p class="text-red-500 text-sm mt-2 flex items-center justify-center">
-                      <i class="fas fa-times-circle mr-1"></i> Out of Stock
-                    </p>
-                  <% } %>
-                </div>
-              </article>
-            <% }) %>
-          <% } %>
-        `;
-        
-        document.getElementById('pagination-container').innerHTML = `
-          <% if (products.length > 0) { %>
-            <button id="prev-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium opacity-50 cursor-not-allowed" disabled>
-              ← Previous
-            </button>
-            <button class="page-btn px-5 py-3 border rounded-lg font-medium bg-red-600 text-white border-red-600" data-page="1">
-              1
-            </button>
-            <button id="next-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium opacity-50 cursor-not-allowed" disabled>
-              Next →
-            </button>
-          <% } %>
-        `;
-        
-        document.getElementById('showing-count').textContent = '<%= products.length > 0 ? `1-${Math.min(12, products.length)}` : "0-0" %>';
-        document.getElementById('total-count').textContent = '<%= products.length %>';
-        
-        attachProductEventListeners();
-        
-        showAlert.success('All filters cleared!');
-      }
+  document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  
+  document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
+  
+  document.getElementById('price-range').value = 5000;
+  document.getElementById('max-price').textContent = '5000';
+  
+  document.getElementById('search-input').value = '';
+  const clearSearchBtn = document.getElementById('clear-search');
+  if (clearSearchBtn) {
+    clearSearchBtn.classList.remove('opacity-100', 'pointer-events-auto');
+    clearSearchBtn.classList.add('opacity-0', 'pointer-events-none');
+  }
+  
+  document.getElementById('sort-select').value = 'latest';
+  
+  currentPage = 1;
+  currentFilters = {};
+  
+  // Load products from backend instead of showing static HTML
+  await loadProductsFromBackend({});
+  
+  showAlert.success('All filters cleared!');
+}
 
       function showLoadingState() {
         const productGrid = document.getElementById('product-grid');

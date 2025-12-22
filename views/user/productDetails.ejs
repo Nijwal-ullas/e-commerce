@@ -571,10 +571,8 @@
             const priceDisplay = document.getElementById('price-display');
             const originalPriceContainer = document.getElementById('original-price-container');
             
-            // Update current price
             priceDisplay.innerHTML = `₹${offerPrice.toFixed(2)}`;
             
-            // Update original price and discount badge
             if (originalPrice > offerPrice && discountPercentage > 0) {
                 originalPriceContainer.innerHTML = `
                     <p class="text-lg text-gray-500 line-through">₹${originalPrice.toFixed(2)}</p>
@@ -590,7 +588,6 @@
         function initializeVariantSelection() {
             const variantButtons = document.querySelectorAll('.variant-btn');
             
-            // Find first available variant to set as default
             variantButtons.forEach((button) => {
                 if (parseInt(button.dataset.quantity) > 0 && !selectedVariant) {
                     selectedVariant = {
@@ -601,25 +598,21 @@
                         discount: parseInt(button.dataset.discount)
                     };
                     
-                    // Set initial price display
                     updatePriceDisplay(
                         selectedVariant.offerPrice, 
                         selectedVariant.originalPrice, 
                         selectedVariant.discount
                     );
                     
-                    // Update stock info
                     const stockInfo = document.getElementById('stock-info');
                     stockInfo.innerHTML = `<span class="text-green-600">${selectedVariant.quantity} pieces in stock</span>`;
                 }
             });
             
-            // Add click event listeners to all variant buttons
             variantButtons.forEach((button) => {
                 button.addEventListener('click', function() {
                     if (this.disabled) return;
                     
-                    // Remove active class from all buttons
                     variantButtons.forEach(btn => {
                         btn.classList.remove('active', 'border-gray-800', 'bg-gray-800', 'text-white');
                         if (!btn.disabled) {
@@ -627,11 +620,9 @@
                         }
                     });
                     
-                    // Add active class to clicked button
                     this.classList.remove('border-gray-300', 'bg-white', 'text-gray-800');
                     this.classList.add('active', 'border-gray-800', 'bg-gray-800', 'text-white');
                     
-                    // Update selected variant
                     selectedVariant = {
                         ml: this.dataset.ml,
                         quantity: parseInt(this.dataset.quantity),
@@ -640,14 +631,12 @@
                         discount: parseInt(this.dataset.discount)
                     };
                     
-                    // Update price display
                     updatePriceDisplay(
                         selectedVariant.offerPrice, 
                         selectedVariant.originalPrice, 
                         selectedVariant.discount
                     );
                     
-                    // Update stock information
                     const stockInfo = document.getElementById('stock-info');
                     if (selectedVariant.quantity > 0) {
                         stockInfo.innerHTML = `<span class="text-green-600">${selectedVariant.quantity} pieces in stock</span>`;
@@ -655,14 +644,12 @@
                         stockInfo.innerHTML = `<span class="text-red-600">Out of Stock</span>`;
                     }
                     
-                    // Reset quantity if it exceeds available stock
                     const qtyInput = document.getElementById('quantity');
                     if (parseInt(qtyInput.value) > selectedVariant.quantity) {
                         qtyInput.value = Math.min(selectedVariant.quantity, 10);
                         selectedQuantity = parseInt(qtyInput.value);
                     }
                     
-                    // Update cart buttons
                     updateAddToCartButton();
                 });
             });
@@ -793,7 +780,6 @@
             
             document.getElementById('wishlist-btn').addEventListener('click', toggleWishlist);
             
-            // Initialize elevate zoom
             $("#mainImage").elevateZoom({
                 zoomType: "lens",
                 lensShape: "round",
