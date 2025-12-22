@@ -497,53 +497,49 @@
     <script>
       const statusFlow = ["Pending", "Processing", "Shipped", "Delivered"];
 
-      function getNextValidStatuses(currentStatus) {
-        const blocked = ["Cancelled", "Delivered"];
+      const getNextValidStatuses = (currentStatus) => {
+  if (currentStatus === "Delivered" || currentStatus === "Cancelled") {
+    return []; // REMOVE "Return requested" from here
+  }
 
-        if (blocked.includes(currentStatus)) {
-          return [];
-        }
+  const idx = FLOW_STATUSES.indexOf(currentStatus);
+  const nextStatuses = [];
 
-        const idx = statusFlow.indexOf(currentStatus);
-        const nextStatuses = [];
+  if (idx !== -1 && idx + 1 < FLOW_STATUSES.length) {
+    nextStatuses.push(FLOW_STATUSES[idx + 1]);
+  }
 
-        if (idx !== -1 && idx + 1 < statusFlow.length) {
-          nextStatuses.push(statusFlow[idx + 1]);
-        }
-
-
-        return [...new Set(nextStatuses)];
-      }
+  return [...new Set(nextStatuses)];
+};
 
       function getItemNextValidStatuses(currentStatus, orderStatus) {
-        const hardFinal = ["Cancelled", "Returned", "Return Approved"];
+  const hardFinal = ["Cancelled", "Returned", "Return Approved"];
 
-        if (hardFinal.includes(currentStatus)) {
-          return [];
-        }
+  if (hardFinal.includes(currentStatus)) {
+    return [];
+  }
 
-        if (currentStatus === "Delivered" && orderStatus === "Delivered") {
-          return ["Return Requested"];
-        }
+  if (currentStatus === "Delivered" && orderStatus === "Delivered") {
+    return []; 
+  }
 
-        if (currentStatus === "Return Requested") {
-          return ["Return Approved", "Delivered"];
-        }
+  if (currentStatus === "Return Requested") {
+    return ["Return Approved", "Delivered"]; 
+  }
 
-        if (currentStatus === "Return Approved") {
-          return ["Returned", "Return Requested"];
-        }
+  if (currentStatus === "Return Approved") {
+    return ["Returned"]; 
+  }
 
-        const idx = statusFlow.indexOf(currentStatus);
-        const nextStatuses = [];
+  const idx = statusFlow.indexOf(currentStatus);
+  const nextStatuses = [];
 
-        if (idx !== -1 && idx + 1 < statusFlow.length) {
-          nextStatuses.push(statusFlow[idx + 1]);
-        }
+  if (idx !== -1 && idx + 1 < statusFlow.length) {
+    nextStatuses.push(statusFlow[idx + 1]);
+  }
 
-
-        return [...new Set(nextStatuses)];
-      }
+  return [...new Set(nextStatuses)];
+}
 
       function populateOrderStatusSelect() {
         const orderStatusSelect = document.getElementById("orderStatusSelect");
