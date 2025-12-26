@@ -45,6 +45,7 @@ export const createRazorpayOrder = async (req, res) => {
         variantId: buyNowItem.variantId,
         variantMl: buyNowItem.variantMl,
         price: buyNowItem.price,
+        oldPrice: buyNowItem.oldPrice,
         quantity: buyNowItem.quantity,
         totalPrice: buyNowItem.totalPrice,
         variantName: buyNowItem.variantName || `${buyNowItem.variantMl}ml`
@@ -105,11 +106,13 @@ export const createRazorpayOrder = async (req, res) => {
         variantId: variantDoc ? variantDoc._id : (item.variantId || null),
         ml: mlValue,
         quantity: item.quantity,
+
         price: finalPrice,
+        originalPrice: originalPrice,
         status: "Pending",
         paymentStatus: "Pending",
         productName: productDoc.productName,
-        originalPrice: originalPrice,
+        oldPrice: originalPrice,
         hasDiscount: variantDoc && variantDoc.offerPrice && variantDoc.Price > variantDoc.offerPrice
       };
     }).filter(Boolean);
@@ -405,7 +408,7 @@ export const verifyPayment = async (req, res) => {
   }
 };
 
- const handlePaymentFailure = async (req, res) => {
+const handlePaymentFailure = async (req, res) => {
   try {
     const { orderId } = req.body;
     const userId = req.session.user;
@@ -414,24 +417,37 @@ export const verifyPayment = async (req, res) => {
       return res.status(401).json({ success: false, message: "Login first" });
     }
 
-    const orderDoc = await Order.findOneAndDelete({ 
-      _id: orderId, 
-      userId: userId,
-      paymentStatus: "Pending"
-    });
+    const orderDoc = await Order.findOneAndUpdate(
+      { 
+        _id: orderId, 
+        userId: userId,
+        paymentStatus: "Pending"
+      },
+      {
+        paymentStatus: "Failed",   
+        orderStatus: "Payment Failed",
+        failedAt: new Date(),     
+        $inc: { retryAttempts: 1 } 
+      },
+      { new: true }
+    );
 
     if (orderDoc) {
+      req.session.pendingRetryOrder = orderId;
+      
       return res.json({ 
         success: true, 
-        message: "Order cancelled due to payment failure" 
+        message: "Payment failed, order marked for retry",
+        orderId: orderId
       });
     }
 
-return res.json({
+    return res.json({
       success: true
     });
 
   } catch (err) {
+    console.error("Payment failure handler error:", err);
     res.status(500).json({ 
       success: false, 
       message: "Failed to handle payment failure" 
@@ -440,8 +456,113 @@ return res.json({
 };
 
 
+
 const orderFailurePage = async (req, res) => {
-  res.render("user/orderFailurePage");
+  try {
+    const failedOrderId = req.session.pendingRetryOrder || null;
+    
+    res.render("user/orderFailurePage", {
+      failedOrderId: failedOrderId,
+      user: req.session.user || null
+    });
+  } catch (err) {
+    console.error("Order failure page error:", err);
+    res.render("user/orderFailurePage", {
+      failedOrderId: null,
+      user: req.session.user || null
+    });
+  }
+};
+
+
+export const retryPayment = async (req, res) => {
+  try {
+    const userId = req.session.user;
+    const { orderId } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Login first" });
+    }
+
+    const pendingOrderId = req.session.pendingRetryOrder || orderId;
+
+    if (!pendingOrderId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "No failed order found. Please start a new order." 
+      });
+    }
+
+    const failedOrder = await Order.findOne({
+      _id: pendingOrderId,
+      userId: userId,
+      paymentStatus: "Failed"
+    });
+
+    if (!failedOrder) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Order not found or already completed" 
+      });
+    }
+
+    const maxRetryAttempts = 3; 
+    if (failedOrder.retryAttempts >= maxRetryAttempts) {
+      return res.status(400).json({
+        success: false,
+        message: "Maximum retry attempts reached. Please contact support."
+      });
+    }
+
+    const razorpayOptions = {
+      amount: Math.round(failedOrder.finalAmount * 100),
+      currency: "INR",
+      receipt: `order_${failedOrder._id}_retry`,
+      notes: {
+        order_id: failedOrder._id.toString(),
+        user_id: userId.toString(),
+        coupon_code: failedOrder.couponCode || "none",
+        is_retry: true
+      }
+    };
+
+    let razorpayOrder;
+    try {
+      razorpayOrder = await razorpay.orders.create(razorpayOptions);
+    } catch (razorpayError) {
+      console.error("Razorpay retry error:", razorpayError);
+      return res.status(500).json({ 
+        success: false, 
+        message: `Payment gateway error: ${razorpayError.message}` 
+      });
+    }
+
+    failedOrder.razorpayOrderId = razorpayOrder.id;
+    failedOrder.paymentStatus = "Pending"; 
+    failedOrder.orderStatus = "Pending";
+    failedOrder.retryAttempts += 1;  
+    failedOrder.lastRetryAt = new Date();
+    await failedOrder.save();
+
+    delete req.session.pendingRetryOrder;
+
+    res.json({
+      success: true,
+      orderId: failedOrder._id,
+      razorpayOrderId: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      key_id: process.env.RAZORPAY_KEY_ID,
+      isRetry: true
+    });
+
+  } catch (err) {
+    console.error("Retry payment error:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to retry payment. Please try again." 
+    });
+  }
 };
 
 
@@ -449,5 +570,6 @@ export default {
   createRazorpayOrder,
   verifyPayment,
   handlePaymentFailure,
-  orderFailurePage
+  orderFailurePage,
+  retryPayment
 };

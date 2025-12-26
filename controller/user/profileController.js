@@ -112,8 +112,8 @@ const updateProfile = async (req, res) => {
           });
         }
 
-        if (existingUser.cloudinaryPublicIds) {
-          await deleteFromCloudinary(existingUser.cloudinaryPublicIds);
+        if (existingUser.cloudinaryPublicId) {
+          await deleteFromCloudinary(existingUser.cloudinaryPublicId);
         }
 
         const uploadResult = await uploadToCloudinary(req.file.buffer, "profile");

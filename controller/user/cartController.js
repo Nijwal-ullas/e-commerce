@@ -184,9 +184,8 @@ const addCart = async (req, res) => {
       });
     }
 
-    const productPrice =
-      selectedVariant.offerPrice || selectedVariant.Price || 0;
-    const originalPrice = selectedVariant.Price || productPrice;
+    const productPrice = selectedVariant.offerPrice;
+    const originalPrice = selectedVariant.Price;
 
     const totalPrice = productPrice * quantity;
     const originalTotalPrice = originalPrice * quantity;
@@ -255,6 +254,7 @@ const addCart = async (req, res) => {
         variantId: variantObjectId,
         variantName: `${selectedVariant.Ml}ml`,
         variantMl: selectedVariant.Ml,
+        oldPrice: originalPrice,
         price: productPrice,
         originalPrice: originalPrice,
         quantity: quantity,
@@ -532,14 +532,14 @@ const buyNow = async (req, res) => {
       });
     }
 
-    const productPrice =
-      selectedVariant.offerPrice || selectedVariant.Price || 0;
-    const originalPrice = selectedVariant.Price || productPrice;
+    const productPrice = selectedVariant.offerPrice;
+    const originalPrice = selectedVariant.Price;
 
     req.session.buyNowItem = {
       productId,
       variantId: selectedVariant._id,
       variantMl: selectedVariant.Ml,
+      oldPrice: originalPrice,
       price: productPrice,
       originalPrice: originalPrice,
       quantity: qty,

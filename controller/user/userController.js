@@ -38,9 +38,8 @@ const loadHomePage = async (req, res) => {
   try {
     const categories = await category.find({ isListed: true });
 
-    // Get initial products with pagination
     const page = 1;
-    const limit = 12;
+    const limit = 8;
     const skip = (page - 1) * limit;
 
     let newArrivalProducts = await product
@@ -56,7 +55,6 @@ const loadHomePage = async (req, res) => {
       .populate("brand")
       .lean();
 
-    // Get total count for pagination
     const totalProducts = await product.countDocuments({ isListed: true });
     const totalPages = Math.ceil(totalProducts / limit);
 
@@ -417,7 +415,7 @@ const registerOtpPage = async (req, res) => {
               Wallet_transaction: []
             });
           }
-
+          if(referrerId){
           newUserWallet.Balance += 50;
           newUserWallet.Wallet_transaction.push({
             Amount: 50,
@@ -426,6 +424,7 @@ const registerOtpPage = async (req, res) => {
           });
 
           await newUserWallet.save();
+        }
 
 
 

@@ -180,7 +180,8 @@ const cancelOrder = async (req, res) => {
     if (!orderDoc)
       return res.status(404).json({ success: false, message: "Order not found" });
 
-    if (!["Pending", "Processing"].includes(orderDoc.orderStatus))
+    const canCancelOrder = ["Pending", "Processing"].includes(orderDoc.orderStatus);
+    if (!canCancelOrder)
       return res.status(400).json({
         success: false,
         message: `Cannot cancel order with status ${orderDoc.orderStatus}`,
@@ -197,23 +198,49 @@ const cancelOrder = async (req, res) => {
   }
 };
 
+function getUpdatedOrderStatus(items) {
+  if (items.length === 0) {
+    return "Cancelled";
+  }
+
+  const allDelivered = items.every(item => item.status === "Delivered");
+  if (allDelivered) {
+    return "Delivered";
+  }
+
+  const allCancelled = items.every(item => item.status === "Cancelled");
+  if (allCancelled) {
+    return "Cancelled";
+  }
+
+  const hasShipped = items.some(item => item.status === "Shipped");
+  const hasProcessing = items.some(item => item.status === "Processing");
+  const hasPending = items.some(item => item.status === "Pending");
+  const hasDelivered = items.some(item => item.status === "Delivered");
+  const hasReturnRequested = items.some(item => item.status === "Return Requested");
+
+  if (hasShipped) return "Shipped";
+  if (hasProcessing) return "Processing";
+  if (hasPending) return "Pending";
+  if (hasReturnRequested) return "Return Requested";
+  if (hasDelivered) return "Partially Delivered";
+
+  const hasCancelled = items.some(item => item.status === "Cancelled");
+  if (hasCancelled) {
+    return "Partially Cancelled";
+  }
+
+  return "Processing"; 
+}
+
 async function cancelAllItems(orderDoc, userId, reason, res) {
-  orderDoc.orderStatus = "Cancelled";
   orderDoc.cancellationReason = reason || "";
 
   const couponCode = orderDoc.couponCode;
   const couponId = orderDoc.couponId;
 
-  orderDoc.couponCode = null;
-  orderDoc.couponId = null;
-  orderDoc.couponDiscount = 0;
-  orderDoc.couponUsed = false;
-
-  const cancellableStatuses = ["Pending", "Processing", "Shipped"];
-  const deliveredStatuses = ["Delivered"];
-
   for (const item of orderDoc.orderedItem) {
-    if (cancellableStatuses.includes(item.status)) {
+    if (["Pending", "Processing", "Shipped"].includes(item.status)) {
       item.status = "Cancelled";
       item.paymentStatus = "Pending";
       item.cancellationReason = reason || "";
@@ -222,87 +249,55 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
   }
 
   const cancelledItems = orderDoc.orderedItem.filter(i => i.status === "Cancelled");
-  const remainingItems = orderDoc.orderedItem.filter(i => deliveredStatuses.includes(i.status));
+  const deliveredItems = orderDoc.orderedItem.filter(i => i.status === "Delivered");
 
-  if (remainingItems.length === 0) {
-    const walletUsed = parseFloat(orderDoc.walletUsed || 0);
+  let refundAmount = 0;
+  
+  if (orderDoc.payment !== "Cod" && cancelledItems.length > 0) {
+    // refundAmount = cancelledItems.reduce(
+    //   (sum, item) => sum + (item.price * item.quantity),
+    //   0
+    // );
+    refundAmount = orderDoc.finalAmount;
+    
+    if (refundAmount > 0) {
+      await refundToWallet(userId, refundAmount);
+    }
+  }
 
+  if (deliveredItems.length === 0) {
+    orderDoc.orderStatus = "Cancelled";
     orderDoc.totalPrice = 0;
     orderDoc.discount = 0;
     orderDoc.finalAmount = 0;
     orderDoc.walletUsed = 0;
+    orderDoc.couponCode = null;
+    orderDoc.couponId = null;
+    orderDoc.couponDiscount = 0;
+    orderDoc.couponUsed = false;
 
     await orderDoc.save();
 
-    if (walletUsed > 0) {
-      await refundToWallet(userId, walletUsed);
-    }
-
-    if (couponCode && couponId) {
-      await releaseCouponForUser(userId, orderDoc._id, couponId);
-    }
+    // Release coupon if applicable
+    // if (couponCode && couponId) {
+    //   await releaseCouponForUser(userId, orderDoc._id, couponId);
+    // }
 
     return res.json({
       success: true,
-      message: "Order fully cancelled and refunded",
-      refundedToWallet: walletUsed,
-      couponReleased: couponCode ? true : false
+      message: "Order fully cancelled",
+      refundedToWallet: orderDoc.payment !== "Cod" ? refundAmount : 0,
+      // couponReleased: !!couponCode,
+      orderStatus: "Cancelled"
     });
   }
 
-  let cancelledSum = cancelledItems.reduce(
-    (sum, item) => sum + (item.price * item.quantity),
-    0
-  );
-
-  const walletUsedBefore = parseFloat(orderDoc.walletUsed || 0);
-  const refundAmount = Math.min(cancelledSum, walletUsedBefore);
-
-  if (refundAmount > 0) {
-    await refundToWallet(userId, refundAmount);
-    orderDoc.walletUsed = walletUsedBefore - refundAmount;
-  }
-
-  if (couponCode && couponId) {
-    const coupon = await Coupons.findById(couponId);
-    if (coupon) {
-      let newBaseTotal = 0;
-      
-      for (const item of remainingItems) {
-        const productDoc = await product.findById(item.productId);
-        if (!productDoc) continue;
-
-        let variant = null;
-        if (item.variantId)
-          variant = productDoc.VariantItem.find(v => v._id.toString() === item.variantId.toString());
-
-        if (!variant && item.ml)
-          variant = productDoc.VariantItem.find(v => v.Ml === item.ml);
-
-        if (!variant) continue;
-
-        const basePrice = variant.Price;
-        newBaseTotal += basePrice * item.quantity;
-      }
-
-      if (newBaseTotal < coupon.minCartValue) {
-        await releaseCouponForUser(userId, orderDoc._id, couponId);
-        orderDoc.couponCode = null;
-        orderDoc.couponId = null;
-        orderDoc.couponDiscount = 0;
-        orderDoc.couponUsed = false;
-      } else {
-        const originalSubtotal = orderDoc.totalPrice;
-        const proportionalDiscount = (newBaseTotal / originalSubtotal) * orderDoc.couponDiscount;
-        orderDoc.couponDiscount = Math.round(proportionalDiscount * 100) / 100;
-      }
-    }
-  }
+  const couponAdjusted = await adjustCouponAfterCancellation(orderDoc, couponId, deliveredItems);
 
   let newBaseTotal = 0;
   let newOfferTotal = 0;
 
-  for (const item of remainingItems) {
+  for (const item of deliveredItems) {
     const productDoc = await product.findById(item.productId);
     if (!productDoc) continue;
 
@@ -324,17 +319,23 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
 
   orderDoc.totalPrice = newBaseTotal;
   orderDoc.discount = newBaseTotal - newOfferTotal;
-  orderDoc.finalAmount = newOfferTotal - orderDoc.couponDiscount;
+  
+  const afterDiscount = newOfferTotal - orderDoc.couponDiscount;
+  const deliveryCharge = afterDiscount >= 500 ? 0 : 50;
+  
+  orderDoc.finalAmount = afterDiscount + deliveryCharge;
 
-  orderDoc.orderStatus = "Delivered";
+  orderDoc.orderStatus = getUpdatedOrderStatus(deliveredItems);
 
   await orderDoc.save();
 
   return res.json({
     success: true,
     message: "Order partially cancelled",
-    refundedToWallet: refundAmount,
-    couponAdjusted: couponCode ? true : false
+    refundedToWallet: orderDoc.payment !== "Cod" ? refundAmount : 0,
+    couponAdjusted: couponAdjusted,
+    orderStatus: orderDoc.orderStatus,
+    remainingItems: deliveredItems.length
   });
 }
 
@@ -358,75 +359,44 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
   const couponId = orderDoc.couponId;
 
   const cancelledPrice = item.price * item.quantity;
-  const walletUsedBefore = parseFloat(orderDoc.walletUsed || 0);
-  const refundAmount = Math.min(cancelledPrice, walletUsedBefore);
-
-  if (refundAmount > 0) {
-    await refundToWallet(userId, refundAmount);
-    orderDoc.walletUsed = walletUsedBefore - refundAmount;
+  let refundAmount = 0;
+  
+  if (orderDoc.payment !== "Cod") {
+    refundAmount = cancelledPrice;
+    if (refundAmount > 0) {
+      await refundToWallet(userId, refundAmount);
+    }
   }
 
   const activeItems = orderDoc.orderedItem.filter(i => i.status !== "Cancelled");
 
   if (activeItems.length === 0) {
     orderDoc.orderStatus = "Cancelled";
-
-    orderDoc.couponCode = null;
-    orderDoc.couponId = null;
-    orderDoc.couponDiscount = 0;
-    orderDoc.couponUsed = false;
-
+    // orderDoc.couponCode = null;
+    // orderDoc.couponId = null;
+    // orderDoc.couponDiscount = 0;
+    // orderDoc.couponUsed = false;
     orderDoc.totalPrice = 0;
     orderDoc.discount = 0;
     orderDoc.finalAmount = 0;
 
     await orderDoc.save();
 
-    if (couponCode && couponId) {
-      await releaseCouponForUser(userId, orderDoc._id, couponId);
-    }
+    // Release coupon if applicable
+    // if (couponCode && couponId) {
+    //   await releaseCouponForUser(userId, orderDoc._id, couponId);
+    // }
 
     return res.json({
       success: true,
       message: "Item cancelled and order closed",
       refundedToWallet: refundAmount,
-      couponReleased: couponCode ? true : false
+      // couponReleased: !!couponCode,
+      orderStatus: "Cancelled"
     });
   }
 
-  if (couponCode && couponId) {
-    const coupon = await Coupons.findById(couponId);
-    if (coupon) {
-      let remainingSubtotal = 0;
-      
-      for (const activeItem of activeItems) {
-        const productDoc = await product.findById(activeItem.productId);
-        if (!productDoc) continue;
-
-        let variant = null;
-        if (activeItem.variantId)
-          variant = productDoc.VariantItem.find(v => v._id.toString() === activeItem.variantId.toString());
-
-        if (!variant && activeItem.ml)
-          variant = productDoc.VariantItem.find(v => v.Ml === activeItem.ml);
-
-        const basePrice = variant ? variant.Price : activeItem.price;
-        remainingSubtotal += basePrice * activeItem.quantity;
-      }
-
-      if (remainingSubtotal < coupon.minCartValue) {
-        await releaseCouponForUser(userId, orderDoc._id, couponId);
-        orderDoc.couponCode = null;
-        orderDoc.couponId = null;
-        orderDoc.couponDiscount = 0;
-        orderDoc.couponUsed = false;
-      } else {
-        const originalSubtotal = orderDoc.totalPrice;
-        const proportionalDiscount = (remainingSubtotal / originalSubtotal) * orderDoc.couponDiscount;
-        orderDoc.couponDiscount = Math.round(proportionalDiscount * 100) / 100;
-      }
-    }
-  }
+  const couponAdjusted = await adjustCouponAfterCancellation(orderDoc, couponId, activeItems);
 
   let newBase = 0;
   let newDiscount = 0;
@@ -455,33 +425,83 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
   orderDoc.totalPrice = newBase;
   orderDoc.discount = newDiscount;
   orderDoc.finalAmount = afterDiscount + delivery;
+  
+  orderDoc.orderStatus = getUpdatedOrderStatus(activeItems);
 
   await orderDoc.save();
 
   return res.json({
     success: true,
-    message: "Item cancelled and wallet refunded",
+    message: "Item cancelled successfully",
     refundedToWallet: refundAmount,
     newFinalAmount: orderDoc.finalAmount,
-    couponAdjusted: couponCode ? true : false
+    couponAdjusted: couponAdjusted,
+    orderStatus: orderDoc.orderStatus,
+    remainingItems: activeItems.length
   });
 }
 
-async function releaseCouponForUser(userId, orderId, couponId) {
-  try {
-    await Coupons.findByIdAndUpdate(couponId, {
-      $pull: { 
-        usedBy: { 
-          userId: userId,
-          orderId: orderId
-        } 
-      },
-      $inc: { totalUsage: -1 }
-    });
-  } catch (error) {
-    console.error("Error releasing coupon:", error);
+async function adjustCouponAfterCancellation(orderDoc, couponId, activeItems) {
+  if (!orderDoc.couponCode || !couponId) return false;
+
+  const coupon = await Coupons.findById(couponId);
+  if (!coupon) return false;
+
+  let remainingSubtotal = 0;
+
+  for (const activeItem of activeItems) {
+    const productDoc = await product.findById(activeItem.productId);
+    if (!productDoc) continue;
+
+    let variant = null;
+    if (activeItem.variantId) {
+      variant = productDoc.VariantItem.find(
+        v => v._id.toString() === activeItem.variantId.toString()
+      );
+    }
+    if (!variant && activeItem.ml) {
+      variant = productDoc.VariantItem.find(v => v.Ml === activeItem.ml);
+    }
+
+    const basePrice = variant ? variant.Price : activeItem.price;
+    remainingSubtotal += basePrice * activeItem.quantity;
   }
+
+  if (remainingSubtotal < coupon.minCartValue) {
+    orderDoc.couponCode = null;
+    orderDoc.couponId = null;
+    orderDoc.couponDiscount = 0;
+    orderDoc.couponUsed = false;
+    return true;
+  }
+
+  const originalSubtotal = orderDoc.totalPrice;
+  if (originalSubtotal <= 0) {
+    orderDoc.couponDiscount = 0;
+    return true;
+  }
+
+  orderDoc.couponDiscount =
+    Math.round((remainingSubtotal / originalSubtotal) * orderDoc.couponDiscount * 100) / 100;
+
+  return true;
 }
+
+// async function releaseCouponForUser(userId, orderId, couponId) {
+//   try {
+//     await Coupons.findByIdAndUpdate(couponId, {
+//       $pull: { 
+//         usedBy: { 
+//           userId: userId,
+//           orderId: orderId
+//         } 
+//       },
+//       $inc: { totalUsage: -1 }
+//     });
+//   } catch (error) {
+//     console.error("Error releasing coupon:", error);
+//   }
+// }
 
 async function refundToWallet(userId, amount) {
   if (!amount || amount <= 0) return;
@@ -535,20 +555,22 @@ async function restoreStock(item) {
   }
 }
 
-export const downloadInvoice = async (req, res) => {
+const downloadInvoice = async (req, res) => {
   try {
     const { orderId } = req.params;
     const userId = req.session.user;
 
-    if (!userId) return res.status(401).send("Login first");
+    if (!userId) return res.redirect("/login")
 
     const userData = await user.findById(userId);
-
     const orderDoc = await Order.findOne({ _id: orderId, userId }).populate(
       "orderedItem.productId"
     );
 
-    if (!orderDoc) return res.status(404).send("Order not found");
+    if (!orderDoc) return res.status(400).json({
+     success : false,
+     message : "order does not exist"
+     });
 
     const invoiceName = `Invoice_${orderDoc.orderId}.pdf`;
 
@@ -561,13 +583,159 @@ export const downloadInvoice = async (req, res) => {
     const doc = new PDFDocument({ margin: 50, size: "A4" });
     doc.pipe(res);
 
+    doc.fontSize(24).fillColor("#2563eb").text("INVOICE", { align: "center" });
+    doc.moveDown(0.5);
+    doc.fontSize(10).fillColor("#6b7280").text("Tax Invoice", { align: "center" });
+    doc.moveDown(1);
+
+    const topY = doc.y;
+    
+    doc.fontSize(12).fillColor("#000000").text("Ruhe Collection", 50, topY);
+    doc.fontSize(9).fillColor("#4b5563")
+      .text("123 Business Street", 50)
+      .text("City, State - 123456", 50)
+      .text("Phone: +91 1234567890", 50)
+      .text("Email: info@ruhecollection.com", 50);
+
+    doc.fontSize(10).fillColor("#000000")
+      .text(`Invoice No: ${orderDoc.orderId}`, 350, topY, { width: 200, align: "right" });
+    doc.fontSize(9).fillColor("#4b5563")
+      .text(`Date: ${new Date(orderDoc.createdAt).toLocaleDateString('en-IN')}`, 350, doc.y, { width: 200, align: "right" })
+      .text(`Order Status: ${orderDoc.orderStatus}`, 350, doc.y, { width: 200, align: "right" })
+      .text(`Payment: ${orderDoc.payment}`, 350, doc.y, { width: 200, align: "right" });
+
+    doc.moveDown(2);
+
+    doc.fontSize(11).fillColor("#000000").text("BILL TO:", 50);
+    doc.fontSize(10).fillColor("#4b5563")
+      .text(userData.name || "Customer", 50)
+      .text(userData.email || "", 50)
+      .text(userData.phone || "", 50);
+
+    if (orderDoc.shippingAddress && orderDoc.shippingAddress.length > 0) {
+      const addr = orderDoc.shippingAddress[0];
+      doc.text(`${addr.flatNumber || ""} ${addr.streetName || ""}`, 50)
+        .text(`${addr.city || ""}, ${addr.state || ""} - ${addr.pincode || ""}`, 50)
+        .text(addr.phone || "", 50);
+    }
+
+    doc.moveDown(1.5);
+
+    const tableTop = doc.y;
+    const itemCol = 50;
+    const qtyCol = 280;
+    const priceCol = 340;
+    const amountCol = 420;
+    const lineHeight = 20;
+
+    doc.rect(50, tableTop, 495, 25).fillAndStroke("#2563eb", "#2563eb");
+
+    doc.fontSize(10).fillColor("#ffffff")
+      .text("ITEM DESCRIPTION", itemCol + 5, tableTop + 8, { width: 220 })
+      .text("QTY", qtyCol, tableTop + 8, { width: 50, align: "center" })
+      .text("PRICE", priceCol, tableTop + 8, { width: 70, align: "right" })
+      .text("AMOUNT", amountCol, tableTop + 8, { width: 115, align: "right" });
+
+    let currentY = tableTop + 25;
+    doc.fillColor("#000000");
+
+    orderDoc.orderedItem.forEach((item, index) => {
+      if (index % 2 === 1) {
+        doc.rect(50, currentY, 495, lineHeight).fillAndStroke("#f3f4f6", "#e5e7eb");
+      } else {
+        doc.rect(50, currentY, 495, lineHeight).stroke("#e5e7eb");
+      }
+
+      const productName = item.productName;
+      const variantInfo = item.ml;
+      const oldPrice = item.oldPrice;
+
+      doc.fontSize(9).fillColor("#000000")
+        .text(`${productName}(${variantInfo}ml)`, itemCol + 5, currentY + 6, { width: 220 })
+        .text(item.quantity.toString(), qtyCol, currentY + 6, { width: 50, align: "center" })
+        .text(`${oldPrice.toFixed(2)}`, priceCol, currentY + 6, { width: 70, align: "right" })
+        .text(`${(oldPrice * item.quantity).toFixed(2)}`, amountCol, currentY + 6, { width: 115, align: "right" });
+
+      currentY += lineHeight;
+    });
+
+    currentY += 10;
+    const summaryX = 350;
+    const summaryLabelWidth = 100;
+    const summaryValueWidth = 95;
+
+    doc.fontSize(9).fillColor("#4b5563")
+      .text("Subtotal:", summaryX, currentY, { width: summaryLabelWidth, align: "left" })
+      .text(`${orderDoc.totalPrice.toFixed(2)}`, summaryX + summaryLabelWidth, currentY, { width: summaryValueWidth, align: "right" });
+    currentY += 18;
+
+    if (orderDoc.discount > 0) {
+      doc.fillColor("#16a34a")
+        .text("Product Discount:", summaryX, currentY, { width: summaryLabelWidth, align: "left" })
+        .text(`-${orderDoc.discount.toFixed(2)}`, summaryX + summaryLabelWidth, currentY, { width: summaryValueWidth, align: "right" });
+      currentY += 18;
+    }
+
+    if (orderDoc.couponDiscount > 0) {
+      doc.fillColor("#16a34a")
+        .text(`Coupon (${orderDoc.couponCode}):`, summaryX, currentY, { width: summaryLabelWidth, align: "left" })
+        .text(`-${orderDoc.couponDiscount.toFixed(2)}`, summaryX + summaryLabelWidth, currentY, { width: summaryValueWidth, align: "right" });
+      currentY += 18;
+    }
+
+    const shippingCharge = orderDoc.shippingCharge || 0;
+    doc.fillColor("#4b5563")
+      .text("Shipping:", summaryX, currentY, { width: summaryLabelWidth, align: "left" })
+      .text(shippingCharge === 0 ? "FREE" : `${shippingCharge.toFixed(2)}`, summaryX + summaryLabelWidth, currentY, { width: summaryValueWidth, align: "right" });
+    currentY += 18;
+
+    if (orderDoc.walletUsed > 0) {
+      doc.fillColor("#7c3aed")
+        .text("Wallet Used:", summaryX, currentY, { width: summaryLabelWidth, align: "left" })
+        .text(`-${orderDoc.walletUsed.toFixed(2)}`, summaryX + summaryLabelWidth, currentY, { width: summaryValueWidth, align: "right" });
+      currentY += 18;
+    }
+
+    currentY += 5;
+    doc.rect(summaryX - 5, currentY - 5, 205, 25).fillAndStroke("#2563eb", "#2563eb");
+    
+    doc.fontSize(11).fillColor("#ffffff")
+      .text("TOTAL AMOUNT:", summaryX, currentY + 2, { width: summaryLabelWidth, align: "left" })
+      .text(`${orderDoc.finalAmount.toFixed(2)}`, summaryX + summaryLabelWidth, currentY + 2, { width: summaryValueWidth, align: "right" });
+
+    if (orderDoc.discount > 0 || orderDoc.couponDiscount > 0) {
+      currentY += 35;
+      const totalSavings = (orderDoc.discount || 0) + (orderDoc.couponDiscount || 0);
+      doc.fontSize(9).fillColor("#16a34a")
+        .text(`You saved ${totalSavings.toFixed(2)} on this order!`, 50, currentY, { align: "center" });
+    }
+
+    currentY += 40;
+    if (currentY > 700) {
+      doc.addPage();
+      currentY = 50;
+    }
+
+   
+    currentY += 55;
+    doc.fontSize(9).fillColor("#2563eb")
+      .text("Thank you for shopping with Ruhe Collection!", 50, currentY, { align: "center" });
+
+    const pageCount = doc.bufferedPageRange().count;
+    for (let i = 0; i < pageCount; i++) {
+      doc.switchToPage(i);
+      doc.fontSize(8).fillColor("#9ca3af")
+        .text(`Page ${i + 1} of ${pageCount}`, 50, doc.page.height - 50, { align: "center" });
+    }
 
     doc.end();
+
   } catch (err) {
     console.error("Invoice error:", err);
     res.status(500).send("Failed to download invoice");
   }
 };
+
 
 const requestOrderReturn = async (req, res) => {
   try {
