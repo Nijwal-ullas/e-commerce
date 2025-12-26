@@ -614,15 +614,9 @@ const refundItem = async (req, res) => {
 
     await restoreStock(item);
 
-    if (orderDoc.walletUsed > 0) {
-      const itemValue = item.price * item.quantity;
-      const refundAmount = Math.min(itemValue, orderDoc.walletUsed);
+   const refundAmount = item.refundAmount || (item.price * item.quantity);
+await refundToWallet(orderDoc.userId, refundAmount);
 
-      if (refundAmount > 0) {
-        await refundToWallet(orderDoc.userId, refundAmount);
-        orderDoc.walletUsed -= refundAmount; 
-      }
-    }
 
     let newTotalPrice = 0;
     let newFinalTotal = 0;
@@ -750,3 +744,6 @@ export default {
   rejectItemReturn,
   refundItem,
 };
+
+
+ 

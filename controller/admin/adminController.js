@@ -354,39 +354,82 @@ const getDateWiseOrderProductAggregation = async (range) => {
       },
     },
 
-    { $unwind: "$orderedItem" },
+    {
+      $unwind: "$orderedItem",
+    },
 
     {
       $group: {
         _id: {
           date: {
             $dateToString: {
-              format: range.groupFormat,
+              format: range.groupFormat, 
               date: "$createdAt",
             },
           },
           orderId: "$_id",
         },
-        customer: {
-          $first: {
-            name: "$user.name",
-          },
-        },
+
+        orderId: { $first: "$orderId" },
+        customer: { $first: "$user.name" },
+        payment: { $first: "$payment" },
+
+        discount: { $first: { $ifNull: ["$discount", 0] } },
+        couponDiscount: { $first: { $ifNull: ["$couponDiscount", 0] } },
+        walletUsed: { $first: { $ifNull: ["$walletUsed", 0] } },
+        finalAmount: { $first: "$finalAmount" },
+
         products: {
           $push: {
             productName: "$orderedItem.productName",
             ml: "$orderedItem.ml",
             quantity: "$orderedItem.quantity",
-            price: "$orderedItem.price",
-            total: {
-              $multiply: ["$orderedItem.quantity", "$orderedItem.price"],
+
+            oldPrice: "$orderedItem.oldPrice", 
+            price: "$orderedItem.price",      
+            originalTotal: {
+              $multiply: [
+                "$orderedItem.quantity",
+                "$orderedItem.oldPrice",
+              ],
+            },
+
+            sellingTotal: {
+              $multiply: [
+                "$orderedItem.quantity",
+                "$orderedItem.price",
+              ],
             },
           },
         },
+
+        originalOrderTotal: {
+          $sum: {
+            $multiply: [
+              "$orderedItem.quantity",
+              "$orderedItem.oldPrice",
+            ],
+          },
+        },
+
         orderTotal: {
           $sum: {
-            $multiply: ["$orderedItem.quantity", "$orderedItem.price"],
+            $multiply: [
+              "$orderedItem.quantity",
+              "$orderedItem.price",
+            ],
           },
+        },
+      },
+    },
+
+    {
+      $addFields: {
+        productDiscount: {
+          $subtract: ["$originalOrderTotal", "$orderTotal"],
+        },
+        totalSavings: {
+          $subtract: ["$originalOrderTotal", "$finalAmount"],
         },
       },
     },
@@ -394,22 +437,41 @@ const getDateWiseOrderProductAggregation = async (range) => {
     {
       $group: {
         _id: "$_id.date",
+
         orders: {
           $push: {
-            orderId: "$_id.orderId",
+            orderId: "$orderId",
             customer: "$customer",
+            payment: "$payment",
             products: "$products",
+
+            originalOrderTotal: "$originalOrderTotal",
             orderTotal: "$orderTotal",
+
+            productDiscount: "$productDiscount",
+            couponDiscount: "$couponDiscount",
+            walletUsed: "$walletUsed",
+            finalAmount: "$finalAmount",
+            totalSavings: "$totalSavings",
           },
         },
+
         totalOrders: { $sum: 1 },
-        dateTotalAmount: { $sum: "$orderTotal" },
+
+        dateOriginalTotal: { $sum: "$originalOrderTotal" },
+        dateSellingTotal: { $sum: "$orderTotal" },
+        dateNetSales: { $sum: "$finalAmount" },
+        dateTotalSavings: { $sum: "$totalSavings" },
       },
     },
 
-    { $sort: { _id: 1 } },
+    {
+      $sort: { _id: -1 },
+    },
   ]);
 };
+
+
 
 const downloadExcel = async (req, res) => {
   try {
@@ -426,6 +488,7 @@ const downloadExcel = async (req, res) => {
       { header: "Customer Name", width: 25 },
       { header: "Order ID", width: 30 },
       { header: "Product Name", width: 35 },
+      { header: "Payment", width: 15},
       { header: "Variant (ml)", width: 15 },
       { header: "Quantity", width: 12 },
       { header: "Price", width: 15 },
@@ -433,17 +496,20 @@ const downloadExcel = async (req, res) => {
     ];
 
     data.forEach((day) => {
+
       day.orders.forEach((order) => {
+
         order.products.forEach((p, index) => {
           sheet.addRow([
             index === 0 ? day._id : "",
-            index === 0 ? order.customer?.name || "Guest" : "",
-            index === 0 ? order.orderId : "",
+            order.customer,
+            order.orderId,
             p.productName,
+            order.payment,
             p.ml || "-",
             p.quantity,
-            p.price,
-            p.total,
+            p.oldPrice,          
+            p.originalTotal,     
           ]);
         });
 
@@ -454,26 +520,82 @@ const downloadExcel = async (req, res) => {
           "",
           "",
           "",
-          "Order Total:",
-          order.orderTotal,
+          "",
+          "Items Total:",
+          order.originalOrderTotal,
+        ]);
+
+        if (order.productDiscount > 0) {
+          sheet.addRow([
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Product Discount:",
+            -order.productDiscount,
+          ]);
+        }
+
+        if (order.couponDiscount > 0) {
+          sheet.addRow([
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Coupon Discount:",
+            -order.couponDiscount,
+          ]);
+        }
+
+        sheet.addRow([
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "Final Amount:",
+          order.finalAmount,
         ]);
 
         sheet.addRow([]);
       });
 
       sheet.addRow([
-        `${day._id}`,
-        "TOTAL",
         "",
         "",
-        `Total Orders: ${day.totalOrders}`,
         "",
-        "Total prize:",
-        day.dateTotalAmount,
+        "",
+        "",
+        "",
+        "",
+        "Total Orders:",
+        day.totalOrders,
+      ]);
+
+    
+      sheet.addRow([
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "Date Net Sales:",
+        day.dateNetSales,
       ]);
 
       sheet.addRow([]);
     });
+    
 
     res.setHeader(
       "Content-Type",
@@ -486,11 +608,13 @@ const downloadExcel = async (req, res) => {
 
     await workbook.xlsx.write(res);
     res.end();
+
   } catch (err) {
     console.error(err);
     res.status(500).send("Excel download failed");
   }
 };
+
 
 const downloadPdf = async (req, res) => {
   try {
@@ -509,130 +633,138 @@ const downloadPdf = async (req, res) => {
 
     doc.pipe(res);
 
+    const PAGE_BOTTOM = 700;
+    const START_X = 40;
+    const START_Y = 40;
+    const ROW_HEIGHT = 35;
+
+    const headers = [
+      "Customer",
+      "Order ID",
+      "Product",
+      "ML",
+      "Payment",
+      "Qty",
+      "Price",
+      "Total",
+    ];
+
+    const columnWidths = [80, 100, 80, 30, 70, 30, 80, 80];
+
+    const drawHeader = (y) => {
+      let x = START_X;
+      headers.forEach((header, i) => {
+        doc.rect(x, y, columnWidths[i], ROW_HEIGHT).fill("#1f2937");
+        doc
+          .fillColor("white")
+          .fontSize(11)
+          .text(header, x + 5, y + 10, {
+            width: columnWidths[i] - 10,
+            align: i >= 5 ? "center" : "left",
+          });
+        x += columnWidths[i];
+      });
+      return y + ROW_HEIGHT;
+    };
+
+    const drawRow = (row, y, shaded = false) => {
+      let x = START_X;
+      row.forEach((cell, i) => {
+        doc
+          .rect(x, y, columnWidths[i], ROW_HEIGHT)
+          .fill(shaded ? "#f9fafb" : "white");
+
+        doc
+          .fillColor("black")
+          .fontSize(10)
+          .text(String(cell || ""), x + 5, y + 10, {
+            width: columnWidths[i] - 10,
+            align: i >= 5 ? "center" : "left",
+          });
+
+        x += columnWidths[i];
+      });
+      return y + ROW_HEIGHT;
+    };
+
     doc.fontSize(18).text("Date-wise Order & Product Report", {
       align: "center",
     });
-    doc.moveDown(1.5);
+    doc.moveDown(2);
 
-    const drawTable = (startY, headers, rows, columnWidths) => {
-      const tableTop = startY;
-      const rowHeight = 35;
-      let y = tableTop;
-
-      doc.fontSize(11).fillColor("white");
-      let x = 40;
-      headers.forEach((header, i) => {
-        doc.rect(x, y, columnWidths[i], rowHeight).fill("#1f2937");
-        doc.fillColor("white").text(header, x + 5, y + 10, {
-          width: columnWidths[i] - 10,
-          align: "left",
-        });
-        x += columnWidths[i];
-      });
-
-      y += rowHeight;
-
-      rows.forEach((row, rowIndex) => {
-        x = 40;
-        const fillColor = rowIndex % 2 === 0 ? "#f9fafb" : "white";
-
-        row.forEach((cell, i) => {
-          doc.rect(x, y, columnWidths[i], rowHeight).fill(fillColor);
-          doc
-            .fillColor("black")
-            .fontSize(10)
-            .text(String(cell), x + 5, y + 10, {
-              width: columnWidths[i] - 10,
-              align: "left",
-            });
-          x += columnWidths[i];
-        });
-
-        y += rowHeight;
-
-        if (y > 700) {
-          doc.addPage();
-          y = 40;
-          x = 40;
-          y = 40;
-          headers.forEach((header, i) => {
-            doc.rect(x, y, columnWidths[i], rowHeight).fill("#1f2937");
-            doc
-              .fillColor("white")
-              .fontSize(11)
-              .text(header, x + 5, y + 10, {
-                width: columnWidths[i] - 10,
-                align: "left",
-              });
-            x += columnWidths[i];
-          });
-          y += rowHeight;
-        }
-      });
-
-      return y;
-    };
+    let y = doc.y;
 
     data.forEach((day) => {
+      if (y + 40 > PAGE_BOTTOM) {
+        doc.addPage();
+        y = START_Y;
+      }
+
       doc
         .fontSize(14)
         .fillColor("#1f2937")
-        .text(`Date: ${day._id}`, { underline: true });
-      doc.moveDown(0.5);
+        .text(`Date: ${day._id}`, START_X, y, { underline: true });
 
-      let currentY = doc.y;
+      y += 30;
 
-      const headers = [
-        "Customer",
-        "Order ID",
-        "Product",
-        "ML",
-        "Qty",
-        "Price",
-        "Total",
-      ];
-      const columnWidths = [80, 100, 100, 40, 40, 80, 80];
+      y = drawHeader(y);
 
-      const rows = [];
       day.orders.forEach((order) => {
+        const orderRows = [];
+
         order.products.forEach((p, index) => {
-          rows.push([
-            index === 0 ? order.customer?.name || "Guest" : "",
-            index === 0 ? String(order.orderId).substring(0, 12) + "..." : "",
+          orderRows.push([
+            order.customer,
+            index === 0
+              ? String(order.orderId).substring(0, 12) + "..."
+              : "",
             p.productName,
             p.ml || "-",
+            index === 0 ? order.payment : "",
             p.quantity,
-            `Rs.${p.price}`,
-            `Rs.${p.total}`,
+            p.oldPrice,
+            p.originalTotal,
           ]);
         });
 
-        rows.push([
-          "",
-          "",
-          "",
-          "",
-          "",
-          "Order Total:",
-          `Rs.${order.orderTotal}`,
-        ]);
+        orderRows.push(["", "", "", "", "", "", "Items Total:", order.originalOrderTotal]);
+
+        if (order.productDiscount > 0) {
+          orderRows.push(["", "", "", "", "", "", "Product Discount:", `- ${order.productDiscount}`]);
+        }
+
+        if (order.couponDiscount > 0) {
+          orderRows.push(["", "", "", "", "", "", "Coupon Discount:", `- ${order.couponDiscount}`]);
+        }
+
+        orderRows.push(["", "", "", "", "", "", "Final Amount:", order.finalAmount]);
+        orderRows.push(["", "", "", "", "", "", "", ""]);
+
+        const requiredHeight = orderRows.length * ROW_HEIGHT;
+
+        if (y + requiredHeight > PAGE_BOTTOM) {
+          doc.addPage();
+          y = START_Y;
+          y = drawHeader(y);
+        }
+
+        orderRows.forEach((row, idx) => {
+          y = drawRow(row, y, idx % 2 === 0);
+        });
       });
 
-      currentY = drawTable(currentY, headers, rows, columnWidths);
+      if (y + 60 > PAGE_BOTTOM) {
+        doc.addPage();
+        y = START_Y;
+      }
 
-      doc.y = currentY + 10;
+      y += 10;
+      y = drawRow(["", "", "", "", "", "", "Total Orders:", day.totalOrders], y);
+      y = drawRow(["", "", "", "", "", "", "Date Net Sales:", `Rs.${day.dateNetSales}`], y);
 
-      doc.moveDown(0.5);
-      doc
-        .fontSize(11)
-        .fillColor("#16a34a")
-        .text(`Total Orders: ${day.totalOrders}`, { continued: true })
-        .text(`  |  Date Total Amount: Rs.${day.dateTotalAmount}`);
-
-      doc.moveDown(2);
-
-      doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke("#e5e7eb");
-      doc.moveDown(1);
+      y += 20;
+      doc.moveTo(START_X, y).lineTo(555, y).stroke("#e5e7eb");
+      y += 20;
     });
 
     doc.end();
