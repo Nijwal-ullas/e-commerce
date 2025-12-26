@@ -374,19 +374,7 @@
                             </div>
                         <% } %>
                     </div>
-                        
-                    <% if (appliedCoupon) { %>
-                        <div class="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <p class="text-sm text-blue-700 mb-1">
-                                <i class="fas fa-info-circle mr-2"></i>
-                                <span class="font-semibold"><%= appliedCoupon.code %>:</span> 
-                                <%= appliedCoupon.description || 'Get discount on your order' %>
-                            </p>
-                            <p class="text-xs text-blue-600">
-                                Minimum cart value: ₹<%= appliedCoupon.minCartValue.toFixed(2) %>
-                            </p>
-                        </div>
-                    <% } %>
+                    
 
                     <button onclick="placeOrder()" id="place-order-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-lg transition-colors duration-200" 
                         disabled style="opacity: 0.5; cursor: not-allowed;">

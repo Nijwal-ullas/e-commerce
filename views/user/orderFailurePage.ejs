@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <title>Payment Failed</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-    rel="stylesheet"
-  />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 
 <body class="bg-gray-50">
@@ -32,20 +32,22 @@
         within <span class="font-medium">3–5 business days</span>.
       </p>
 
-      <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <a
-          href="/checkout"
+      <div class="flex flex-col gap-3 justify-center">
+        <button
+          onclick="retryPayment()"
+          id="retryBtn"
           class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition"
         >
-          Try Again
-        </a>
+          <i class="fas fa-redo-alt mr-2"></i> Retry Payment
+        </button>
 
-        <a
-          href="/orders"
-          class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-semibold transition"
+        <!-- New View Order Button -->
+        <button
+          onclick="viewOrder()"
+          class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition"
         >
-          My Orders
-        </a>
+          <i class="fas fa-eye mr-2"></i> View Order
+        </button>
       </div>
 
       <div class="mt-6 text-sm text-gray-500">
@@ -54,9 +56,146 @@
           Contact Support
         </a>
       </div>
+
+      <input type="hidden" id="failedOrderId" value="<%= failedOrderId %>">
     </div>
   </div>
 
   <%- include("../partials/user/footer.ejs") %>
+
+  <script>
+    async function retryPayment() {
+      const retryBtn = document.getElementById('retryBtn');
+      const originalText = retryBtn.innerHTML;
+      const failedOrderId = document.getElementById('failedOrderId')?.value;
+      
+      retryBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+      retryBtn.disabled = true;
+
+      try {
+        const response = await axios.post('/retry-payment', {
+          orderId: failedOrderId
+        });
+
+        if (!response.data.success) {
+          throw new Error(response.data.message || 'Failed to create retry payment');
+        }
+
+        const { orderId, razorpayOrderId, amount, currency, key_id } = response.data;
+
+        const options = {
+          key: key_id,
+          amount: amount,
+          currency: currency,
+          name: "Ruhe Collection",
+          description: "Retry Payment",
+          order_id: razorpayOrderId,
+          handler: async function (response) {
+            try {
+              retryBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Verifying payment...';
+              
+              const verificationResponse = await axios.post('/verify-payment', {
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                orderId: orderId
+              });
+
+              if (verificationResponse.data.success) {
+                await Swal.fire({
+                  title: 'Payment Successful!',
+                  text: 'Your payment has been completed successfully',
+                  icon: 'success',
+                  confirmButtonColor: '#3b82f6',
+                  timer: 2000
+                });
+                window.location.href = `/order-success/${orderId}`;
+              } else {
+                throw new Error(verificationResponse.data.message || 'Payment verification failed');
+              }
+            } catch (error) {
+              console.error('Payment verification error:', error);
+              Swal.fire({
+                title: 'Verification Failed',
+                text: error.response?.data?.message || 'Payment verification failed. Please contact support.',
+                icon: 'error',
+                confirmButtonColor: '#3b82f6'
+              });
+              retryBtn.innerHTML = '<i class="fas fa-redo-alt mr-2"></i> Retry Payment';
+              retryBtn.disabled = false;
+            }
+          },
+          prefill: {
+            name: "<%= user?.name || '' %>",
+            email: "<%= user?.email || '' %>",
+            contact: ""
+          },
+          theme: {
+            color: "#3b82f6"
+          },
+          modal: {
+            ondismiss: async function() {
+              try {
+                await axios.post('/payment-failure', {
+                  orderId: orderId
+                });
+              } catch (error) {
+                console.error("Failed to handle payment dismissal:", error);
+              }
+              
+              retryBtn.innerHTML = '<i class="fas fa-redo-alt mr-2"></i> Retry Payment';
+              retryBtn.disabled = false;
+            }
+          }
+        };
+
+        const rzp = new Razorpay(options);
+        
+        rzp.on('payment.failed', async function (response) {
+          console.error('Payment failed:', response.error);
+          
+          try {
+            await axios.post('/payment-failure', {
+              orderId: orderId
+            });
+          } catch (error) {
+            console.error("Failed to handle payment failure:", error);
+          }
+          
+          Swal.fire({
+            title: 'Payment Failed',
+            text: response.error.description || 'Payment failed. Please try again.',
+            icon: 'error',
+            confirmButtonColor: '#3b82f6'
+          });
+          
+          retryBtn.innerHTML = '<i class="fas fa-redo-alt mr-2"></i> Retry Payment';
+          retryBtn.disabled = false;
+        });
+        
+        rzp.open();
+
+      } catch (error) {
+        console.error('Retry payment error:', error);
+        
+        Swal.fire({
+          title: 'Error',
+          text: error.response?.data?.message || 'Failed to process payment. Please go to checkout and try again.',
+          icon: 'error',
+          confirmButtonColor: '#3b82f6'
+        });
+        
+        retryBtn.innerHTML = '<i class="fas fa-redo-alt mr-2"></i> Retry Payment';
+        retryBtn.disabled = false;
+      }
+    }
+
+    function viewOrder() {
+      const failedOrderId = document.getElementById('failedOrderId')?.value;
+      if (failedOrderId) {
+        window.location.href = `/orders`;
+      }
+    }
+  </script>
 </body>
 </html>
