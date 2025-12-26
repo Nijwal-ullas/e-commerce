@@ -13,6 +13,7 @@ const CartSchema = new Schema(
     cart_items: [
       {
         addedAt: { type: Date, default: Date.now },
+        oldPrice: { type: Number},
         price: { type: Number, required: true },
         packageProductId: {
           type: Schema.Types.ObjectId,

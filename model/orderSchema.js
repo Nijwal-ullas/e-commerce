@@ -35,6 +35,8 @@ const OrdersSchema = new Schema(
 
         quantity: { type: Number, required: true },
 
+        oldPrice: { type: Number, required: true},       
+
         price: { type: Number, required: true },
 
         status: {
@@ -147,11 +149,6 @@ const OrdersSchema = new Schema(
       ],
       default: "Pending",
     },
-
-    // metadata: {
-    //   type: Object,
-    //   default: {},
-    // },
   },
   { timestamps: true }
 );

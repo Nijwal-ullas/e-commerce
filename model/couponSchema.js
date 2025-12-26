@@ -55,6 +55,7 @@ const CouponsSchema = new Schema(
     maxUsagePerUser: {
       type: Number,
       default: 1,
+      min: 1
     },
     totalUsage: {
       type: Number,
