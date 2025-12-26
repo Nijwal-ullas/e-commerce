@@ -15,6 +15,7 @@ router.put("/checkout/editAddress/:id",checkoutController.editAddress)
 router.delete("/checkout/deleteAddress/:id",checkoutController.deleteAddress);
 router.post("/checkout/apply-coupon", checkoutController.applyCoupon);
 router.post("/checkout/remove-coupon", checkoutController.removeCoupon);
+router.get('/coupon/available-coupon', checkoutController.getAvailableCouponsAPI);
 
 
 

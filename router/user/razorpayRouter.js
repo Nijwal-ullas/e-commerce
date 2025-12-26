@@ -7,5 +7,6 @@ router.post("/create-order", razorpayController.createRazorpayOrder);
 router.post("/verify-payment", razorpayController.verifyPayment);
 router.post("/payment-failure", razorpayController.handlePaymentFailure); 
 router.get("/order-failure", razorpayController.orderFailurePage);
+router.post("/retry-payment", razorpayController.retryPayment);
 
 export default router;
