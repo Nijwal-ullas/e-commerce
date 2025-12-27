@@ -307,11 +307,7 @@
                             <span id="totalAmount">₹<%= finalAmount.toFixed(2) %></span>
                         </div>
                         
-                        <% if (hasOverallDiscount) { %>
-                            <div class="text-sm text-green-600 text-right mt-1">
-                                <i class="fas fa-piggy-bank mr-1"></i>You save ₹<%= (discount + (couponDiscount || 0)).toFixed(2) %>
-                            </div>
-                        <% } %>
+                     
                     </div>
 
                     <% if (hasOutOfStockItems) { %>

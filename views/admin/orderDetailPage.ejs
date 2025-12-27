@@ -196,6 +196,15 @@
                     </span>
                   </div>
                 <% } %>
+
+              <% if (order.couponDiscount>0) { %>
+                  <div class="flex justify-between text-sm">
+                    <span class="text-gray-600">Coupon Applied:</span>
+                    <span class="font-medium text-green-600">
+                      -₹<%= order.couponDiscount %>
+                    </span>
+                  </div>
+                <% } %>
                 
                 <div class="flex justify-between">
                   <span class="text-gray-600">Final Amount:</span>
@@ -477,7 +486,18 @@
                       </td>
                     </tr>
                   <% } %>
-                  
+
+                  <% if (order.couponDiscount > 0) { %>
+                    <tr>
+                      <td colspan="9" class="px-6 py-4 text-right text-sm font-semibold text-gray-700">
+                        coupon Applied:
+                      </td>
+                      <td class="px-6 py-4 text-center text-sm font-bold text-green-600">
+                        -₹<%= Number(order.couponDiscount) || 0 %>
+                      </td>
+                    </tr>
+                  <% } %>
+
                   <tr>
                     <td colspan="9" class="px-6 py-4 text-right text-sm font-semibold text-gray-800">
                       Final Payable Amount:
