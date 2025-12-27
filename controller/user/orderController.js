@@ -171,14 +171,14 @@ const cancelOrder = async (req, res) => {
   try {
     const userId = req.session.user;
     if (!userId)
-      return res.status(401).json({ success: false, message: "Login first" });
+      return res.status(400).json({ success: false, message: "Login first" });
 
     const { orderId } = req.params;
     const { itemId, reason, cancelAll } = req.body;
 
     const orderDoc = await Order.findOne({ _id: orderId, userId });
     if (!orderDoc)
-      return res.status(404).json({ success: false, message: "Order not found" });
+      return res.status(400).json({ success: false, message: "Order not found" });
 
     const canCancelOrder = ["Pending", "Processing"].includes(orderDoc.orderStatus);
     if (!canCancelOrder)
@@ -359,16 +359,44 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
   const couponId = orderDoc.couponId;
 
   const cancelledPrice = item.price * item.quantity;
-  let refundAmount = 0;
-  
-  if (orderDoc.payment !== "Cod") {
-    refundAmount = cancelledPrice;
-    if (refundAmount > 0) {
-      await refundToWallet(userId, refundAmount);
-    }
+let refundAmount = 0;
+
+const activeItems = orderDoc.orderedItem.filter(
+  i => i.status !== "Cancelled"
+);
+
+const remainingSubtotal = activeItems.reduce(
+  (sum, i) => sum + i.price * i.quantity,
+  0
+);
+
+let coupon = null;
+let couponValid = false;
+
+if (orderDoc.couponId) {
+  coupon = await Coupons.findById(orderDoc.couponId);
+  couponValid = coupon && remainingSubtotal >= coupon.minCartValue;
+}
+
+if (orderDoc.payment !== "Cod") {
+  refundAmount = cancelledPrice;
+
+  if (!couponValid && orderDoc.couponDiscount > 0) {
+    refundAmount -= orderDoc.couponDiscount;
+    refundAmount = Math.max(refundAmount, 0);
+
+    orderDoc.couponCode = null;
+    orderDoc.couponId = null;
+    orderDoc.couponDiscount = 0;
+    orderDoc.couponUsed = false;
   }
 
-  const activeItems = orderDoc.orderedItem.filter(i => i.status !== "Cancelled");
+  if (refundAmount > 0) {
+    await refundToWallet(userId, refundAmount);
+  }
+}
+
+
 
   if (activeItems.length === 0) {
     orderDoc.orderStatus = "Cancelled";
@@ -391,12 +419,10 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
       success: true,
       message: "Item cancelled and order closed",
       refundedToWallet: refundAmount,
-      // couponReleased: !!couponCode,
       orderStatus: "Cancelled"
     });
   }
 
-  const couponAdjusted = await adjustCouponAfterCancellation(orderDoc, couponId, activeItems);
 
   let newBase = 0;
   let newDiscount = 0;
@@ -435,73 +461,11 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
     message: "Item cancelled successfully",
     refundedToWallet: refundAmount,
     newFinalAmount: orderDoc.finalAmount,
-    couponAdjusted: couponAdjusted,
     orderStatus: orderDoc.orderStatus,
     remainingItems: activeItems.length
   });
 }
 
-async function adjustCouponAfterCancellation(orderDoc, couponId, activeItems) {
-  if (!orderDoc.couponCode || !couponId) return false;
-
-  const coupon = await Coupons.findById(couponId);
-  if (!coupon) return false;
-
-  let remainingSubtotal = 0;
-
-  for (const activeItem of activeItems) {
-    const productDoc = await product.findById(activeItem.productId);
-    if (!productDoc) continue;
-
-    let variant = null;
-    if (activeItem.variantId) {
-      variant = productDoc.VariantItem.find(
-        v => v._id.toString() === activeItem.variantId.toString()
-      );
-    }
-    if (!variant && activeItem.ml) {
-      variant = productDoc.VariantItem.find(v => v.Ml === activeItem.ml);
-    }
-
-    const basePrice = variant ? variant.Price : activeItem.price;
-    remainingSubtotal += basePrice * activeItem.quantity;
-  }
-
-  if (remainingSubtotal < coupon.minCartValue) {
-    orderDoc.couponCode = null;
-    orderDoc.couponId = null;
-    orderDoc.couponDiscount = 0;
-    orderDoc.couponUsed = false;
-    return true;
-  }
-
-  const originalSubtotal = orderDoc.totalPrice;
-  if (originalSubtotal <= 0) {
-    orderDoc.couponDiscount = 0;
-    return true;
-  }
-
-  orderDoc.couponDiscount =
-    Math.round((remainingSubtotal / originalSubtotal) * orderDoc.couponDiscount * 100) / 100;
-
-  return true;
-}
-
-// async function releaseCouponForUser(userId, orderId, couponId) {
-//   try {
-//     await Coupons.findByIdAndUpdate(couponId, {
-//       $pull: { 
-//         usedBy: { 
-//           userId: userId,
-//           orderId: orderId
-//         } 
-//       },
-//       $inc: { totalUsage: -1 }
-//     });
-//   } catch (error) {
-//     console.error("Error releasing coupon:", error);
-//   }
-// }
 
 async function refundToWallet(userId, amount) {
   if (!amount || amount <= 0) return;
