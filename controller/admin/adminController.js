@@ -716,7 +716,7 @@ const downloadPdf = async (req, res) => {
           orderRows.push([
             order.customer,
             index === 0
-              ? String(order.orderId).substring(0, 12) + "..."
+              ? String(order.orderId)
               : "",
             p.productName,
             p.ml || "-",
