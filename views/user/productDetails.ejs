@@ -87,15 +87,6 @@
 
                 <div>
                     <h1 class="text-4xl font-bold mb-4"><%= product.productName || 'Product Name' %></h1>
-                    
-                    <div class="flex items-center mb-4">
-                        <div class="flex text-yellow-400 text-sm">
-                            <% for(let i = 0; i < 5; i++) { %>
-                                <i class="fas fa-star<%= i < (product.rating || 0) ? '' : '-o' %>"></i>
-                            <% } %>
-                        </div>
-                        <span class="text-sm text-gray-600 ml-2">(<%= product.reviewCount || 0 %>)</span>
-                    </div>
 
                     <div class="mb-6">
                         <p class="text-sm text-gray-600 mb-1">Offer price</p>
@@ -273,55 +264,13 @@
                 </div>
             </div>
 
+            <!-- Description Section -->
             <div class="mt-16">
-                <div class="flex border-b border-gray-200 mb-6 overflow-x-auto">
-                    <button onclick="showTab('description')" 
-                            id="descriptionTab" 
-                            class="px-6 py-3 text-sm font-semibold border-b-2 border-gray-800 whitespace-nowrap">
-                        Description
-                    </button>
-                    <button onclick="showTab('customer')" 
-                            id="customerTab" 
-                            class="px-6 py-3 text-sm font-semibold border-b-2 border-transparent hover:border-gray-800 whitespace-nowrap">
-                        Customer Reviews (<%= product.reviewCount || 0 %>)
-                    </button>
+                <div class="border-b border-gray-200 mb-6">
+                    <h2 class="text-2xl font-bold pb-4">Product Description</h2>
                 </div>
-
-                <div id="descriptionContent">
-                    <h3 class="text-xl font-bold mb-4">Description</h3>
-                    <div class="text-gray-700 leading-relaxed space-y-4">
-                        <%= product.description || 'No description available.' %>
-                    </div>
-                </div>
-
-                <div id="customerContent" class="hidden">
-                    <h3 class="text-xl font-bold mb-4">Customer Reviews</h3>
-                    <% if (product.reviews && product.reviews.length > 0) { %>
-                        <div class="space-y-6">
-                            <% product.reviews.forEach(review => { %>
-                                <div class="border-b border-gray-200 pb-6">
-                                    <div class="flex items-center mb-2">
-                                        <div class="flex text-yellow-400 text-sm mr-3">
-                                            <% for(let i = 0; i < 5; i++) { %>
-                                                <i class="fas fa-star<%= i < review.rating ? '' : '-o' %>"></i>
-                                            <% } %>
-                                        </div>
-                                        <span class="font-semibold text-gray-800"><%= review.userName || 'Anonymous' %></span>
-                                    </div>
-                                    <p class="text-gray-700 mb-2"><%= review.comment %></p>
-                                    <span class="text-sm text-gray-500"><%= new Date(review.date).toLocaleDateString() %></span>
-                                </div>
-                            <% }) %>
-                        </div>
-                    <% } else { %>
-                        <div class="text-center py-8">
-                            <i class="fas fa-comment text-4xl text-gray-300 mb-4"></i>
-                            <p class="text-gray-600">No reviews yet. Be the first to review this product!</p>
-                            <button class="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                                Write a Review
-                            </button>
-                        </div>
-                    <% } %>
+                <div class="text-gray-700 leading-relaxed space-y-4">
+                    <%= product.description || 'No description available.' %>
                 </div>
             </div>
 
@@ -329,9 +278,8 @@
                 <div class="mt-16">
                     <h2 class="text-2xl font-bold text-center mb-8">Related Products</h2>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <% relatedProducts.forEach(relatedProduct => { %>
+                        <% relatedProducts.slice(0, 4).forEach(relatedProduct => { %>
                             <% 
-                                // Get the first variant for price display
                                 const relatedFirstVariant = relatedProduct.VariantItem && relatedProduct.VariantItem[0];
                                 const relatedOfferPrice = relatedFirstVariant ? (relatedFirstVariant.offerPrice || relatedFirstVariant.Price || 0) : 0;
                                 const relatedOriginalPrice = relatedFirstVariant ? (relatedFirstVariant.Price || 0) : 0;
@@ -549,21 +497,6 @@
                 buyNowBtn.disabled = false;
                 addToCartBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 buyNowBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-        }
-
-        function showTab(tab) {
-            document.getElementById('customerContent').classList.add('hidden');
-            document.getElementById('descriptionContent').classList.add('hidden');
-            document.getElementById('customerTab').classList.remove('border-gray-800');
-            document.getElementById('descriptionTab').classList.remove('border-gray-800');
-
-            if (tab === 'customer') {
-                document.getElementById('customerContent').classList.remove('hidden');
-                document.getElementById('customerTab').classList.add('border-gray-800');
-            } else if (tab === 'description') {
-                document.getElementById('descriptionContent').classList.remove('hidden');
-                document.getElementById('descriptionTab').classList.add('border-gray-800');
             }
         }
 
