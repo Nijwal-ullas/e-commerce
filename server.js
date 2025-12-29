@@ -16,7 +16,6 @@ import checkoutRouter from "./router/user/checkoutRouter.js"
 import wishlistRouter from "./router/user/wishlistRouter.js"
 import razorpayRouter from "./router/user/razorpayRouter.js";
 import walletRouter from "./router/user/walletRouter.js";
-import userCouponRouter from "./router/user/couponRouter.js";
 
 import adminRouter from "./router/admin/adminRouter.js";
 import brandRouter from "./router/admin/brandRoutes.js";
@@ -108,7 +107,6 @@ app.use("/",checkoutRouter);
 app.use("/",wishlistRouter);
 app.use("/", razorpayRouter);
 app.use("/", walletRouter);
-app.use("/",userCouponRouter);
 
 app.use("/admin", adminRouter);
 app.use("/admin", brandRouter);
