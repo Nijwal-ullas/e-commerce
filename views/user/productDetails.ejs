@@ -721,114 +721,114 @@
         });
 
         async function addToCart(isBuyNow = false) {
-            if (!selectedVariant || selectedVariant.quantity <= 0) {
-                showAlert.warning('Please select a valid variant');
-                return;
+    if (!selectedVariant || selectedVariant.quantity <= 0) {
+        showAlert.warning('Please select a valid variant');
+        return;
+    }
+
+    const quantity = parseInt(document.getElementById('quantity').value);
+    
+    const actionBtn = isBuyNow ? document.getElementById('buy-now-btn') : document.getElementById('add-to-cart-btn');
+    const originalText = actionBtn.innerHTML;
+    
+    actionBtn.innerHTML = '🔄 Processing...';
+    actionBtn.disabled = true;
+
+    try {
+        const endpoint = isBuyNow ? `/buy-now/${productId}` : `/cart/${productId}`;
+        
+        const response = await axios.post(endpoint, {
+            quantity: quantity,
+            variantMl: selectedVariant.ml
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             }
+        });
 
-            const quantity = parseInt(document.getElementById('quantity').value);
-
+        if (response.data.success) {
             if (isBuyNow) {
-                const buyNowBtn = document.getElementById('buy-now-btn');
-                buyNowBtn.innerHTML = '🔄 Processing...';
-                buyNowBtn.disabled = true;
-
-                try {
-                    const response = await axios.post(`/buy-now/${productId}`, {  
-                        quantity: quantity,
-                        variantMl: selectedVariant.ml
-                    });
-
-                    if (response.data.success) {
-                        window.location.href = "/checkout";
-                        return;
-                    }
-
-                    if (response.data.redirect) {
-                        window.location.href = response.data.redirect;
-                        return;
-                    }
-
-                    showAlert.error(response.data.message || 'Failed to Buy Now');
-                } catch (err) {
-                    console.error("Buy Now error:", err);
-                    showAlert.error("Error processing Buy Now request");
-                }
-
-                buyNowBtn.innerHTML = '⚡ Buy Now';
-                buyNowBtn.disabled = false;
-                return;
+                showAlert.success('Proceeding to checkout...');
+                setTimeout(() => {
+                    window.location.href = "/checkout";
+                }, 1000);
+            } else {
+                showAlert.success('Product added to cart!', 1500);
+                setTimeout(() => {
+                    window.location.href = '/cart';
+                }, 1500);
             }
-            
-            const addToCartBtn = document.getElementById('add-to-cart-btn');
-            addToCartBtn.innerHTML = '🔄 Adding...';
-            addToCartBtn.disabled = true;
-
-            try {
-                const response = await axios.post(`/cart/${productId}`, {
-                    quantity: quantity,
-                    variantMl: selectedVariant.ml
-                });
-
-                if (response.data.success) {
-                    showAlert.success('Product added to cart!');
-                    setTimeout(() => {
-                        window.location.href = '/cart';
-                    }, 1500);
-                } else {
-                    showAlert.error(response.data.message || 'Failed to add to cart');
-                    addToCartBtn.innerHTML = '🛒 Add to cart';
-                    addToCartBtn.disabled = false;
-                }
-            } catch (err) {
-                console.error("Add to cart error:", err);
-                showAlert.error("Error adding to cart");
-                addToCartBtn.innerHTML = '🛒 Add to cart';
-                addToCartBtn.disabled = false;
-            }
+        } else {
+            showAlert.info(response.data.message || 'User not found. Please login first.');
+            actionBtn.innerHTML = originalText;
+            actionBtn.disabled = false;
         }
+    } catch (error) {
+        actionBtn.innerHTML = originalText;
+        actionBtn.disabled = false;
+        
+        console.error("Error:", error);
+        
+        if (error.response && error.response.status === 401) {
+            showAlert.info(error.response.data.message || 'Please login to add items to cart');
+            setTimeout(() => {
+                window.location.href = "/login";
+            }, 2000);
+            return;
+        }
+        
+        if (error.response && error.response.data && error.response.data.message) {
+            showAlert.error(error.response.data.message);
+        } else {
+            showAlert.error("Something went wrong. Please try again.");
+        }
+    }
+}
 
         async function addRelatedToCart(relatedProductId) {
-            try {
-                const btn = document.querySelector(`[data-product-id="${relatedProductId}"]`);
-                
-                btn.innerHTML = '🔄 Adding...';
-                btn.disabled = true;
+    const btn = document.querySelector(`[data-product-id="${relatedProductId}"]`);
+    const originalText = btn.innerHTML;
+    
+    btn.innerHTML = '🔄 Adding...';
+    btn.disabled = true;
 
-                showAlert.loading('Adding product to cart...');
-
-                const response = await axios.post(`/cart/${relatedProductId}`, {
-                    quantity: 1
-                });
-
-                showAlert.close();
-
-                if (response.data.success) {
-                    showAlert.success('Product added to cart successfully!', 1500);
-                    setTimeout(() => {
-                        window.location.href = '/cart';
-                    }, 1500);
-                } else {
-                    showAlert.error(response.data.message || 'Failed to add to cart');
-                    btn.innerHTML = '🛒 Add to Cart';
-                    btn.disabled = false;
-                }
-
-            } catch (error) {
-                showAlert.close();
-                
-                let errorMessage = 'Network error. Please check your connection and try again.';
-                if (error.response?.data?.message) {
-                    errorMessage = error.response.data.message;
-                }
-                
-                showAlert.error(errorMessage);
-                
-                const btn = document.querySelector(`[data-product-id="${relatedProductId}"]`);
-                btn.innerHTML = '🛒 Add to Cart';
-                btn.disabled = false;
+    try {
+        const response = await axios.post(`/cart/${relatedProductId}`, {
+            quantity: 1
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             }
+        });
+
+        if (response.data.success) {
+            showAlert.success('Product added to cart successfully!', 1500);
+            setTimeout(() => {
+                window.location.href = '/cart';
+            }, 1500);
+        } else {
+            showAlert.info(response.data.message || 'Failed to add to cart');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
         }
+
+    } catch (error) {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+        
+        if (error.response && error.response.status === 401) {
+            showAlert.info(error.response.data.message || 'Please login to add items to cart');
+            setTimeout(() => {
+                window.location.href = "/login";
+            }, 2000);
+            return;
+        }
+        
+        showAlert.error(error.response?.data?.message || 'Network error. Please try again.');
+    }
+}
     </script>
 </body>
 </html>
