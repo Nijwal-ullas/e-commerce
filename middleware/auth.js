@@ -2,32 +2,46 @@ import user from "../model/userSchema.js";
 import admin from "../model/adminSchema.js";
 
 const checkUser = async (req, res, next) => {
- 
-  if (req.originalUrl.startsWith('/admin')) {
-    return next();
+  if (req.originalUrl.startsWith('/admin')) return next();
+
+  if (!req.session.user) {
+    if (req.xhr || req.headers.accept.includes("application/json")) {
+      return res.status(401).json({
+        success: false,
+        message: "Please login to continue",
+        redirect: "/login",
+      });
+    }
+    return res.redirect("/login");
   }
 
-  if (req.session.user) {
-    try {
-      const currentUser = await user.findById(req.session.user._id || req.session.user);
-
-      if (currentUser && !currentUser.isBlocked) {
-        res.locals.user = currentUser;
-        next();
-      } else {
-        delete req.session.user;
-        res.locals.user = null;
-        res.redirect("/login");
-      }
-    } catch (err) {
-      console.log(err);
-      res.status(500).send("Internal Server Error");
+  try {
+    const currentUser = await user.findById(req.session.user._id || req.session.user);
+    if (currentUser && !currentUser.isBlocked) {
+      res.locals.user = currentUser;
+      return next();
+    } else {
+      delete req.session.user;
+      res.locals.user = null;
+      return res.redirect("/login");
     }
-  } else {
-    res.redirect("/login");
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Internal Server Error");
   }
 };
 
+
+const requireLoginJson = (req, res, next) => {
+  if (!req.session.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Please login to continue",
+      redirect: "/login",
+    });
+  }
+  next();
+};
 
 
 const adminAuth = async (req, res, next) => {
@@ -90,4 +104,4 @@ const setCurrentRoute = (req, res, next) => {
   next();
 };
 
-export default { checkUser, adminAuth, isBlocked, setUser, setCurrentRoute };
+export default { checkUser, adminAuth, isBlocked, setUser, setCurrentRoute,requireLoginJson };
