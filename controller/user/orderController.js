@@ -254,10 +254,6 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
   let refundAmount = 0;
   
   if (orderDoc.payment !== "Cod" && cancelledItems.length > 0) {
-    // refundAmount = cancelledItems.reduce(
-    //   (sum, item) => sum + (item.price * item.quantity),
-    //   0
-    // );
     refundAmount = orderDoc.finalAmount;
     
     if (refundAmount > 0) {
@@ -278,16 +274,10 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
 
     await orderDoc.save();
 
-    // Release coupon if applicable
-    // if (couponCode && couponId) {
-    //   await releaseCouponForUser(userId, orderDoc._id, couponId);
-    // }
-
     return res.json({
       success: true,
       message: "Order fully cancelled",
       refundedToWallet: orderDoc.payment !== "Cod" ? refundAmount : 0,
-      // couponReleased: !!couponCode,
       orderStatus: "Cancelled"
     });
   }
@@ -400,20 +390,11 @@ if (orderDoc.payment !== "Cod") {
 
   if (activeItems.length === 0) {
     orderDoc.orderStatus = "Cancelled";
-    // orderDoc.couponCode = null;
-    // orderDoc.couponId = null;
-    // orderDoc.couponDiscount = 0;
-    // orderDoc.couponUsed = false;
     orderDoc.totalPrice = 0;
     orderDoc.discount = 0;
     orderDoc.finalAmount = 0;
 
     await orderDoc.save();
-
-    // Release coupon if applicable
-    // if (couponCode && couponId) {
-    //   await releaseCouponForUser(userId, orderDoc._id, couponId);
-    // }
 
     return res.json({
       success: true,
