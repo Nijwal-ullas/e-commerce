@@ -154,15 +154,7 @@
 
                                 <% if (totalPages > 1) { %>
                                     <div class="flex items-center justify-between px-6 py-4 border-t bg-white mt-4">
-                                        <div class="flex items-center gap-3">
-                                            <span class="text-sm text-gray-700">Rows per page:</span>
-                                            <select id="rowsPerPage" class="border border-gray-300 rounded px-2 py-1 text-sm">
-                                                <option value="10" <%= limit === 10 ? 'selected' : '' %>>10</option>
-                                                <option value="25" <%= limit === 25 ? 'selected' : '' %>>25</option>
-                                                <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
-                                            </select>
-                                        </div>
-
+                                        
                                         <span class="text-sm text-gray-700">
                                             <%= ((currentPage - 1) * limit) + 1 %>-<%= Math.min(currentPage * limit, totalCoupons) %> of <%= totalCoupons %>
                                         </span>
@@ -206,11 +198,9 @@
             const submitBtn = document.getElementById("submitBtn");
             const rowsPerPageSelect = document.getElementById("rowsPerPage");
 
-            // Set minimum date to today
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('expireAt').setAttribute('min', today);
 
-            // Rows per page change handler
             if (rowsPerPageSelect) {
                 rowsPerPageSelect.addEventListener('change', (e) => {
                     const limit = e.target.value;
@@ -231,7 +221,6 @@
                 submitBtn.classList.add('bg-red-500', 'hover:bg-red-600');
                 document.getElementById('couponId').value = '';
                 
-                // Reset min date
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('expireAt').setAttribute('min', today);
             }
@@ -345,7 +334,6 @@
                 }
             });
 
-            // Edit button handler
             table.addEventListener("click", (e) => {
                 const editBtn = e.target.closest(".edit-btn");
                 if (editBtn) {
@@ -370,7 +358,6 @@
                 }
             });
 
-            // Delete button handler
             table.addEventListener("click", async (e) => {
                 const deleteBtn = e.target.closest(".delete-btn");
                 if (deleteBtn) {
@@ -413,8 +400,7 @@
                 }
             });
 
-            // Toggle status button handler
-            table.addEventListener("click", async (e) => {
+             table.addEventListener("click", async (e) => {
                 const toggleBtn = e.target.closest(".toggle-status-btn");
                 if (toggleBtn) {
                     const row = toggleBtn.closest("tr");
