@@ -20,12 +20,10 @@ const productPage = async (req, res) => {
     const brands = await brand.find();
     const categories = await category.find({ isListed: true });
     
-    // Add pagination
     const page = 1;
     const limit = 12;
     const skip = (page - 1) * limit;
     
-    // Get total count for pagination
     const totalProductsCount = await product.countDocuments({ isListed: true });
     const totalPages = Math.ceil(totalProductsCount / limit);
     

@@ -207,15 +207,10 @@ const getCheckout = async (req, res) => {
 
 const getAvailableCouponsForUser = async (userId, cartTotal = 0) => {
   try {
-    const usedCouponCodes = await order.distinct("couponCode", {
-      userId: userId,
-      couponCode: { $ne: null }
-    });
-
     const coupons = await Coupons.find({
       status: true,
       expireAt: { $gt: new Date() },
-      code: { $nin: usedCouponCodes } 
+      "usedBy.userId": { $ne: userId }  
     }).sort({ discountValue: -1 });
 
     return coupons.map(coupon => ({
@@ -225,9 +220,7 @@ const getAvailableCouponsForUser = async (userId, cartTotal = 0) => {
       discountValue: coupon.discountValue,
       minCartValue: coupon.minCartValue,
       expireAt: coupon.expireAt,
-      isApplicable: cartTotal >= coupon.minCartValue,
-      remainingUses: coupon.maxUsagePerUser, 
-      isAlreadyUsed: false
+      isApplicable: cartTotal >= coupon.minCartValue
     }));
 
   } catch (error) {
@@ -235,6 +228,7 @@ const getAvailableCouponsForUser = async (userId, cartTotal = 0) => {
     return [];
   }
 };
+
 
 
 
