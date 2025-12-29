@@ -1,4 +1,4 @@
-import Order from "../../model/orderSchema.js";
+import order from "../../model/orderSchema.js";
 import user from "../../model/userSchema.js";
 import product from "../../model/productSchema.js";
 import wallet from "../../model/walletSchema.js";
@@ -43,39 +43,24 @@ const getOrdersPage = async (req, res) => {
       }
     }
 
-    const totalOrders = await Order.countDocuments(query);
+    const totalOrders = await order.countDocuments(query);
     const totalPages = Math.ceil(totalOrders / limit) || 1;
 
-    const orders = await Order.find(query)
+    const orders = await order.find(query)
       .populate("userId", "name email")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
-    const formattedOrders = orders.map((o) => {
-      const hasReturnRequested = o.orderedItem.some(
-        (item) => item.status === "Return Requested"
-      );
-      const hasReturnApproved = o.orderedItem.some(
-        (item) => item.status === "Return Approved"
-      );
-      const hasReturned = o.orderedItem.some(
-        (item) => item.status === "Returned"
-      );
-
-      return {
+    const formattedOrders = orders.map((o) => ({
         _id: o._id,
         orderId: o.orderId,
-        username: o.userId?.name || "Guest",
+        username: o.userId?.name,
         date: o.createdAt,
-        totalAmount: o.finalAmount || o.totalPrice || 0,
+        totalAmount: o.finalAmount,
         paymentMethod: o.payment,
         status: o.orderStatus,
-        hasReturnRequested,
-        hasReturnApproved,
-        hasReturned,
-      };
-    });
+    }));
 
     res.render("admin/ordersPage", {
       orders: formattedOrders,
@@ -101,20 +86,20 @@ const getDetailPage = async (req, res) => {
     if (!id) {
       return res.status(400).json({
         success: false,
-        message: "Order ID is required",
+        message: "Order Id is required",
       });
     }
 
-    const orderData = await Order.findById(id)
+    const orderData = await order.findById(id)
       .populate("userId", "name email phone")
-      .populate("orderedItem.productId", "name price images category brand")
+      .populate("orderedItem.productId", "productName images category brand")
       .populate(
         "address",
-        "name houseName locality city state pincode phone email"
+        "name flatNumber landmark city state pincode phone"
       );
 
     if (!orderData) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Order not found",
       });
@@ -132,21 +117,6 @@ const getDetailPage = async (req, res) => {
   }
 };
 
-const getNextValidStatuses = (currentStatus) => {
-  if (currentStatus === "Delivered" || currentStatus === "Cancelled") {
-    return [];
-  }
-
-  const idx = FLOW_STATUSES.indexOf(currentStatus);
-  const nextStatuses = [];
-
-  if (idx !== -1 && idx + 1 < FLOW_STATUSES.length) {
-    nextStatuses.push(FLOW_STATUSES[idx + 1]);
-  }
-
-  return [...new Set(nextStatuses)];
-};
-
 function getItemNextValidStatuses(currentItemStatus, orderStatus) {
   const hardFinal = ["Cancelled", "Returned", "Return Approved"];
 
@@ -159,7 +129,7 @@ function getItemNextValidStatuses(currentItemStatus, orderStatus) {
   }
 
   if (currentItemStatus === "Return Requested") {
-    return ["Return Approved", "Delivered"];
+    return ["Return Approved", "Return Rejected"];
   }
 
   if (currentItemStatus === "Return Approved") {
@@ -312,104 +282,6 @@ function recalculateOrderPaymentStatus(orderDoc) {
   }
 }
 
-function calculateItemRefundAmount(item, orderDoc) {
-  const itemTotal = item.price * item.quantity;
-
-  if (orderDoc.discount && orderDoc.totalPrice > 0) {
-    const discountRatio = orderDoc.discount / orderDoc.totalPrice;
-    const discountedAmount = itemTotal * discountRatio;
-    return itemTotal - discountedAmount;
-  }
-
-  return itemTotal;
-}
-
-const updateOrderStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    if (!id || !status) {
-      return res.status(400).json({
-        success: false,
-        message: "Order ID and status are required",
-      });
-    }
-
-    const currentOrder = await Order.findById(id);
-    if (!currentOrder) {
-      return res.status(404).json({
-        success: false,
-        message: "Order not found",
-      });
-    }
-
-    const currentStatus = currentOrder.orderStatus;
-
-    if (["Cancelled", "Returned"].includes(currentStatus)) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot update a cancelled or returned order",
-      });
-    }
-
-    if (currentStatus === "Delivered" && status !== "Delivered") {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot update status of a delivered order",
-      });
-    }
-
-    const validNext = getNextValidStatuses(currentStatus);
-    if (!validNext.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid status transition. Current: ${currentStatus}, Valid next: ${validNext.join(
-          ", "
-        )}`,
-      });
-    }
-
-    const finalItemStates = ["Cancelled", "Returned", "Return Approved"];
-
-    for (const item of currentOrder.orderedItem) {
-      const currentItemStatus = item.status || currentStatus;
-
-      if (finalItemStates.includes(currentItemStatus)) continue;
-      if (currentItemStatus === "Delivered" && status !== "Delivered") continue;
-
-      item.status = status;
-
-      if (status === "Delivered") {
-        item.paymentStatus = "Paid";
-        if (!item.deliveredDate) {
-          item.deliveredDate = new Date();
-        }
-      }
-    }
-
-    currentOrder.orderStatus = status;
-    if (status === "Delivered" && !currentOrder.deliveredDate) {
-      currentOrder.deliveredDate = new Date();
-    }
-
-    recalculateOrderPaymentStatus(currentOrder);
-    await currentOrder.save();
-
-    res.json({
-      success: true,
-      message: "Order status updated successfully",
-      order: currentOrder,
-    });
-  } catch (error) {
-    console.error("Error updating order status:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update order status",
-      error: error.message,
-    });
-  }
-};
 
 const updateItemStatus = async (req, res) => {
   try {
@@ -419,7 +291,7 @@ const updateItemStatus = async (req, res) => {
     if (!orderId || !itemId || !status) {
       return res.status(400).json({
         success: false,
-        message: "Order ID, Item ID, and status are required",
+        message: "Order Id, Item Id, and status are required",
       });
     }
 
@@ -431,7 +303,7 @@ const updateItemStatus = async (req, res) => {
       });
     }
 
-    const orderDoc = await Order.findById(orderId);
+    const orderDoc = await order.findById(orderId);
     if (!orderDoc) {
       return res.status(404).json({
         success: false,
@@ -476,16 +348,9 @@ const updateItemStatus = async (req, res) => {
     } else if (status === "Return Approved") {
       currentItem.paymentStatus = "Refund Approved";
       currentItem.returnApprovalDate = new Date();
-      currentItem.refundAmount = calculateItemRefundAmount(
-        currentItem,
-        orderDoc
-      );
     } else if (status === "Returned") {
       currentItem.paymentStatus = "Refunded";
       currentItem.returnedDate = new Date();
-      currentItem.refundAmount =
-        currentItem.refundAmount ||
-        calculateItemRefundAmount(currentItem, orderDoc);
       currentItem.refundDate = new Date();
       await restoreStock(currentItem);
     }
@@ -518,7 +383,7 @@ const approveItemReturn = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
 
-    const orderDoc = await Order.findById(orderId);
+    const orderDoc = await order.findById(orderId);
     if (!orderDoc) {
       return res.status(404).json({
         success: false,
@@ -544,7 +409,6 @@ const approveItemReturn = async (req, res) => {
     item.status = "Return Approved";
     item.paymentStatus = "Refund Approved";
     item.returnApprovalDate = new Date();
-    item.refundAmount = calculateItemRefundAmount(item, orderDoc);
 
     recalculateOrderPaymentStatus(orderDoc);
     recalculateOrderStatus(orderDoc);
@@ -570,7 +434,7 @@ const rejectItemReturn = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
 
-    const orderDoc = await Order.findById(orderId);
+    const orderDoc = await order.findById(orderId);
     if (!orderDoc) {
       return res.status(404).json({
         success: false,
@@ -620,7 +484,7 @@ const refundItem = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
 
-    const orderDoc = await Order.findById(orderId);
+    const orderDoc = await order.findById(orderId);
     if (!orderDoc) {
       return res
         .status(404)
@@ -678,7 +542,6 @@ const refundItem = async (req, res) => {
       orderDoc.couponId = null;
       orderDoc.couponDiscount = 0;
       orderDoc.couponUsed = false;
-      orderDoc.couponRemovedReason = "RETURN_MIN_CART_NOT_MET";
     }
 
     item.refundAmount = refundAmount;
@@ -808,7 +671,6 @@ async function restoreStock(item) {
 export default {
   getOrdersPage,
   getDetailPage,
-  updateOrderStatus,
   updateItemStatus,
   approveItemReturn,
   rejectItemReturn,
