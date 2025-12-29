@@ -500,6 +500,13 @@ const buyNow = async (req, res) => {
       });
     }
 
+    if (productData.isListed !== true) {
+      return res.status(400).json({
+        success: false,
+        message: "Product is not available",
+      });
+    }
+
     let selectedVariant = null;
 
     if (variantId) {
