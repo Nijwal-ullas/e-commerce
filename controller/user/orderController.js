@@ -58,7 +58,7 @@ const getOrderDetails = async (req, res) => {
     const { orderId } = req.params;
 
     if (!orderId) {
-      return res.redirect("/orders?error=Order ID is required");
+      return res.redirect("/orders");
     }
 
     const orderDetails = await Order.findOne({
@@ -112,7 +112,7 @@ const getOrderDetails = async (req, res) => {
     }
 
     let shippingAddress = {
-      name: userData.name || "Customer",
+      name: userData.name,
       phone: userData.phone || "Not provided",
       alterPhone: "",
       flatNumber: "Not specified",
@@ -133,7 +133,7 @@ const getOrderDetails = async (req, res) => {
       const shipAddr = orderDetails.shippingAddress[0];
 
       shippingAddress = {
-        name: shipAddr.name || userData.name || "Customer",
+        name: userData.name,
         phone: shipAddr.phone || userData.phone || "Not provided",
         alterPhone: shipAddr.alterPhone || "",
         flatNumber: shipAddr.flatNumber || "Not specified",
@@ -150,15 +150,13 @@ const getOrderDetails = async (req, res) => {
     orderDetails.status = orderDetails.orderStatus || "Pending";
     orderDetails.paymentMethod = orderDetails.payment || "COD";
     orderDetails.deliveryCharge = (orderDetails.totalPrice - orderDetails.discount) >= 500 ? 0 : 50;
-    orderDetails.couponApplied = orderDetails.couponId ? "Applied" : null;
 
     return res.render("user/orderDetailPage", {
       user: userData,
       order: orderDetails,
       shippingAddress: shippingAddress,
       pageTitle: `Order #${
-        orderDetails.orderId ||
-        orderDetails._id.toString().slice(-8).toUpperCase()
+        orderDetails.orderId
       }`,
     });
   } catch (error) {
@@ -240,7 +238,7 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
   const couponId = orderDoc.couponId;
 
   for (const item of orderDoc.orderedItem) {
-    if (["Pending", "Processing", "Shipped"].includes(item.status)) {
+    if (["Pending", "Processing"].includes(item.status)) {
       item.status = "Cancelled";
       item.paymentStatus = "Pending";
       item.cancellationReason = reason || "";
@@ -282,7 +280,6 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
     });
   }
 
-  const couponAdjusted = await adjustCouponAfterCancellation(orderDoc, couponId, deliveredItems);
 
   let newBaseTotal = 0;
   let newOfferTotal = 0;
