@@ -14,5 +14,6 @@ router.post("/address/add", addressController.registerAddress);
 router.post("/address/edit/:id", addressController.registerAddress); 
 
 router.delete("/address/delete/:id", addressController.deleteAddress)
+router.post("/address/default/:id", addressController.defaultAddress);
 
 export default router;
