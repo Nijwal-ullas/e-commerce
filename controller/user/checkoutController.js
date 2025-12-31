@@ -1075,6 +1075,7 @@ const addAddress = async (req, res) => {
       pincode: pincode.trim(),
       country: country.trim() || "India",
       addressType: addressType ? addressType.toLowerCase() : "home",
+      isDefault: addressCount === 0
     });
 
     await newAddress.save();

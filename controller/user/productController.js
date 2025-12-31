@@ -257,6 +257,7 @@ const getProductDetails = async (req, res) => {
     if (!productData) {
       return res.redirect("/product");
     }
+    
 
     let bestDiscount = 0;
     let productPrice = 0;
@@ -361,6 +362,7 @@ const getProductDetails = async (req, res) => {
       user: userData,
       userWishlist,
       breadcrumb,
+      isBlocked : !productData.isListed
     });
   } catch (error) {
     console.error("Error:", error);

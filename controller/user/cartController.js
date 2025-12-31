@@ -139,18 +139,12 @@ const addCart = async (req, res) => {
     }
 
     const productData = await product.findById(productId);
-    if (!productData) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Product not found" });
-    }
-
-    if (productData.isListed !== true) {
-      return res.status(400).json({
-        success: false,
-        message: "Product is not available",
-      });
-    }
+    if (!productData || productData.isListed !== true) {
+  return res.status(403).json({
+    success: false,
+    message: "Product is blocked by admin",
+  });
+}
 
     let selectedVariant = null;
 
@@ -378,6 +372,7 @@ const updateQuantity = async (req, res) => {
     }
 
     const product = item.packageProductId;
+    
     if (!product) {
       cartData.cart_items = cartData.cart_items.filter(
         (item) => item._id.toString() !== itemId
@@ -389,6 +384,13 @@ const updateQuantity = async (req, res) => {
         message: "Product not found, item removed from cart",
       });
     }
+
+    if (product.isListed !== true) {
+  return res.status(403).json({
+    success: false,
+    message: "Product is blocked by admin",
+  });
+}
 
     const variant = product?.VariantItem?.find(
       (v) => v._id.toString() === item.variantId.toString()
@@ -493,19 +495,12 @@ const buyNow = async (req, res) => {
     const { quantity, variantMl, variantId } = req.body;
 
     const productData = await product.findById(productId);
-    if (!productData) {
-      return res.json({
-        success: false,
-        message: "Product not found",
-      });
-    }
-
-    if (productData.isListed !== true) {
-      return res.status(400).json({
-        success: false,
-        message: "Product is not available",
-      });
-    }
+    if (!productData || productData.isListed !== true) {
+  return res.status(403).json({
+    success: false,
+    message: "Product is blocked by admin",
+  });
+}
 
     let selectedVariant = null;
 

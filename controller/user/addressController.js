@@ -19,7 +19,7 @@ const loadAddressPage = async (req, res) => {
     const totalPages = Math.ceil(totalAddresses / limit);
 
     const addresses = await Address.find({ userId })
-      .sort({ createdAt: -1 })
+      .sort({ isDefault: -1, createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
@@ -41,6 +41,7 @@ const loadAddAddress = async (req, res) => {
     if (!userId) return res.redirect("/login");
 
     const userData = await User.findById(userId);
+    const addressCount = await Address.countDocuments({ userId });
 
     const addressId = req.params.id;
     let addressData = null;
@@ -130,8 +131,7 @@ const registerAddress = async (req, res) => {
       });
     }
 
-        const userId = req.session.user;
-
+    const userId = req.session.user;
 
     const addressCount = await Address.countDocuments({ userId });
     if (addressCount >= 5) {
@@ -190,6 +190,7 @@ const registerAddress = async (req, res) => {
         phone,
         alternativePhone: alternatePhone || "",
         userId,
+        isDefault: addressCount === 0,
       });
 
       await result.save();
@@ -235,9 +236,37 @@ const deleteAddress = async (req, res) => {
   }
 };
 
+const defaultAddress = async (req, res) => {
+  try {
+    const userId = req.session.user;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+      });
+    }
+    const { id: addressId } = req.params;
+    
+    await Address.updateMany({ userId }, { $set: { isDefault: false } });
+
+    await Address.updateOne(
+      { userId, _id: addressId },
+      { $set: { isDefault: true } }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "default address updated",
+    });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).send("Server Error");
+  }
+};
+
 export default {
   loadAddressPage,
   loadAddAddress,
   registerAddress,
   deleteAddress,
+  defaultAddress,
 };
