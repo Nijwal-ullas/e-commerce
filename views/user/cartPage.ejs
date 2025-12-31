@@ -6,7 +6,7 @@
     <title>Shopping Cart - Rube Collection</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;500;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -16,51 +16,35 @@
             font-family: "Lato", sans-serif;
         }
         .product-image {
-            width: 120px;
-            height: 120px;
+            width: 100px;
+            height: 100px;
             object-fit: cover;
         }
         .quantity-btn {
-            width: 28px;
-            height: 28px;
-            border: 1px solid #000;
+            width: 32px;
+            height: 32px;
+            border: 1px solid #d1d5db;
             background: white;
             cursor: pointer;
-            font-size: 18px;
+            font-size: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: 0.2s;
+            transition: all 0.2s;
+            border-radius: 4px;
         }
         .quantity-btn:hover:not(:disabled) {
-            background: #000;
-            color: white;
-        }
-        .quantity-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-        .category-badge {
-            background: #e0f2fe;
-            color: #0369a1;
-            padding: 4px 12px;
-            border-radius: 16px;
-            font-size: 12px;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .discount-badge {
             background: #dc2626;
             color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
+            border-color: #dc2626;
+        }
+        .quantity-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background: #f3f4f6;
+        }
+        .remove-btn:hover svg {
+            transform: scale(1.1);
         }
     </style>
 </head>
@@ -68,113 +52,134 @@
 <body class="bg-gray-50">
     <%- include("../partials/user/header.ejs") %>
 
-    <div class="max-w-full mx-auto px-6 lg:px-12 py-8">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
 
         <% if (cartItems && cartItems.length > 0) { %>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-2">
-                <div class="bg-white rounded-lg shadow-sm p-6 lg:p-8">
-                    <div class="flex justify-between items-center mb-8">
-                        <h1 class="text-xl font-medium text-gray-800">Shopping Cart (<%= cartItems.length %> items)</h1>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-8">
+                <div class="bg-white rounded-lg shadow-sm">
+                    <div class="border-b border-gray-200 px-6 py-4">
+                        <h1 class="text-2xl font-semibold text-gray-900">Shopping Cart</h1>
+                        <p class="text-sm text-gray-600 mt-1"><%= cartItems.length %> <%= cartItems.length === 1 ? 'item' : 'items' %> in your cart</p>
                     </div>
 
-                    <div class="space-y-6">
+                    <div class="divide-y divide-gray-200">
                         <% cartItems.forEach(item => { 
                             const product = item.packageProductId;
                             if (!product) return;
 
                             const variant = product.VariantItem?.find(v => v._id.toString() === item.variantId?.toString());
                             
-                            // Get prices from variant if available, otherwise from item
                             const currentPrice = variant ? (variant.offerPrice || variant.Price) : (item.price || 0);
                             const originalPrice = variant ? variant.Price : currentPrice;
                             const hasDiscount = variant && variant.offerPrice && variant.Price > variant.offerPrice;
                             const discountPercentage = hasDiscount ? 
                                 Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0;
                             
-                            const stock = variant?.Quantity || product.stock || 0;
+                            const isBlocked = product.isListed === false;
+                            const stock = !isBlocked ? (variant?.Quantity || product.stock || 0) : 0;
                             const itemTotal = currentPrice * item.quantity;
 
                             const productName = product.productName || "Product";
                             const image = product.images?.[0] || "/images/placeholder.png";
-
                             const categoryName = product.category?.name || "Uncategorized";
                         %>
 
-                        <div class="border border-gray-200 rounded-lg p-6 <%= stock <= 0 ? 'opacity-50' : '' %>">
-                            <div class="flex gap-6">
-                                <img src="<%= image %>" class="product-image rounded-lg" onerror="this.src='/images/placeholder.png'" />
+                        <div class="p-6 <%= (stock <= 0 || isBlocked) ? 'bg-gray-50' : '' %>">
+                            <div class="flex gap-4 sm:gap-6">
+                                <div class="flex-shrink-0">
+                                    <img src="<%= image %>" 
+                                         class="product-image rounded-lg border border-gray-200 <%= (stock <= 0 || isBlocked) ? 'opacity-60' : '' %>" 
+                                         onerror="this.src='/images/placeholder.png'" 
+                                         alt="<%= productName %>" />
+                                </div>
 
-                                <div class="flex-1">
-                                    <div class="flex justify-between mb-2">
-                                        <div>
-                                            <h3 class="text-lg font-medium text-gray-900 mb-1"><%= productName %></h3>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex justify-between gap-4">
+                                        <div class="flex-1">
+                                            <h3 class="text-base font-medium text-gray-900 mb-1 line-clamp-2"><%= productName %></h3>
                                             
                                             <% if (categoryName && categoryName !== "Uncategorized") { %>
-                                                <div class="category-badge mt-1">
-                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                                                    </svg>
+                                                <span class="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                                                    <i class="fas fa-tag text-[10px]"></i>
                                                     <%= categoryName %>
-                                                </div>
+                                                </span>
                                             <% } %>
+
+                                            <% if (variant) { %>
+                                                <p class="text-sm text-gray-600 mt-2">Size: <span class="font-medium text-gray-900"><%= variant.Ml %>ml</span></p>
+                                            <% } %>
+
+                                            <div class="mt-3">
+                                                <% if (isBlocked) { %>
+                                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-200 px-3 py-1.5 rounded-full">
+                                                        <i class="fas fa-ban text-[10px]"></i>
+                                                        UNAVAILABLE
+                                                    </span>
+                                                <% } else if (stock <= 0) { %>
+                                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-100 px-3 py-1.5 rounded-full">
+                                                        <i class="fas fa-exclamation-circle text-[10px]"></i>
+                                                        OUT OF STOCK
+                                                    </span>
+                                                <% } else if (stock < 5) { %>
+                                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-orange-700 bg-orange-100 px-3 py-1.5 rounded-full">
+                                                        <i class="fas fa-clock text-[10px]"></i>
+                                                        Only <%= stock %> left
+                                                    </span>
+                                                <% } %>
+                                            </div>
                                         </div>
 
-                                        <button onclick="removeFromCart('<%= item._id %>')" class="text-gray-400 hover:text-red-600 transition">
-                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        <button onclick="removeFromCart('<%= item._id %>')" 
+                                                class="remove-btn flex-shrink-0 h-8 w-8 flex items-center justify-center text-gray-600 hover:text-red-600 transition-colors duration-200">
+                                            <svg class="w-5 h-5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                                             </svg>
                                         </button>
                                     </div>
 
-                                    <% if (variant) { %>
-                                        <p class="text-sm text-gray-600 mb-2">Size: <span class="font-medium"><%= variant.Ml %>ml</span></p>
-                                    <% } %>
-
-                                    <% if (stock <= 0) { %>
-                                        <span class="text-red-600 text-sm font-medium bg-red-50 px-2 py-1 rounded">OUT OF STOCK</span>
-                                    <% } else if (stock < 5) { %>
-                                        <span class="text-orange-600 text-sm font-medium bg-orange-50 px-2 py-1 rounded">Only <%= stock %> left in stock</span>
-                                    <% } %>
-
-                                    <div class="flex justify-between items-center mt-4">
-                                        <div class="flex items-center gap-2">
-                                            <button class="quantity-btn" 
-                                                    onclick="updateQuantity('<%= item._id %>', 'decrement')" 
-                                                    <%= item.quantity <= 1 || stock <= 0 ? 'disabled' : '' %>>
-                                                −
-                                            </button>
-                                            <span class="w-8 text-center font-medium"><%= item.quantity %></span>
-                                            <button class="quantity-btn" 
-                                                    onclick="updateQuantity('<%= item._id %>', 'increment')" 
-                                                    <%= item.quantity >= stock || item.quantity >= 10 || stock <= 0 ? 'disabled' : '' %>>+
-                                            </button>
+                                    <div class="flex flex-wrap items-center justify-between gap-4 mt-4">
+                                        <div class="flex items-center gap-3">
+                                            <span class="text-sm text-gray-600">Qty:</span>
+                                            <div class="flex items-center gap-2">
+                                                <button class="quantity-btn" 
+                                                        onclick="updateQuantity('<%= item._id %>', 'decrement')" 
+                                                        <%= item.quantity <= 1 || stock <= 0 || isBlocked ? 'disabled' : '' %>>
+                                                    −
+                                                </button>
+                                                <span class="w-10 text-center font-medium text-gray-900"><%= item.quantity %></span>
+                                                <button class="quantity-btn" 
+                                                        onclick="updateQuantity('<%= item._id %>', 'increment')" 
+                                                        <%= item.quantity >= stock || item.quantity >= 10 || stock <= 0 || isBlocked ? 'disabled' : '' %>>
+                                                    +
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div class="text-right">
-                                            <div class="flex items-center justify-end gap-2 mb-1">
-                                                <% if (hasDiscount) { %>
-                                                    <span class="discount-badge">
-                                                        <i class="fas fa-tag text-xs"></i>
+                                            <% if (hasDiscount) { %>
+                                                <div class="flex items-center justify-end gap-2 mb-1">
+                                                    <span class="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded">
                                                         <%= discountPercentage %>% OFF
                                                     </span>
-                                                <% } %>
-                                            </div>
+                                                </div>
+                                            <% } %>
                                             
                                             <div class="flex items-center justify-end gap-2">
-                                                <div class="text-lg font-semibold text-gray-900">₹<%= currentPrice.toFixed(2) %></div>
+                                                <span class="text-sm text-gray-600">₹<%= currentPrice.toFixed(2) %></span>
                                                 <% if (hasDiscount) { %>
-                                                    <div class="text-gray-500 line-through text-sm">₹<%= originalPrice.toFixed(2) %></div>
+                                                    <span class="text-sm text-gray-500 line-through">₹<%= originalPrice.toFixed(2) %></span>
                                                 <% } %>
                                             </div>
                                             
-                                            <div class="text-gray-600 font-medium mt-1">
-                                                Total: ₹<%= itemTotal.toFixed(2) %>
-                                            </div>
+                                            <% if (item.quantity) { %>
+                                                <div class="text-lg font-semibold text-gray-700">
+                                                    Total: ₹<%= itemTotal.toFixed(2) %>
+                                                </div>
+                                            <% } %>
                                         </div>
                                     </div>
-
                                 </div>
                             </div>
                         </div>
@@ -182,64 +187,69 @@
                     </div>
 
                     <% if (totalPage > 1) { %>
-                    <div class="flex justify-center mt-8 space-x-2 pt-6 border-t border-gray-200">
-                        <% if (page > 1) { %>
-                        <a
-                            href="/cart?page=<%= page - 1 %>"
-                            class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded"
-                        >
-                            Previous
-                        </a>
-                        <% } %> 
-                        
-                        <% for (let i = 1; i <= totalPage; i++) { %>
-                        <a
-                            href="/cart?page=<%= i %>"
-                            class="px-4 py-2 rounded <%= i === page ? 'bg-red-700 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700' %>"
-                        >
-                            <%= i %>
-                        </a>
-                        <% } %> 
-                        
-                        <% if (page < totalPage) { %>
-                        <a
-                            href="/cart?page=<%= page + 1 %>"
-                            class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded"
-                        >
-                            Next
-                        </a>
-                        <% } %>
+                    <div class="border-t border-gray-200 px-6 py-4">
+                        <div class="flex justify-center items-center gap-2">
+                            <% if (page > 1) { %>
+                            <a href="/cart?page=<%= page - 1 %>"
+                               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition">
+                                Previous
+                            </a>
+                            <% } %> 
+                            
+                            <% for (let i = 1; i <= totalPage; i++) { %>
+                            <a href="/cart?page=<%= i %>"
+                               class="px-4 py-2 text-sm font-medium rounded-md transition <%= i === page ? 'bg-red-600 text-white' : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50' %>">
+                                <%= i %>
+                            </a>
+                            <% } %> 
+                            
+                            <% if (page < totalPage) { %>
+                            <a href="/cart?page=<%= page + 1 %>"
+                               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition">
+                                Next
+                            </a>
+                            <% } %>
+                        </div>
                     </div>
                     <% } %>
 
-                    <button onclick="window.location.href='/product'" class="mt-6 border-2 border-red-600 text-red-600 px-6 py-3 rounded-lg hover:bg-red-600 hover:text-white transition font-medium">
-                        <i class="fas fa-shopping-bag mr-2"></i>Continue Shopping
-                    </button>
+                    <div class="border-t border-gray-200 px-6 py-4">
+                        <button onclick="window.location.href='/product'" 
+                                class="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-medium transition">
+                            <i class="fas fa-arrow-left"></i>
+                            Continue Shopping
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div>
-                <div class="bg-white rounded-lg shadow-sm p-6 sticky top-4">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-6">Price Details</h2>
+            <div class="lg:col-span-4">
+                <div class="bg-white rounded-lg shadow-sm sticky top-4">
+                    <div class="border-b border-gray-200 px-6 py-4">
+                        <h2 class="text-lg font-semibold text-gray-900">Order Summary</h2>
+                    </div>
 
                     <% 
                         let subtotal = 0;
                         let originalSubtotal = 0;
                         let totalDiscount = 0;
                         let hasOutOfStock = false;
+                        let hasBlockedProduct = false;
                         let inStockItems = 0;
                         
                         cartItems.forEach(item => {
                             const product = item.packageProductId;
                             if (!product) return;
                             
+                            const isBlocked = product.isListed === false;
                             const variant = product.VariantItem?.find(v => v._id.toString() === item.variantId?.toString());
-                            const stock = variant?.Quantity || product.stock || 0;
+                            const stock = !isBlocked ? (variant?.Quantity ||  0) : 0;
                             
-                            if (stock <= 0) {
+                            if (isBlocked) {
+                                hasBlockedProduct = true;
+                            } else if (stock <= 0) {
                                 hasOutOfStock = true;
                             } else {
-                                // Calculate using current variant prices
                                 const currentPrice = variant ? (variant.offerPrice || variant.Price) : (item.price || 0);
                                 const originalPrice = variant ? variant.Price : currentPrice;
                                 const itemTotal = currentPrice * item.quantity;
@@ -255,65 +265,89 @@
                         const hasOverallDiscount = totalDiscount > 0;
                         const shipping = subtotal >= 500 ? 0 : 50;
                         const total = subtotal + shipping;
+                        const canCheckout = !hasOutOfStock && !hasBlockedProduct && inStockItems > 0;
                     %>
 
-                    <div class="space-y-3 mb-6">
+                    <div class="px-6 py-4 space-y-3">
                         <% if (hasOverallDiscount) { %>
-                            <div class="flex justify-between py-2">
+                            <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Original Price</span>
                                 <span class="text-gray-500 line-through">₹<%= originalSubtotal.toFixed(2) %></span>
                             </div>
                             
-                            <div class="flex justify-between py-2">
+                            <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Discount</span>
-                                <span class="text-green-600 font-medium">-₹<%= totalDiscount.toFixed(2) %></span>
+                                <span class="text-green-600 font-medium">−₹<%= totalDiscount.toFixed(2) %></span>
                             </div>
                         <% } %>
 
-                        <div class="flex justify-between py-2">
-                            <span class="text-gray-600">Price (<%= inStockItems %> items)</span>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Subtotal (<%= inStockItems %> <%= inStockItems === 1 ? 'item' : 'items' %>)</span>
                             <span class="text-gray-900 font-medium">₹<%= subtotal.toFixed(2) %></span>
                         </div>
 
-                        <div class="flex justify-between py-2">
-                            <span class="text-gray-600">Delivery Charges</span>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Shipping</span>
                             <span class="<%= shipping === 0 ? 'text-green-600 font-medium' : 'text-gray-900 font-medium' %>">
                                 <%= shipping === 0 ? "FREE" : "₹" + shipping.toFixed(2) %>
                             </span>
                         </div>
 
                         <% if (subtotal > 0 && subtotal < 500) { %>
-                            <div class="bg-green-50 p-3 rounded-lg text-sm text-green-700 border border-green-200">
-                                <i class="fas fa-gift mr-2"></i>Add ₹<%= (500 - subtotal).toFixed(2) %> more for FREE delivery!
+                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+                                <i class="fas fa-truck mr-1"></i>
+                                Add <span class="font-semibold">₹<%= (500 - subtotal).toFixed(2) %></span> more for FREE delivery
                             </div>
                         <% } %>
 
-                        <div class="flex justify-between pt-4 border-t font-semibold text-lg">
-                            <span>Total Amount</span>
-                            <span>₹<%= total.toFixed(2) %></span>
-                        </div>
-                        
-                        <% if (hasOverallDiscount) { %>
-                            <div class="text-sm text-green-600 text-right mt-1">
-                                <i class="fas fa-piggy-bank mr-1"></i>You save ₹<%= totalDiscount.toFixed(2) %>
+                        <div class="border-t border-gray-200 pt-3 mt-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-base font-semibold text-gray-900">Total</span>
+                                <span class="text-xl font-bold text-gray-900">₹<%= total.toFixed(2) %></span>
                             </div>
-                        <% } %>
+                            
+                            <% if (hasOverallDiscount) { %>
+                                <div class="text-xs text-green-600 text-right mt-1">
+                                    <i class="fas fa-tag mr-1"></i>You save ₹<%= totalDiscount.toFixed(2) %>
+                                </div>
+                            <% } %>
+                        </div>
                     </div>
 
-                    <% if (hasOutOfStock) { %>
-                        <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                            <i class="fas fa-exclamation-circle mr-2"></i>Please remove out-of-stock items to proceed
+                    <% if (hasBlockedProduct || hasOutOfStock) { %>
+                    <div class="px-6 pb-4">
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <div class="flex gap-2">
+                                <i class="fas fa-exclamation-circle text-red-600 mt-0.5"></i>
+                                <div class="text-xs text-red-700">
+                                    <% if (hasBlockedProduct) { %>
+                                        <p class="font-medium">Some items are unavailable</p>
+                                        <p class="mt-1">Please remove unavailable items to proceed</p>
+                                    <% } else if (hasOutOfStock) { %>
+                                        <p class="font-medium">Some items are out of stock</p>
+                                        <p class="mt-1">Please remove out-of-stock items to proceed</p>
+                                    <% } %>
+                                </div>
+                            </div>
                         </div>
+                    </div>
                     <% } %>
 
-                    <button onclick="proceedToCheckout()" 
-                            class="w-full bg-red-600 text-white py-3 rounded-lg font-medium hover:bg-red-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-                            <%= hasOutOfStock ? 'disabled' : '' %>>
-                        <i class="fas fa-lock mr-2"></i><%= hasOutOfStock ? 'Cannot Proceed - Out of Stock Items' : 'Place Order' %>
-                    </button>
-                    
-                    <div class="mt-4 text-xs text-gray-500 text-center">
-                        <i class="fas fa-shield-alt mr-1"></i>Secure checkout · 100% Safe & Secure
+                    <div class="border-t border-gray-200 px-6 py-4">
+                        <button onclick="proceedToCheckout()" 
+                                class="w-full py-3 rounded-lg font-medium transition-colors duration-200 <%= canCheckout ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed' %>"
+                                <%= !canCheckout ? 'disabled' : '' %>>
+                            <% if (canCheckout) { %>
+                                <i class="fas fa-lock mr-2"></i>Proceed to Checkout
+                            <% } else { %>
+                                <i class="fas fa-ban mr-2"></i>Cannot Proceed
+                            <% } %>
+                        </button>
+                        
+                        <div class="flex items-center justify-center gap-2 mt-3 text-xs text-gray-500">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>Secure checkout · 100% Safe</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -326,10 +360,11 @@
                 <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                     <i class="fas fa-shopping-cart text-4xl text-gray-400"></i>
                 </div>
-                <h2 class="text-2xl font-bold text-gray-900 mb-3">Your cart is empty</h2>
-                <p class="text-gray-600 mb-8">Looks like you haven't added anything to your cart yet</p>
-                <a href="/product" class="inline-block bg-red-600 text-white px-8 py-3 rounded-lg hover:bg-red-700 transition font-semibold">
-                    <i class="fas fa-shopping-bag mr-2"></i>Start Shopping
+                <h2 class="text-2xl font-semibold text-gray-900 mb-3">Your cart is empty</h2>
+                <p class="text-gray-600 mb-8">Add items to get started</p>
+                <a href="/product" class="inline-flex items-center gap-2 bg-red-600 text-white px-8 py-3 rounded-lg hover:bg-red-700 transition font-medium">
+                    <i class="fas fa-shopping-bag"></i>
+                    Start Shopping
                 </a>
             </div>
         </div>
@@ -346,19 +381,14 @@
                 Swal.fire({
                     title: message,
                     allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
+                    didOpen: () => Swal.showLoading()
                 });
             },
-            close: () => {
-                Swal.close();
-            }
+            close: () => Swal.close()
         };
 
         async function updateQuantity(itemId, action) {
             try {
-                showAlert.loading('Updating quantity...');
                 
                 const res = await axios.post("/cart/update-quantity", { itemId, action });
                 
@@ -369,7 +399,7 @@
                 } else {
                     Swal.fire({
                         icon: 'error',
-                        title: 'Cannot Update Quantity',
+                        title: 'Cannot Update',
                         text: res.data.message,
                         confirmButtonColor: '#dc2626'
                     });
@@ -384,18 +414,15 @@
                         text: 'Please login to update cart',
                         confirmButtonColor: '#dc2626',
                         showCancelButton: true,
-                        confirmButtonText: 'Login',
-                        cancelButtonText: 'Cancel'
+                        confirmButtonText: 'Login'
                     }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = '/login';
-                        }
+                        if (result.isConfirmed) window.location.href = '/login';
                     });
                 } else {
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',
-                        text: 'Something went wrong while updating quantity',
+                        text: 'Failed to update quantity',
                         confirmButtonColor: '#dc2626'
                     });
                 }
@@ -410,7 +437,7 @@
                 showCancelButton: true,
                 confirmButtonColor: "#dc2626",
                 cancelButtonColor: "#6b7280",
-                confirmButtonText: "Yes, remove it",
+                confirmButtonText: "Yes, remove",
                 cancelButtonText: "Cancel"
             });
 
@@ -426,14 +453,12 @@
                 if (res.data.success) {
                     Swal.fire({
                         icon: 'success',
-                        title: 'Item Removed',
+                        title: 'Removed',
                         text: res.data.message,
                         confirmButtonColor: '#dc2626',
                         timer: 1500,
                         showConfirmButton: false
-                    }).then(() => {
-                        window.location.reload();
-                    });
+                    }).then(() => window.location.reload());
                 } else {
                     Swal.fire({
                         icon: 'error',
@@ -444,11 +469,10 @@
                 }
             } catch (error) {
                 showAlert.close();
-                
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: 'Error removing item from cart',
+                    text: 'Failed to remove item',
                     confirmButtonColor: '#dc2626'
                 });
             }
@@ -463,14 +487,16 @@
             
             buttons.forEach(button => {
                 button.addEventListener('click', function() {
-                    const originalOnClick = this.getAttribute('onclick');
-                    this.removeAttribute('onclick');
-                    this.disabled = true;
-                    
-                    setTimeout(() => {
-                        this.setAttribute('onclick', originalOnClick);
-                        this.disabled = false;
-                    }, 500);
+                    if (!this.disabled) {
+                        const originalOnClick = this.getAttribute('onclick');
+                        this.removeAttribute('onclick');
+                        this.disabled = true;
+                        
+                        setTimeout(() => {
+                            this.setAttribute('onclick', originalOnClick);
+                            this.disabled = false;
+                        }, 500);
+                    }
                 });
             });
         });

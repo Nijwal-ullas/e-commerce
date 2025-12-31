@@ -27,86 +27,117 @@
                 
                 <div class="bg-white rounded-lg shadow-sm p-6">
                     <div class="flex justify-between items-center mb-6">
-                        <h2 class="text-xl font-semibold">Select Delivery Address</h2>
+                        <h2 class="text-xl font-semibold">Delivery Address</h2>
                         <button onclick="openAddressModal()" class="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2">
                             <i class="fas fa-plus"></i> Add New Address
                         </button>
                     </div>
 
                     <% if (addresses && addresses.length > 0) { %>
-                        <div class="space-y-4" id="addressList">
-                            <% addresses.forEach((addr) => { %>
-                                <div class="address-card border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-md transition-all"
-                                     data-address-id="<%= addr._id %>"
-                                     onclick="selectAddress('<%= addr._id %>')">
-                                    
-                                    <div class="flex items-start gap-4">
-                                        <div class="flex items-center mt-1">
-                                            <input type="radio" name="selectedAddress" value="<%= addr._id %>" 
-                                                   id="address-<%= addr._id %>" class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                                                   onchange="selectAddress('<%= addr._id %>')">
-                                        </div>
-                                        
-                                        <div class="flex-1">
-                                            <div class="flex justify-between items-start mb-3">
-                                                <div class="flex items-center gap-2">
-                                                    <% if (addr.addressType) { %>
-                                                        <span class="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded">
-                                                            <%= addr.addressType %>
-                                                        </span>
-                                                    <% } %>
+                        <% 
+                            const defaultAddress = addresses[0];
+                            const otherAddresses = addresses.slice(1);
+                        %>
+                        
+                        <div class="border-2 border-blue-500 bg-blue-50 rounded-lg p-5 mb-4" id="defaultAddressCard">
+                            <div class="flex items-start justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-check text-white text-sm"></i>
+                                    </div>
+                                    <span class="font-semibold text-gray-800">Delivering to this address</span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="editAddress('<%= defaultAddress._id %>')" 
+                                            class="text-blue-600 hover:text-blue-700 px-2 py-1">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="pl-10">
+                                <% if (defaultAddress.addressType) { %>
+                                    <span class="bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded mb-2 inline-block">
+                                        <%= defaultAddress.addressType %>
+                                    </span>
+                                <% } %>
+                                <h3 class="font-semibold text-gray-900 mb-2"><%= defaultAddress.fullName || user.name %></h3>
+                                <p class="text-gray-700 text-sm mb-1"><%= defaultAddress.addressLine1 %></p>
+                                <% if (defaultAddress.addressLine2) { %>
+                                    <p class="text-gray-700 text-sm mb-1"><%= defaultAddress.addressLine2 %></p>
+                                <% } %>
+                                <p class="text-gray-700 text-sm mb-1"><%= defaultAddress.city %>, <%= defaultAddress.state %> - <%= defaultAddress.pincode %></p>
+                                <p class="text-gray-700 text-sm">Phone: <span class="font-medium"><%= defaultAddress.phone %></span></p>
+                            </div>
+                        </div>
+
+                        <% if (otherAddresses.length > 0 || addresses.length > 1) { %>
+                            <div class="border-t pt-4">
+                                <button 
+                                    onclick="toggleOtherAddresses()" 
+                                    class="w-full flex items-center justify-between text-blue-600 hover:text-blue-700 font-medium py-2"
+                                    id="toggleAddressBtn"
+                                >
+                                    <span><i class="fas fa-map-marker-alt mr-2"></i>Deliver to a different address</span>
+                                    <i class="fas fa-chevron-down transition-transform" id="toggleIcon"></i>
+                                </button>
+
+                                <div id="otherAddressesList" class="hidden mt-4 space-y-3 max-h-96 overflow-y-auto">
+                                    <% addresses.forEach((addr, index) => { %>
+                                    <div class="address-card border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-md transition-all <%= index === 0 ? 'hidden' : '' %>"
+                                        data-address-id="<%= addr._id %>"
+                                        data-name="<%= addr.fullName || user.name %>"
+                                        data-line1="<%= addr.addressLine1 %>"
+                                        data-line2="<%= addr.addressLine2 || '' %>"
+                                        data-city="<%= addr.city %>"
+                                        data-state="<%= addr.state %>"
+                                        data-pincode="<%= addr.pincode %>"
+                                        data-phone="<%= addr.phone %>"
+                                        data-type="<%= addr.addressType || '' %>"
+                                        onclick="selectAddress('<%= addr._id %>')">
+                                                                                     
+                                            <div class="flex items-start gap-4">
+                                                <div class="flex items-center mt-1">
+                                                    <input type="radio" name="selectedAddress" value="<%= addr._id %>" 
+                                                           id="address-<%= addr._id %>" class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
                                                 </div>
-                                                <div class="flex gap-2">
-                                                    <button onclick="event.stopPropagation(); editAddress('<%= addr._id %>')" 
-                                                            class="text-blue-600 hover:text-blue-700 px-2 py-1">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button onclick="event.stopPropagation(); deleteAddress('<%= addr._id %>')" 
-                                                            class="text-red-600 hover:text-red-700 px-2 py-1">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
+                                                
+                                                <div class="flex-1">
+                                                    <div class="flex justify-between items-start mb-3">
+                                                        <div class="flex items-center gap-2">
+                                                            <% if (addr.addressType) { %>
+                                                                <span class="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded">
+                                                                    <%= addr.addressType %>
+                                                                </span>
+                                                            <% } %>
+                                                        </div>
+                                                        <div class="flex gap-2">
+                                                            <button onclick="event.stopPropagation(); editAddress('<%= addr._id %>')" 
+                                                                    class="text-blue-600 hover:text-blue-700 px-2 py-1">
+                                                                <i class="fas fa-edit"></i>
+                                                            </button>
+                                                            <button onclick="event.stopPropagation(); deleteAddress('<%= addr._id %>')" 
+                                                                    class="text-red-600 hover:text-red-700 px-2 py-1">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <h3 class="font-semibold text-gray-800 mb-2"><%= addr.fullName || user.name %></h3>
+                                                    <p class="text-gray-600 text-sm mb-1"><%= addr.addressLine1 %></p>
+                                                    <% if (addr.addressLine2) { %>
+                                                        <p class="text-gray-600 text-sm mb-1"><%= addr.addressLine2 %></p>
+                                                    <% } %>
+                                                    <p class="text-gray-600 text-sm mb-1"><%= addr.city %>, <%= addr.state %> - <%= addr.pincode %></p>
+                                                    <p class="text-gray-600 text-sm">Phone: <%= addr.phone %></p>
                                                 </div>
                                             </div>
-
-                                            <h3 class="font-semibold text-gray-800 mb-2"><%= addr.fullName || user.name %></h3>
-                                            <p class="text-gray-600 text-sm mb-1"><%= addr.addressLine1 %></p>
-                                            <% if (addr.addressLine2) { %>
-                                                <p class="text-gray-600 text-sm mb-1"><%= addr.addressLine2 %></p>
-                                            <% } %>
-                                            <p class="text-gray-600 text-sm mb-1"><%= addr.city %>, <%= addr.state %> - <%= addr.pincode %></p>
-                                            <p class="text-gray-600 text-sm">Phone: <%= addr.phone %></p>
                                         </div>
-                                    </div>
+                                    <% }) %>
                                 </div>
-                            <% }) %>
-                        </div>
-
-                        <div id="selectedAddressDisplay" class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg hidden">
-                            <div class="flex items-center gap-2 text-blue-700">
-                                <i class="fas fa-check-circle"></i>
-                                <span class="font-medium">Delivery address selected</span>
                             </div>
-                        </div>
-
-                        <% if (totalPage > 1) { %>
-                        <div class="flex justify-center items-center gap-4 mt-6">
-                            <button onclick="changePage(<%= page - 1 %>)" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium" <%= page <= 1 ? 'disabled' : '' %>>
-                                <i class="fas fa-chevron-left mr-1"></i> Previous
-                            </button>
-
-                            <div class="flex items-center gap-2">
-                                <% for(let i = 1; i <= totalPage; i++) { %>
-                                    <button onclick="changePage(<%= i %>)" class="w-10 h-10 rounded-lg font-medium <%= i === page ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300' %>">
-                                        <%= i %>
-                                    </button>
-                                <% } %>
-                            </div>
-
-                            <button onclick="changePage(<%= page + 1 %>)" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium" <%= page >= totalPage ? 'disabled' : '' %>>
-                                Next <i class="fas fa-chevron-right ml-1"></i>
-                            </button>
-                        </div>
                         <% } %>
+
                     <% } else { %>
                         <div class="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
                             <i class="fas fa-map-marker-alt text-4xl text-gray-300 mb-3"></i>
@@ -302,8 +333,6 @@
                             <span>Total Amount</span>
                             <span id="totalAmount">₹<%= finalAmount.toFixed(2) %></span>
                         </div>
-                        
-                     
                     </div>
 
                     <% if (hasOutOfStockItems) { %>
@@ -365,16 +394,14 @@
                             </div>
                         <% } %>
                     </div>
-                    
 
-                    <button onclick="placeOrder()" id="place-order-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-lg transition-colors duration-200" 
-                        disabled style="opacity: 0.5; cursor: not-allowed;">
+                    <button onclick="placeOrder()" id="place-order-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 rounded-lg transition-colors duration-200">
                         <i class="fas fa-shopping-bag mr-2"></i> Place Order
                     </button>
 
-                    <div id="orderMessage" class="text-center text-sm mt-3">
-                        <p class="text-red-600">Please select a delivery address first</p>
-                    </div>
+                    <p class="text-center text-xs text-gray-500 mt-3">
+                        <i class="fas fa-shield-alt mr-1"></i>Safe and secure payments
+                    </p>
                 </div>
             </div>
         </div>
@@ -486,7 +513,7 @@
     <%- include("../partials/user/footer.ejs") %>
 
     <script>
-        let selectedAddressId = '';
+        let selectedAddressId = '<%= addresses && addresses.length > 0 ? addresses[0]._id : "" %>';
         let selectedPaymentMethod = 'cod';
         let walletBalance = <%= walletBalance %>;
         let couponDiscountAmount = <%= couponDiscount || 0 %>;
@@ -496,6 +523,19 @@
             minCartValue: <%= appliedCoupon.minCartValue %>
         }<% } else { %>null<% } %>;
         let productDiscount = <%= discount || 0 %>;
+
+        function toggleOtherAddresses() {
+            const list = document.getElementById('otherAddressesList');
+            const icon = document.getElementById('toggleIcon');
+            
+            if (list.classList.contains('hidden')) {
+                list.classList.remove('hidden');
+                icon.classList.add('rotate-180');
+            } else {
+                list.classList.add('hidden');
+                icon.classList.remove('rotate-180');
+            }
+        }
 
         function clearCouponError() {
             const messageEl = document.getElementById('couponMessage');
@@ -638,8 +678,43 @@
             });
             
             selectedAddressId = addressId;
-            updateOrderButton();
+            updateDefaultAddress(addressId);
         }
+
+        function updateDefaultAddress(addressId) {
+            const card = document.querySelector(`[data-address-id="${addressId}"]`);
+            if (!card) return;
+
+            const defaultCard = document.getElementById('defaultAddressCard');
+
+            defaultCard.querySelector('.pl-10').innerHTML = `
+                <span class="bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded mb-2 inline-block">
+                    ${card.dataset.type}
+                </span>
+                <h3 class="font-semibold text-gray-900 mb-2">${card.dataset.name}</h3>
+                <p class="text-gray-700 text-sm mb-1">${card.dataset.line1}</p>
+                ${card.dataset.line2 ? `<p class="text-gray-700 text-sm mb-1">${card.dataset.line2}</p>` : ''}
+                <p class="text-gray-700 text-sm mb-1">
+                    ${card.dataset.city}, ${card.dataset.state} - ${card.dataset.pincode}
+                </p>
+                <p class="text-gray-700 text-sm">
+                    Phone: <span class="font-medium">${card.dataset.phone}</span>
+                </p>
+            `;
+
+            document.getElementById('otherAddressesList').classList.add('hidden');
+            document.getElementById('toggleIcon').classList.remove('rotate-180');
+
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Delivery address updated',
+                showConfirmButton: false,
+                timer: 1500
+            });
+        }
+
 
         function selectPayment(method) {
             document.querySelectorAll('.payment-option').forEach(option => {
@@ -662,7 +737,6 @@
             }
             selectedPaymentMethod = method;
             updateOrderSummary();
-            updateOrderButton();
         }
 
         function updateOrderSummary() {
@@ -671,7 +745,6 @@
             );
 
             const shipping = subtotal >= 500 ? 0 : 50;
-
             let total = subtotal - couponDiscountAmount + shipping;
             let walletUsed = 0;
 
@@ -687,8 +760,7 @@
                 }
             }
 
-            document.getElementById('totalAmount').textContent =
-                '₹' + total.toFixed(2);
+            document.getElementById('totalAmount').textContent = '₹' + total.toFixed(2);
 
             const walletUsageRow = document.getElementById('walletUsageRow');
             const walletUsedEl = document.getElementById('walletUsed');
@@ -699,44 +771,6 @@
             } else {
                 walletUsageRow.classList.add('hidden');
             }
-        }
-
-        function updateOrderButton() {
-            const placeOrderBtn = document.getElementById('place-order-btn');
-            const orderMessage = document.getElementById('orderMessage');
-            const selectedAddressDisplay = document.getElementById('selectedAddressDisplay');
-            
-            if (!selectedAddressId) {
-                placeOrderBtn.disabled = true;
-                placeOrderBtn.style.opacity = '0.5';
-                placeOrderBtn.style.cursor = 'not-allowed';
-                placeOrderBtn.innerHTML = '<i class="fas fa-shopping-bag mr-2"></i> Place Order';
-                orderMessage.innerHTML = '<p class="text-red-600">Please select a delivery address first</p>';
-                selectedAddressDisplay.classList.add('hidden');
-                return;
-            }
-            
-            placeOrderBtn.disabled = false;
-            placeOrderBtn.style.opacity = '1';
-            placeOrderBtn.style.cursor = 'pointer';
-            
-            if (selectedPaymentMethod === 'razorpay') {
-                placeOrderBtn.innerHTML = '<i class="fas fa-credit-card mr-2"></i> Proceed to Pay';
-                orderMessage.innerHTML = '<p class="text-green-600">Address selected ✓ Ready for online payment</p>';
-            } else if (selectedPaymentMethod === 'wallet') {
-                placeOrderBtn.innerHTML = '<i class="fas fa-wallet mr-2"></i> Pay with Wallet';
-                orderMessage.innerHTML = '<p class="text-green-600">Address selected ✓ Ready for wallet payment</p>';
-            } else {
-                placeOrderBtn.innerHTML = '<i class="fas fa-shopping-bag mr-2"></i> Place Order';
-                orderMessage.innerHTML = '<p class="text-green-600">Address selected ✓ Ready to place order</p>';
-            }
-            
-            selectedAddressDisplay.classList.remove('hidden');
-        }
-
-        function changePage(pageNum) {
-            if (pageNum < 1) return;
-            window.location.href = `/checkout?page=${pageNum}`;
         }
 
         function openAddressModal() {
@@ -784,7 +818,7 @@
                 text: 'Are you sure you want to delete this address?',
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#3b82f6', 
+                confirmButtonColor: '#3b82f6',
                 cancelButtonColor: '#6b7280',
                 confirmButtonText: 'Yes, delete it'
             });
@@ -1057,7 +1091,6 @@
                             }
                             
                             window.location.href = "/order-failure";
-
                             
                             btn.innerHTML = '<i class="fas fa-credit-card mr-2"></i> Proceed to Pay';
                             btn.disabled = false;
@@ -1119,81 +1152,81 @@
             document.getElementById("couponModal").classList.add("hidden");
         }
 
-function loadCoupons() {
-    const couponList = document.getElementById("couponList");
-    couponList.innerHTML = "";
+        function loadCoupons() {
+            const couponList = document.getElementById("couponList");
+            couponList.innerHTML = "";
 
-    <% if (availableCoupons && availableCoupons.length > 0) { %>
-        <% availableCoupons.forEach(coupon => { 
-            const expiryDate = new Date(coupon.expireAt);
-            const formattedDate = expiryDate.toLocaleDateString('en-IN', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric'
-            });
-        %>
+            <% if (availableCoupons && availableCoupons.length > 0) { %>
+                <% availableCoupons.forEach(coupon => { 
+                    const expiryDate = new Date(coupon.expireAt);
+                    const formattedDate = expiryDate.toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                    });
+                %>
 
-        couponList.innerHTML += `
-            <div class="border <%= coupon.isApplicable ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50' %> rounded-lg p-4 mb-3">
-                <div class="flex justify-between items-start">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="font-bold text-lg">
-                                <%= coupon.code %>
-                            </span>
-                            <span class="text-xs px-2 py-1 rounded-full font-medium bg-green-200 text-green-800">
-                                Save ₹<%= coupon.discountValue %>
-                            </span>
+                couponList.innerHTML += `
+                    <div class="border <%= coupon.isApplicable ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50' %> rounded-lg p-4 mb-3">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="font-bold text-lg">
+                                        <%= coupon.code %>
+                                    </span>
+                                    <span class="text-xs px-2 py-1 rounded-full font-medium bg-green-200 text-green-800">
+                                        Save ₹<%= coupon.discountValue %>
+                                    </span>
+                                </div>
+
+                                <p class="text-sm text-gray-700 mb-1">
+                                    <%= coupon.description || "Get discount on your order" %>
+                                </p>
+
+                                <p class="text-xs text-gray-600">
+                                    Minimum cart value: ₹<%= coupon.minCartValue %>
+                                </p>
+
+                                <p class="text-xs text-gray-500">
+                                    <i class="far fa-clock mr-1"></i>
+                                    Valid till <%= formattedDate %>
+                                </p>
+
+                                <% if (coupon.remainingUses > 0) { %>
+                                    <p class="text-xs text-blue-500">
+                                        Can be used <%= coupon.remainingUses %> more time(s)
+                                    </p>
+                                <% } %>
+                            </div>
+
+                            <% if (coupon.isApplicable) { %>
+                                <button
+                                    onclick="applyCouponFromModal('<%= coupon.code %>')"
+                                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm"
+                                >
+                                    Apply
+                                </button>
+                            <% } else { %>
+                                <button
+                                    disabled
+                                    class="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed"
+                                >
+                                    Not Eligible
+                                </button>
+                            <% } %>
                         </div>
-
-                        <p class="text-sm text-gray-700 mb-1">
-                            <%= coupon.description || "Get discount on your order" %>
-                        </p>
-
-                        <p class="text-xs text-gray-600">
-                            Minimum cart value: ₹<%= coupon.minCartValue %>
-                        </p>
-
-                        <p class="text-xs text-gray-500">
-                            <i class="far fa-clock mr-1"></i>
-                            Valid till <%= formattedDate %>
-                        </p>
-
-                        <% if (coupon.remainingUses > 0) { %>
-                            <p class="text-xs text-blue-500">
-                                Can be used <%= coupon.remainingUses %> more time(s)
-                            </p>
-                        <% } %>
                     </div>
-
-                    <% if (coupon.isApplicable) { %>
-                        <button
-                            onclick="applyCouponFromModal('<%= coupon.code %>')"
-                            class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm"
-                        >
-                            Apply
-                        </button>
-                    <% } else { %>
-                        <button
-                            disabled
-                            class="bg-gray-400 text-white px-4 py-2 rounded-lg text-sm cursor-not-allowed"
-                        >
-                            Not Eligible
-                        </button>
-                    <% } %>
-                </div>
-            </div>
-        `;
-        <% }); %>
-    <% } else { %>
-        couponList.innerHTML = `
-            <div class="text-center py-8">
-                <i class="fas fa-tag text-4xl text-gray-300 mb-3"></i>
-                <p class="text-sm text-gray-500">No coupons available</p>
-            </div>
-        `;
-    <% } %>
-}
+                `;
+                <% }); %>
+            <% } else { %>
+                couponList.innerHTML = `
+                    <div class="text-center py-8">
+                        <i class="fas fa-tag text-4xl text-gray-300 mb-3"></i>
+                        <p class="text-sm text-gray-500">No coupons available</p>
+                    </div>
+                `;
+            <% } %>
+        }
 
         function applyCouponFromModal(code) {
             document.getElementById("couponCode").value = code;
@@ -1202,15 +1235,8 @@ function loadCoupons() {
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            const addressCards = document.querySelectorAll('.address-card');
-            if (addressCards.length === 1) {
-                const addressId = addressCards[0].getAttribute('data-address-id');
-                selectAddress(addressId);
-            }
-            
             selectPayment('cod');
             updateOrderSummary();
-            updateOrderButton();
         });
     </script>
 </body>

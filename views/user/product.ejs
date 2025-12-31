@@ -309,12 +309,6 @@
                           onerror="this.src='https://via.placeholder.com/300x400/f3f4f6/000?text=Perfume+Image'"
                         >
 
-                        <% if (!inStock) { %>
-                          <div class="absolute top-4 left-4 bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-medium">
-                            Out of Stock
-                          </div>
-                        <% } %>
-
                         <% if (product.bestDiscount && product.bestDiscount > 0) { %>
                           <div class="absolute top-4 left-4 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
                             <%= product.bestDiscount %>% OFF
@@ -394,6 +388,27 @@
   </div>
 
   <script>
+
+     window.addEventListener('pageshow', function () {
+    document.querySelectorAll('.brand-filter, .category-filter')
+      .forEach(cb => cb.checked = false);
+
+    document.querySelectorAll('.size-btn')
+      .forEach(btn => btn.classList.remove('active'));
+
+    const priceRange = document.getElementById('price-range');
+    if (priceRange) {
+      priceRange.value = 5000;
+      document.getElementById('max-price').textContent = '5000';
+    }
+
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) searchInput.value = '';
+
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) sortSelect.value = 'latest';
+  });
+    
     const serverWishlist = <%- JSON.stringify(userWishlist || []) %>;
     let userWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
     
@@ -450,24 +465,23 @@
             Swal.close();
         }
     };
+    
 
     document.addEventListener('DOMContentLoaded', function() {
-  let currentPage = 1;
-  const limit = 12;
-  let totalProducts = <%= totalProducts || 0 %>;
-  let currentFilters = {};
-  
-  // Attach event listeners to initial products
-  attachProductEventListeners();
-  
-  // Initialize pagination if there are more products
-  if (totalProducts > limit) {
-    updatePagination({
-      totalPages: <%= totalPages || 1 %>,
-      currentPage: 1,
-      totalProducts: totalProducts
-    });
-  }
+      let currentPage = 1;
+      const limit = 12;
+      let totalProducts = <%= totalProducts || 0 %>;
+      let currentFilters = {};
+      
+      attachProductEventListeners();
+      
+      if (totalProducts > limit) {
+        updatePagination({
+          totalPages: <%= totalPages || 1 %>,
+          currentPage: 1,
+          totalProducts: totalProducts
+        });
+      }
 
       const filterToggles = document.querySelectorAll('.filter-toggle');
       
@@ -620,45 +634,45 @@
       }
 
       async function filterProducts() {
-  const searchTerm = document.getElementById('search-input').value.trim();
-  const selectedBrands = Array.from(document.querySelectorAll('.brand-filter:checked'))
-    .map(cb => cb.value);
-  
-  const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked'))
-    .map(cb => cb.value);
-  
-  const selectedSize = document.querySelector('.size-btn.active')?.dataset.size;
-  const maxPrice = document.getElementById('price-range').value;
-  const sortBy = document.getElementById('sort-select').value;
+        const searchTerm = document.getElementById('search-input').value.trim();
+        const selectedBrands = Array.from(document.querySelectorAll('.brand-filter:checked'))
+          .map(cb => cb.value);
+        
+        const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked'))
+          .map(cb => cb.value);
+        
+        const selectedSize = document.querySelector('.size-btn.active')?.dataset.size;
+        const maxPrice = document.getElementById('price-range').value;
+        const sortBy = document.getElementById('sort-select').value;
 
-  const filters = {};
-  
-  if (searchTerm) {
-    filters.search = searchTerm;
-  }
-  
-  if (selectedBrands.length > 0) {
-    filters.brands = selectedBrands.join(',');
-  }
-  
-  if (selectedCategories.length > 0) {
-    filters.categories = selectedCategories.join(',');
-  }
-  
-  if (selectedSize) {
-    filters.size = selectedSize;
-  }
-  
-  if (maxPrice) {
-    filters.maxPrice = maxPrice;
-  }
-  
-  filters.sortBy = sortBy;
+        const filters = {};
+        
+        if (searchTerm) {
+          filters.search = searchTerm;
+        }
+        
+        if (selectedBrands.length > 0) {
+          filters.brands = selectedBrands.join(',');
+        }
+        
+        if (selectedCategories.length > 0) {
+          filters.categories = selectedCategories.join(',');
+        }
+        
+        if (selectedSize) {
+          filters.size = selectedSize;
+        }
+        
+        if (maxPrice) {
+          filters.maxPrice = maxPrice;
+        }
+        
+        filters.sortBy = sortBy;
 
-  currentFilters = filters;
-  currentPage = 1; // Reset to page 1 when filtering
-  await loadProductsFromBackend(filters);
-}
+        currentFilters = filters;
+        currentPage = 1;
+        await loadProductsFromBackend(filters);
+      }
 
       async function loadProductsFromBackend(filters = {}) {
         try {
@@ -1007,6 +1021,16 @@
       window.loadProductsFromBackend = () => loadProductsFromBackend(currentFilters);
       window.clearAllFilters = clearAllFilters;
     });
+
+    (function () {
+    if (document.referrer.includes('/products')) {
+      window.history.replaceState(
+        null,
+        '',
+        '/products'
+      );
+    }
+  })();
   </script>
 </body>
 </html>

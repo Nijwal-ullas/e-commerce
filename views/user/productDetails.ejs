@@ -87,6 +87,15 @@
 
                 <div>
                     <h1 class="text-4xl font-bold mb-4"><%= product.productName || 'Product Name' %></h1>
+                    <% if (isBlocked) { %>
+                    <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                        <strong>Product Unavailable</strong><br>
+                        This product has been temporarily blocked by the admin and cannot be purchased right now.
+                    </div>
+                    <% } %>
+
+                   
+
 
                     <div class="mb-6">
                         <p class="text-sm text-gray-600 mb-1">Offer price</p>
@@ -218,19 +227,25 @@
 
                     <div class="space-y-4 mb-6">
                         <button 
-                            id="add-to-cart-btn"
-                            class="w-full bg-blue-600 text-white py-3 rounded-full font-semibold hover:bg-blue-700 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                            onclick="addToCart(false)"
-                        >
-                            🛒 Add to cart
+                        id="add-to-cart-btn"
+                        class="w-full py-3 rounded-full font-semibold transition flex items-center justify-center
+                                <%= isBlocked 
+                                    ? 'bg-gray-400 opacity-50 cursor-not-allowed' 
+                                    : 'bg-blue-600 text-white hover:bg-blue-700' %>"
+                        onclick="addToCart(false)"
+                        <%= isBlocked ? 'disabled' : '' %>>
+                        🛒 Add to cart
                         </button>
-                        
+                                                
                         <button 
-                            id="buy-now-btn"
-                            class="w-full bg-green-600 text-white py-3 rounded-full font-semibold hover:bg-green-700 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                            onclick="addToCart(true)"
-                        >
-                            ⚡ Buy Now
+                        id="buy-now-btn"
+                        class="w-full py-3 rounded-full font-semibold transition flex items-center justify-center
+                                <%= isBlocked 
+                                    ? 'bg-gray-400 opacity-50 cursor-not-allowed' 
+                                    : 'bg-green-600 text-white hover:bg-green-700' %>"
+                        onclick="addToCart(true)"
+                        <%= isBlocked ? 'disabled' : '' %>>
+                        ⚡ Buy Now
                         </button>
                     </div>
 
@@ -264,7 +279,6 @@
                 </div>
             </div>
 
-            <!-- Description Section -->
             <div class="mt-16">
                 <div class="border-b border-gray-200 mb-6">
                     <h2 class="text-2xl font-bold pb-4">Product Description</h2>
@@ -378,6 +392,9 @@
         let selectedVariant = null;
         let selectedQuantity = 1;
         const productId = '<%= product._id %>';
+        const isBlocked = <%= isBlocked ? 'true' : 'false' %>;
+        
+
 
         const showAlert = {
             success: (message, timer = 2000) => {
@@ -590,6 +607,12 @@
 
         async function toggleWishlist() {
             try {
+                if (isBlocked) {
+        showAlert.warning(
+          "This product is blocked by admin and cannot be added to wishlist."
+        );
+        return;
+    }
                 const wishlistBtn = document.getElementById('wishlist-btn');
                 const heartIcon = wishlistBtn.querySelector('i');
                 

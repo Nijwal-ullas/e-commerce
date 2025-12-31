@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Address - Bulk Collection</title>
+    <title>Manage Addresses - Bulk Collection</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <link
-      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;500;600&display=swap"
       rel="stylesheet"
     />
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
@@ -20,6 +20,62 @@
       body {
         font-family: "Lato", sans-serif;
       }
+      
+      .address-card {
+        transition: all 0.3s ease;
+      }
+      
+      .address-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+      
+      .default-badge {
+        animation: fadeIn 0.3s ease;
+      }
+      
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.9);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .radio-custom {
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #d1d5db;
+        border-radius: 50%;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.2s ease;
+      }
+
+      .radio-custom:checked {
+        border-color: #16a34a;
+        background-color: #16a34a;
+      }
+
+      .radio-custom:checked::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 8px;
+        height: 8px;
+        background-color: white;
+        border-radius: 50%;
+      }
+
+      .radio-custom:hover:not(:checked) {
+        border-color: #9ca3af;
+      }
     </style>
   </head>
 
@@ -28,117 +84,169 @@
 
     <div class="max-w-full mx-auto px-6 lg:px-12 py-8">
       <div class="flex flex-col lg:flex-row gap-8">
-            <div class="lg:w-64 flex-shrink-0">
-                <div class="sticky top-24">
-                    <%- include("../partials/user/profileSidebar.ejs") %>
-                </div>
-            </div>
+        <div class="lg:w-64 flex-shrink-0">
+          <div class="sticky top-24">
+            <%- include("../partials/user/profileSidebar.ejs") %>
+          </div>
+        </div>
 
         <div class="flex-1">
           <div class="bg-gray-100 rounded-lg p-6 lg:p-8">
-            <div class="bg-white rounded-lg shadow-sm p-6 lg:p-10">
-              <div class="flex items-center justify-between mb-8">
-                <h2 class="text-xl font-medium text-gray-800">Address</h2>
-                <a
-                  href="/address/add"
-                  class="px-6 py-2 rounded-full bg-red-700 text-white text-sm hover:bg-red-800 whitespace-nowrap"
-                >
-                  + Address
-                </a>
-              </div>
+            <div class="bg-white rounded-lg shadow-sm">
+            <div class="flex items-center justify-between mb-8">
+              <h2 class="text-xl font-medium text-gray-800">Address</h2>
+              <a
+                href="/address/add"
+                class="px-6 py-2 rounded-full bg-red-700 text-white text-sm hover:bg-red-800 whitespace-nowrap"
+              >
+                + Address
+              </a>
+            </div>
 
               <% if (addresses && addresses.length > 0) { %>
-              <div class="space-y-4">
-                <% addresses.forEach(address => { %>
-                <div class="border border-gray-200 rounded-lg p-6">
-                  <div class="flex items-start justify-between">
-                    <div class="flex items-start space-x-3">
-                      <div>
-                        <div class="flex items-center space-x-2 mb-2">
-                          <span class="font-medium text-gray-800"
-                            ><%= address.name %> [<%= address.addressType
-                            %>]</span
-                          >
+                <div class="space-y-4">
+                  <% addresses.forEach(address => { %>
+                    <div class="address-card border border-gray-200 rounded-lg overflow-hidden <%= address.isDefault ? 'border-green-300 bg-green-50/30' : 'bg-white' %>">
+                      <div class="bg-gray-50 px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                          <label class="flex items-center gap-3 cursor-pointer group">
+                            <input
+                              type="radio"
+                              name="defaultAddress"
+                              class="radio-custom"
+                              <%= address.isDefault ? 'checked' : '' %>
+                              onchange="setDefaultAddress('<%= address._id %>')"
+                            />
+                            <span class="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                              <%= address.isDefault ? 'Default Address' : 'Set as Default' %>
+                            </span>
+                          </label>
+                          
+                          <% if (address.isDefault) { %>
+                            <span class="default-badge inline-flex items-center gap-1.5 bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-semibold">
+                              <i class="fas fa-check-circle"></i>
+                              PRIMARY
+                            </span>
+                          <% } %>
                         </div>
-                        <p class="text-gray-600"><%= address.flatNumber %></p>
-                        <% if (address.streetName) { %>
-                        <p class="text-gray-600"><%= address.streetName %></p>
-                        <% } %> <% if (address.landMark) { %>
-                        <p class="text-gray-600">
-                          Landmark: <%= address.landMark %>
-                        </p>
-                        <% } %>
-                        <p class="text-gray-600">
-                          <%= address.city %>, <%= address.state %> <%=
-                          address.pincode %>
-                        </p>
-                        <% if (address.phone) { %>
-                        <p class="text-gray-600 mt-2">
-                          Phone: <%= address.phone %>
-                        </p>
-                        <% } %> <% if (address.alternativePhone) { %>
-                        <p class="text-gray-600">
-                          Alt: <%= address.alternativePhone %>
-                        </p>
-                        <% } %>
+
+                        <div class="flex items-center gap-2">
+                          <span class="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-medium">
+                            <i class="fas fa-<%= address.addressType === 'Home' ? 'home' : address.addressType === 'Work' ? 'briefcase' : 'map-marker-alt' %>"></i>
+                            <%= address.addressType %>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="p-5">
+                        <div class="flex items-start justify-between gap-4">
+                          <div class="flex-1">
+                            <h3 class="text-base font-semibold text-gray-900 mb-3">
+                              <%= address.name %>
+                            </h3>
+                            
+                            <div class="space-y-1.5 text-sm text-gray-600">
+                              <p class="flex items-start gap-2">
+                                <i class="fas fa-map-marker-alt text-gray-400 mt-0.5 w-4"></i>
+                                <span><%= address.flatNumber %></span>
+                              </p>
+                              
+                              <% if (address.streetName) { %>
+                                <p class="flex items-start gap-2">
+                                  <i class="fas fa-road text-gray-400 mt-0.5 w-4"></i>
+                                  <span><%= address.streetName %></span>
+                                </p>
+                              <% } %>
+                              
+                              <% if (address.landMark) { %>
+                                <p class="flex items-start gap-2">
+                                  <i class="fas fa-landmark text-gray-400 mt-0.5 w-4"></i>
+                                  <span>Landmark: <%= address.landMark %></span>
+                                </p>
+                              <% } %>
+                              
+                              <p class="flex items-start gap-2">
+                                <i class="fas fa-location-dot text-gray-400 mt-0.5 w-4"></i>
+                                <span><%= address.city %>, <%= address.state %> - <%= address.pincode %></span>
+                              </p>
+                              
+                              <% if (address.phone) { %>
+                                <p class="flex items-start gap-2 mt-3 pt-3 border-t border-gray-100">
+                                  <i class="fas fa-phone text-gray-400 mt-0.5 w-4"></i>
+                                  <span><%= address.phone %></span>
+                                </p>
+                              <% } %>
+                              
+                              <% if (address.alternativePhone) { %>
+                                <p class="flex items-start gap-2">
+                                  <i class="fas fa-phone-alt text-gray-400 mt-0.5 w-4"></i>
+                                  <span>Alt: <%= address.alternativePhone %></span>
+                                </p>
+                              <% } %>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 mt-5 pt-4 border-t border-gray-100">
+                          <a
+                            href="/address/edit/<%= address._id %>"
+                            class="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                          >
+                            <i class="fas fa-edit"></i>
+                            Edit
+                          </a>
+                          
+                          <button
+                            onclick="deleteAddress('<%= address._id %>', <%= address.isDefault %>)"
+                            class="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
+                          >
+                            <i class="fas fa-trash-alt"></i>
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div
-                    class="flex space-x-4 mt-4 pt-4 border-t border-gray-200"
-                  >
-                    <a
-                      href="/address/edit/<%= address._id %>"
-                      class="text-red-600 hover:text-red-700 font-medium"
-                      >Edit</a
-                    >
-                    <button
-                      onclick="deleteAddress('<%= address._id %>')"
-                      class="text-red-600 hover:text-red-700 font-medium"
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  <% }); %>
                 </div>
-                <% }); %>
-              </div>
+
+                <% if (totalPages > 1) { %>
+                  <div class="flex justify-center mt-8 space-x-2">
+                    <% if (page > 1) { %>
+                      <a
+                        href="/address?page=<%= page - 1 %>"
+                        class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded"
+                      >
+                        Previous
+                      </a>
+                    <% } %>
+                    
+                    <% for (let i = 1; i <= totalPages; i++) { %>
+                      <a
+                        href="/address?page=<%= i %>"
+                        class="px-4 py-2 rounded <%= i === page ? 'bg-red-700 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700' %>"
+                      >
+                        <%= i %>
+                      </a>
+                    <% } %>
+                    
+                    <% if (page < totalPages) { %>
+                      <a
+                        href="/address?page=<%= page + 1 %>"
+                        class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded"
+                      >
+                        Next
+                      </a>
+                    <% } %>
+                  </div>
+                <% } %>
+
               <% } else { %>
-              <div class="text-center py-16 text-gray-500">
-                <i
-                  class="fas fa-map-marker-alt text-5xl mb-4 text-gray-400"
-                ></i>
-                <p class="text-lg">
-                  No addresses found. Add your first address!
-                </p>
-              </div>
+                <div class="text-center py-16 text-gray-500">
+                  <i class="fas fa-map-marker-alt text-5xl mb-4 text-gray-400"></i>
+                  <p class="text-lg">No addresses found. Add your first address!</p>
+                </div>
               <% } %>
             </div>
-            <% if (totalPages > 1) { %>
-            <div class="flex justify-center mt-8 space-x-2">
-              <% if (page > 1) { %>
-              <a
-                href="/address?page=<%= page - 1 %>"
-                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded"
-              >
-                Previous
-              </a>
-              <% } %> <% for (let i = 1; i <= totalPages; i++) { %>
-              <a
-                href="/address?page=<%= i %>"
-                class="px-4 py-2 rounded <%= i === page ? 'bg-red-700 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700' %>"
-              >
-                <%= i %>
-              </a>
-              <% } %> <% if (page < totalPages) { %>
-              <a
-                href="/address?page=<%= page + 1 %>"
-                class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded"
-              >
-                Next
-              </a>
-              <% } %>
-            </div>
-            <% } %>
           </div>
         </div>
       </div>
@@ -147,27 +255,87 @@
     <%- include("../partials/user/footer.ejs") %>
 
     <script>
-      function handleLogout() {
-        if (confirm("Are you sure you want to logout?")) {
-          window.location.href = "/logout";
-        }
-      }
-
-      function editAddress(id) {
-        window.location.href = `/address/edit/${id}`;
-      }
-
-      function deleteAddress(id) {
+      function setDefaultAddress(id) {
         Swal.fire({
-          title: "Are you sure?",
-          text: "You won't be able to revert this!",
-          icon: "warning",
+          title: 'Updating...',
+          text: 'Setting as default address',
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
+        fetch(`/address/default/${id}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: 'Default address updated successfully',
+                confirmButtonColor: '#dc2626',
+                timer: 1500,
+                showConfirmButton: false,
+              }).then(() => {
+                location.reload();
+              });
+            } else {
+              Swal.fire({
+                icon: 'error',
+                title: 'Failed',
+                text: data.message || 'Failed to set default address',
+                confirmButtonColor: '#dc2626',
+              });
+              location.reload();
+            }
+          })
+          .catch((error) => {
+            console.error('Error:', error);
+            Swal.fire({
+              icon: 'error',
+              title: 'Error!',
+              text: 'Something went wrong. Please try again.',
+              confirmButtonColor: '#dc2626',
+            });
+            location.reload();
+          });
+      }
+
+      function deleteAddress(id, isDefault) {
+        if (isDefault) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Cannot Delete',
+            text: 'You cannot delete your default address. Please set another address as default first.',
+            confirmButtonColor: '#dc2626',
+          });
+          return;
+        }
+
+        Swal.fire({
+          title: 'Delete Address?',
+          text: "This action cannot be undone",
+          icon: 'warning',
           showCancelButton: true,
-          confirmButtonColor: "#b91c1c",
-          cancelButtonColor: "#6b7280",
-          confirmButtonText: "Yes, delete it!",
+          confirmButtonColor: '#dc2626',
+          cancelButtonColor: '#6b7280',
+          confirmButtonText: 'Yes, delete it',
+          cancelButtonText: 'Cancel',
         }).then((result) => {
           if (result.isConfirmed) {
+            Swal.fire({
+              title: 'Deleting...',
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading();
+              }
+            });
+
             fetch(`/address/delete/${id}`, {
               method: "DELETE",
               headers: {
@@ -178,72 +346,48 @@
               .then((data) => {
                 if (data.success) {
                   Swal.fire({
-                    title: "Deleted!",
-                    text: "Your address has been deleted.",
-                    icon: "success",
-                    confirmButtonColor: "#b91c1c",
+                    icon: 'success',
+                    title: 'Deleted!',
+                    text: 'Address has been deleted successfully',
+                    confirmButtonColor: '#dc2626',
+                    timer: 1500,
+                    showConfirmButton: false,
                   }).then(() => {
                     location.reload();
                   });
                 } else {
                   Swal.fire({
-                    title: "Error!",
-                    text: "Failed to delete address",
-                    icon: "error",
-                    confirmButtonColor: "#b91c1c",
+                    icon: 'error',
+                    title: 'Failed',
+                    text: data.message || 'Failed to delete address',
+                    confirmButtonColor: '#dc2626',
                   });
                 }
               })
               .catch((error) => {
-                console.error("Error:", error);
+                console.error('Error:', error);
                 Swal.fire({
-                  title: "Error!",
-                  text: "An error occurred",
-                  icon: "error",
-                  confirmButtonColor: "#b91c1c",
+                  icon: 'error',
+                  title: 'Error!',
+                  text: 'An error occurred while deleting the address',
+                  confirmButtonColor: '#dc2626',
                 });
               });
           }
         });
       }
 
-      function setDefaultAddress(id) {
-        fetch(`/address/set-default/${id}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.success) {
-              Swal.fire({
-                title: "Success!",
-                text: "Default address updated",
-                icon: "success",
-                timer: 1500,
-                showConfirmButton: false,
-              });
-            } else {
-              Swal.fire({
-                title: "Error!",
-                text: "Failed to set default address",
-                icon: "error",
-                confirmButtonColor: "#b91c1c",
-              });
-              location.reload();
-            }
-          })
-          .catch((error) => {
-            console.error("Error:", error);
-            Swal.fire({
-              title: "Error!",
-              text: "An error occurred",
-              icon: "error",
-              confirmButtonColor: "#b91c1c",
-            });
+      document.addEventListener('DOMContentLoaded', function() {
+        const radioButtons = document.querySelectorAll('.radio-custom');
+        radioButtons.forEach(radio => {
+          radio.addEventListener('change', function() {
+            radioButtons.forEach(r => r.disabled = true);
+            setTimeout(() => {
+              radioButtons.forEach(r => r.disabled = false);
+            }, 1500);
           });
-      }
+        });
+      });
     </script>
   </body>
 </html>
