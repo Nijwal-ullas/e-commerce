@@ -274,7 +274,7 @@ const getSalesReport = async (req, res) => {
       {
         $match: {
           paymentStatus: "Paid",
-          // orderStatus: "Delivered",
+          orderStatus: {$nin :["Cancelled"]},
           createdAt: {
             $gte: range.startDate,
             $lte: range.endDate,
