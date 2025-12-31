@@ -30,7 +30,8 @@ const AddressSchema = new Schema({
   alternativePhone: { 
     type: String, 
   },
-  flatNumber: { type: String }
+  flatNumber: { type: String },
+  isDefault: { type: Boolean, default: false}
 });
 
 AddressSchema.index({ userId: 1 });
