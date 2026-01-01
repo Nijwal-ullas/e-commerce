@@ -340,49 +340,54 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
 
   item.status = "Cancelled";
   item.cancellationReason = reason || "";
-  await restoreStock(item);
-
+  
   const couponCode = orderDoc.couponCode;
   const couponId = orderDoc.couponId;
-
+  
   const cancelledPrice = item.price * item.quantity;
-let refundAmount = 0;
-
-const activeItems = orderDoc.orderedItem.filter(
-  i => i.status !== "Cancelled"
-);
-
-const remainingSubtotal = activeItems.reduce(
-  (sum, i) => sum + i.price * i.quantity,
-  0
-);
-
-let coupon = null;
-let couponValid = false;
-
-if (orderDoc.couponId) {
-  coupon = await Coupons.findById(orderDoc.couponId);
-  couponValid = coupon && remainingSubtotal >= coupon.minCartValue;
-}
-
-if (orderDoc.payment !== "Cod") {
-  refundAmount = cancelledPrice;
-
-  if (!couponValid && orderDoc.couponDiscount > 0) {
-    refundAmount -= orderDoc.couponDiscount;
-    refundAmount = Math.max(refundAmount, 0);
-
-    orderDoc.couponCode = null;
-    orderDoc.couponId = null;
-    orderDoc.couponDiscount = 0;
-    orderDoc.couponUsed = false;
+  let refundAmount = 0;
+  
+  const activeItems = orderDoc.orderedItem.filter(
+    i => i.status !== "Cancelled"
+  );
+  
+  const remainingSubtotal = activeItems.reduce(
+    (sum, i) => sum + i.price * i.quantity,
+    0
+  );
+  
+  let coupon = null;
+  let couponValid = false;
+  
+  if (orderDoc.couponId) {
+    coupon = await Coupons.findById(orderDoc.couponId);
+    couponValid = coupon && remainingSubtotal >= coupon.minCartValue;
   }
-
-  if (refundAmount > 0) {
-    await refundToWallet(userId, refundAmount);
+  
+  if (orderDoc.payment !== "Cod") {
+    refundAmount = cancelledPrice;
+    
+    if (!couponValid) {
+      return res.status(400).json({
+        success: false,
+        message: "cannot remove this item because remaining item is not applicable for coupon"
+      })
+      
+      // refundAmount -= orderDoc.couponDiscount;
+      // refundAmount = Math.max(refundAmount, 0);
+      
+      // orderDoc.couponCode = null;
+      // orderDoc.couponId = null;
+      // orderDoc.couponDiscount = 0;
+      // orderDoc.couponUsed = false;
+    }
+    
+    if (refundAmount > 0) {
+      await refundToWallet(userId, refundAmount);
+    }
   }
-}
-
+  
+  await restoreStock(item);
 
 
   if (activeItems.length === 0) {
@@ -727,6 +732,26 @@ const requestOrderReturn = async (req, res) => {
         message: "This item is already in return process",
       });
     }
+
+    // const couponCode = orderDoc.couponCode;
+    // const couponId = orderDoc.couponId;
+    // const returnItem = item.price* item.quantity;
+    // const activeItem = orderDoc.finalAmount;
+
+    // let coupon= null;
+    // let couponValid = false;
+
+    // if(orderDoc.couponId){
+    //   coupon = await Coupons.findById(couponId);
+    //   couponValid = coupon && (activeItem - returnItem) >= coupon.minCartValue
+    // }
+
+    // if(!couponValid){
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "cannot return this item"
+    //   })
+    // }
 
     const itemDeliveryDate = item.deliveredDate || orderDoc.deliveredDate || orderDoc.updatedAt;
     const sevenDaysAgo = new Date();
