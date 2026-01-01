@@ -13,6 +13,7 @@ router.get("/order-status-report", auth.adminAuth,adminController.getOrderStatus
 router.get("/sales-report",auth.adminAuth,adminController.getSalesReport);
 router.get("/sales-report/excel", auth.adminAuth,adminController.downloadExcel);
 router.get("/sales-report/pdf", auth.adminAuth,adminController.downloadPdf);
+router.get("/overallSales-report",auth.adminAuth,adminController.getOverallSales);
 
 
 export default router;
