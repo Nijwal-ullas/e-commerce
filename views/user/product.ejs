@@ -324,12 +324,12 @@
                         </h3>
                       </a>
                       
-                      <div class="flex items-center justify-center gap-2 mb-2">
+                      <!-- <div class="flex items-center justify-center gap-2 mb-2">
                         <p class="text-red-600 font-bold text-xl">₹<%= productPrice.toFixed(2) %></p>
                         <% if (hasDiscount) { %>
                           <p class="text-gray-500 line-through text-sm">₹<%= productOldPrice.toFixed(2) %></p>
                         <% } %>
-                      </div>
+                      </div> -->
                       
                       <% if (brandName) { %>
                         <p class="text-gray-500 text-sm mb-1"><%= brandName %></p>
@@ -786,12 +786,7 @@
                         </h3>
                     </a>
                     
-                    <div class="flex items-center justify-center gap-2 mb-2">
-                        <p class="text-red-600 font-bold text-xl">₹${productPrice.toFixed(2)}</p>
-                        ${hasDiscount ? `
-                            <p class="text-gray-500 line-through text-sm">₹${productOldPrice.toFixed(2)}</p>
-                        ` : ''}
-                    </div>
+                   
                     
                     ${brandName ? `
                         <p class="text-gray-500 text-sm mb-1">${brandName}</p>

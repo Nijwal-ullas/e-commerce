@@ -378,7 +378,6 @@
                               let dotClass = 'pending';
                               let labelClass = '';
                               
-                              // Determine dot style
                               if (step === currentStep) {
                                 dotClass = 'current';
                                 labelClass = 'active';
@@ -396,7 +395,7 @@
                               // Format label
                               let stepLabel = step.charAt(0).toUpperCase() + step.slice(1);
                               if (step === 'return requested') stepLabel = 'Return Req';
-                              else if (step === 'return approved') stepLabel = 'Return App';
+                              else if (step === 'return approved') stepLabel = 'Return Approved';
                             %>
                               <div class="status-point">
                                 <div class="status-dot <%= dotClass %>"></div>
