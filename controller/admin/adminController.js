@@ -206,14 +206,6 @@ const loadDashboardPage = async (req, res) => {
       .select("orderId userId finalAmount orderStatus createdAt")
       .lean();
 
-    const formattedRecentOrders = recentOrders.map((order) => ({
-      orderId: order.orderId,
-      userName: order.userId?.name || "Guest",
-      totalAmount: order.finalAmount,
-      status: order.orderStatus,
-      createdAt: order.createdAt,
-    }));
-
     return res.render("admin/dashboard", {
       adminName,
       salesCount,
@@ -223,7 +215,6 @@ const loadDashboardPage = async (req, res) => {
       totalProducts,
       totalUsers,
       activeCoupons,
-      recentOrders: formattedRecentOrders,
       topProducts,
       topCategory,
     });
@@ -274,7 +265,7 @@ const getSalesReport = async (req, res) => {
       {
         $match: {
           paymentStatus: "Paid",
-          orderStatus: {$nin :["Cancelled"]},
+          orderStatus: { $nin: ["Cancelled"] },
           createdAt: {
             $gte: range.startDate,
             $lte: range.endDate,
@@ -363,7 +354,7 @@ const getDateWiseOrderProductAggregation = async (range) => {
         _id: {
           date: {
             $dateToString: {
-              format: range.groupFormat, 
+              format: range.groupFormat,
               date: "$createdAt",
             },
           },
@@ -385,39 +376,27 @@ const getDateWiseOrderProductAggregation = async (range) => {
             ml: "$orderedItem.ml",
             quantity: "$orderedItem.quantity",
 
-            oldPrice: "$orderedItem.oldPrice", 
-            price: "$orderedItem.price",      
+            oldPrice: "$orderedItem.oldPrice",
+            price: "$orderedItem.price",
             originalTotal: {
-              $multiply: [
-                "$orderedItem.quantity",
-                "$orderedItem.oldPrice",
-              ],
+              $multiply: ["$orderedItem.quantity", "$orderedItem.oldPrice"],
             },
 
             sellingTotal: {
-              $multiply: [
-                "$orderedItem.quantity",
-                "$orderedItem.price",
-              ],
+              $multiply: ["$orderedItem.quantity", "$orderedItem.price"],
             },
           },
         },
 
         originalOrderTotal: {
           $sum: {
-            $multiply: [
-              "$orderedItem.quantity",
-              "$orderedItem.oldPrice",
-            ],
+            $multiply: ["$orderedItem.quantity", "$orderedItem.oldPrice"],
           },
         },
 
         orderTotal: {
           $sum: {
-            $multiply: [
-              "$orderedItem.quantity",
-              "$orderedItem.price",
-            ],
+            $multiply: ["$orderedItem.quantity", "$orderedItem.price"],
           },
         },
       },
@@ -471,7 +450,65 @@ const getDateWiseOrderProductAggregation = async (range) => {
   ]);
 };
 
+const getOverallSales = async (req, res) => {
+  try {
+    const data = await order.aggregate([
+      { $unwind: "$orderedItem" },
+      {
+        $match: {
+          "orderedItem.status": { $nin: ["Cancelled", "Returned"] },
+          paymentStatus: "Paid",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $addToSet: "$_id" },
+          totalItemsSold: { $sum: "$orderedItem.quantity" },
+          grossSales: {
+            $sum: "$totalPrice",
+          },
+          netSales: { $sum: "$finalAmount" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          totalOrders: { $size: "$totalOrders" },
+          totalItemsSold: 1,
+          grossSales: 1,
+          netSales: 1,
+        },
+      },
+    ]);
 
+    const refunds = await order.aggregate([
+      { $unwind: "$orderedItem" },
+      {
+        $match: {
+          "orderedItem.status": "Returned",
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          refundAmount: { $sum: "$orderedItem.refundAmount" },
+        },
+      },
+    ]);
+
+    res.json({
+      success: true,
+      overall: {
+        ...data[0],
+        refundAmount: refunds[0]?.refundAmount || 0,
+      },
+    });
+  } catch (err) {
+    console.error("Overall sales error", err);
+    res.status(500).json({ success: false });
+  }
+};
 
 const downloadExcel = async (req, res) => {
   try {
@@ -488,7 +525,7 @@ const downloadExcel = async (req, res) => {
       { header: "Customer Name", width: 25 },
       { header: "Order ID", width: 30 },
       { header: "Product Name", width: 35 },
-      { header: "Payment", width: 15},
+      { header: "Payment", width: 15 },
       { header: "Variant (ml)", width: 15 },
       { header: "Quantity", width: 12 },
       { header: "Price", width: 15 },
@@ -496,9 +533,7 @@ const downloadExcel = async (req, res) => {
     ];
 
     data.forEach((day) => {
-
       day.orders.forEach((order) => {
-
         order.products.forEach((p, index) => {
           sheet.addRow([
             index === 0 ? day._id : "",
@@ -508,8 +543,8 @@ const downloadExcel = async (req, res) => {
             order.payment,
             p.ml || "-",
             p.quantity,
-            p.oldPrice,          
-            p.originalTotal,     
+            p.oldPrice,
+            p.originalTotal,
           ]);
         });
 
@@ -580,7 +615,6 @@ const downloadExcel = async (req, res) => {
         day.totalOrders,
       ]);
 
-    
       sheet.addRow([
         "",
         "",
@@ -595,7 +629,6 @@ const downloadExcel = async (req, res) => {
 
       sheet.addRow([]);
     });
-    
 
     res.setHeader(
       "Content-Type",
@@ -608,13 +641,11 @@ const downloadExcel = async (req, res) => {
 
     await workbook.xlsx.write(res);
     res.end();
-
   } catch (err) {
     console.error(err);
     res.status(500).send("Excel download failed");
   }
 };
-
 
 const downloadPdf = async (req, res) => {
   try {
@@ -715,9 +746,7 @@ const downloadPdf = async (req, res) => {
         order.products.forEach((p, index) => {
           orderRows.push([
             order.customer,
-            index === 0
-              ? String(order.orderId)
-              : "",
+            index === 0 ? String(order.orderId) : "",
             p.productName,
             p.ml || "-",
             index === 0 ? order.payment : "",
@@ -727,17 +756,53 @@ const downloadPdf = async (req, res) => {
           ]);
         });
 
-        orderRows.push(["", "", "", "", "", "", "Items Total:", order.originalOrderTotal]);
+        orderRows.push([
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "Items Total:",
+          order.originalOrderTotal,
+        ]);
 
         if (order.productDiscount > 0) {
-          orderRows.push(["", "", "", "", "", "", "Product Discount:", `- ${order.productDiscount}`]);
+          orderRows.push([
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Product Discount:",
+            `- ${order.productDiscount}`,
+          ]);
         }
 
         if (order.couponDiscount > 0) {
-          orderRows.push(["", "", "", "", "", "", "Coupon Discount:", `- ${order.couponDiscount}`]);
+          orderRows.push([
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Coupon Discount:",
+            `- ${order.couponDiscount}`,
+          ]);
         }
 
-        orderRows.push(["", "", "", "", "", "", "Final Amount:", order.finalAmount]);
+        orderRows.push([
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "Final Amount:",
+          order.finalAmount,
+        ]);
         orderRows.push(["", "", "", "", "", "", "", ""]);
 
         const requiredHeight = orderRows.length * ROW_HEIGHT;
@@ -759,8 +824,14 @@ const downloadPdf = async (req, res) => {
       }
 
       y += 10;
-      y = drawRow(["", "", "", "", "", "", "Total Orders:", day.totalOrders], y);
-      y = drawRow(["", "", "", "", "", "", "Date Net Sales:", `Rs.${day.dateNetSales}`], y);
+      y = drawRow(
+        ["", "", "", "", "", "", "Total Orders:", day.totalOrders],
+        y
+      );
+      y = drawRow(
+        ["", "", "", "", "", "", "Date Net Sales:", `Rs.${day.dateNetSales}`],
+        y
+      );
 
       y += 20;
       doc.moveTo(START_X, y).lineTo(555, y).stroke("#e5e7eb");
@@ -803,4 +874,5 @@ export default {
   downloadExcel,
   downloadPdf,
   logout,
+  getOverallSales,
 };

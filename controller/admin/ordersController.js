@@ -483,19 +483,20 @@ const rejectItemReturn = async (req, res) => {
 const refundItem = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
-
     const orderDoc = await order.findById(orderId);
     if (!orderDoc) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
     }
 
     const item = orderDoc.orderedItem.id(itemId);
     if (!item) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Item not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Item not found",
+      });
     }
 
     if (item.status !== "Return Approved") {
@@ -513,10 +514,13 @@ const refundItem = async (req, res) => {
 
     const itemTotal = item.price * item.quantity;
 
+    const originalSubtotal = orderDoc.orderedItem.reduce(
+      (sum, i) => sum + i.price * i.quantity,
+      0
+    );
+
     const activeItems = orderDoc.orderedItem.filter(
-      (i) =>
-        i._id.toString() !== itemId &&
-        !["Cancelled", "Returned"].includes(i.status)
+      (i) => !["Cancelled", "Returned"].includes(i.status)
     );
 
     const remainingSubtotal = activeItems.reduce(
@@ -524,25 +528,17 @@ const refundItem = async (req, res) => {
       0
     );
 
-    let couponValid = false;
-    let coupon = null;
+    let couponShare = 0;
 
-    if (orderDoc.couponId) {
-      coupon = await coupons.findById(orderDoc.couponId);
-      couponValid = coupon && remainingSubtotal >= coupon.minCartValue;
+    if (orderDoc.couponDiscount > 0 && originalSubtotal > 0) {
+      couponShare =
+        (itemTotal / originalSubtotal) * orderDoc.couponDiscount;
     }
 
-    let refundAmount = itemTotal;
+    let refundAmount =
+      Math.round((itemTotal - couponShare) * 100) / 100;
 
-    if (!couponValid && orderDoc.couponDiscount > 0) {
-      refundAmount -= orderDoc.couponDiscount;
-      refundAmount = Math.max(refundAmount, 0);
-
-      orderDoc.couponCode = null;
-      orderDoc.couponId = null;
-      orderDoc.couponDiscount = 0;
-      orderDoc.couponUsed = false;
-    }
+    refundAmount = Math.max(refundAmount, 0);
 
     item.refundAmount = refundAmount;
     item.refundDate = new Date();
@@ -551,40 +547,32 @@ const refundItem = async (req, res) => {
       await refundToWallet(orderDoc.userId, refundAmount);
     }
 
-    let newBaseTotal = 0;
-    let newOfferTotal = 0;
+    if (orderDoc.couponId) {
+      const coupon = await coupons.findById(orderDoc.couponId);
 
-    for (const itm of orderDoc.orderedItem) {
-      if (["Returned", "Cancelled"].includes(itm.status)) continue;
-
-      const productDoc = await product.findById(itm.productId);
-      if (!productDoc) continue;
-
-      let variant = null;
-
-      if (itm.variantId) {
-        variant = productDoc.VariantItem.find(
-          (v) => v._id.toString() === itm.variantId.toString()
-        );
+      if (!coupon || remainingSubtotal < coupon.minCartValue) {
+        orderDoc.couponCode = null;
+        orderDoc.couponId = null;
+        orderDoc.couponDiscount = 0;
+        orderDoc.couponUsed = false;
+      } else {
+        orderDoc.couponDiscount =
+          Math.round(
+            (remainingSubtotal / originalSubtotal) *
+              orderDoc.couponDiscount *
+              100
+          ) / 100;
       }
-
-      if (!variant && itm.ml) {
-        variant = productDoc.VariantItem.find((v) => v.Ml === Number(itm.ml));
-      }
-
-      if (!variant) continue;
-
-      const basePrice = variant.Price;
-      const finalPrice = variant.offerPrice || variant.Price;
-
-      newBaseTotal += basePrice * itm.quantity;
-      newOfferTotal += finalPrice * itm.quantity;
     }
 
-    orderDoc.totalPrice = newBaseTotal;
-    orderDoc.discount = Math.max(newBaseTotal - newOfferTotal, 0);
+    const deliveryCharge = orderDoc.deliveryCharge || 0;
+
+    orderDoc.totalPrice = remainingSubtotal;
+    orderDoc.discount = 0; 
     orderDoc.finalAmount = Math.max(
-      newOfferTotal - (orderDoc.couponDiscount || 0),
+      remainingSubtotal -
+        (orderDoc.couponDiscount || 0) +
+        deliveryCharge,
       0
     );
 
@@ -596,9 +584,10 @@ const refundItem = async (req, res) => {
     return res.json({
       success: true,
       message: "Refund processed successfully",
-      refundedAmount: refundAmount,
+      // refundedAmount: refundAmount,
       orderStatus: orderDoc.orderStatus,
       paymentStatus: orderDoc.paymentStatus,
+      remainingItems: activeItems.length,
     });
   } catch (error) {
     console.error("Refund Item Error:", error);
@@ -608,6 +597,8 @@ const refundItem = async (req, res) => {
     });
   }
 };
+
+
 
 async function refundToWallet(userId, amount) {
   if (!amount || amount <= 0) return;
