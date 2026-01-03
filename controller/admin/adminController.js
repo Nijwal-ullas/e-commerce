@@ -718,7 +718,7 @@ const downloadPdf = async (req, res) => {
       return y + ROW_HEIGHT;
     };
 
-    doc.fontSize(18).text("Date-wise Order & Product Report", {
+    doc.fontSize(18).text("Product Report", {
       align: "center",
     });
     doc.moveDown(2);
