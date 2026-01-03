@@ -25,17 +25,17 @@
             <div class="flex-1">
                 <div class="bg-gray-100 rounded-lg p-6 lg:p-8">
                     
-                    <div class="bg-gradient-to-r from-red-600 to-red-700 rounded-xl shadow-lg p-8 mb-8 text-white">
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-8 mb-8 text-white">
                         <div class="flex justify-between items-start mb-6">
                             <div>
-                                <p class="text-red-100 text-sm mb-2">Available Balance</p>
+                                <p class="text-blue-100 text-sm mb-2">Available Balance</p>
                                 <h2 class="text-4xl font-bold" id="walletBalance">₹<%= wallet?.balance?.toFixed(2) || '0.00' %></h2>
                             </div>
                             <div class="bg-white bg-opacity-20 rounded-full p-3">
                                 <i class="fas fa-wallet text-3xl"></i>
                             </div>
                         </div>
-                        <button onclick="openAddMoneyModal()" class="bg-white text-red-600 px-6 py-2 rounded-lg font-semibold hover:bg-red-50 transition-colors">
+                        <button onclick="openAddMoneyModal()" class="bg-white text-blue-500 px-6 py-2 rounded-lg font-semibold hover:bg-red-50 transition-colors">
                             <i class="fas fa-plus mr-2"></i>Add Money
                         </button>
                     </div>
@@ -45,7 +45,7 @@
                             <h2 class="text-xl font-medium text-gray-800">Transaction History</h2>
                             <% if (transactions && transactions.length > 0) { %>
                             <div class="flex gap-2">
-                                <select id="filterType" onchange="filterTransactions()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600">
+                                <select id="filterType" onchange="filterTransactions()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     <option value="all">All Transactions</option>
                                     <option value="credit">Credits</option>
                                     <option value="debit">Debits</option>
@@ -102,20 +102,63 @@
 
                             <% if (totalPage > 1) { %>
                                 <div class="flex justify-center items-center gap-4 mt-12">
-                                    <button onclick="changePage(<%= page - 1 %>)" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" <%= page <= 1 ? 'disabled' : '' %>>
+                                    <button 
+                                        onclick="changePage(<%= page - 1 %>)" 
+                                        class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+                                        <%= page <= 1 ? 'disabled' : '' %>>
                                         <i class="fas fa-chevron-left mr-1"></i> Previous
                                     </button>
 
                                     <div class="flex gap-2">
-                                        <% for (let i = 1; i <= totalPage; i++) { %>
+                                        <% 
+                                            const maxVisible = 5;
+                                            let startPage, endPage;
+
+                                            if (totalPage <= maxVisible) {
+                                                startPage = 1;
+                                                endPage = totalPage;
+                                            } else {
+                                                if (page <= 3) {
+                                                    startPage = 1;
+                                                    endPage = maxVisible;
+                                                } else if (page >= totalPage - 2) {
+                                                    startPage = totalPage - maxVisible + 1;
+                                                    endPage = totalPage;
+                                                } else {
+                                                    startPage = page - 2;
+                                                    endPage = page + 2;
+                                                }
+                                            }
+                                        %>
+                                        <% if (startPage > 1) { %>
+                                            <button onclick="changePage(1)"
+                                                class="w-10 h-10 rounded-lg transition-colors bg-gray-200 hover:bg-gray-300">
+                                                1
+                                            </button>
+                                            <% if (startPage > 2) { %>
+                                                <span class="w-10 h-10 flex items-center justify-center text-gray-500">...</span>
+                                            <% } %>
+                                        <% } %>
+                                        <% for (let i = startPage; i <= endPage; i++) { %>
                                             <button onclick="changePage(<%= i %>)"
-                                                class="w-10 h-10 rounded-lg transition-colors <%= i === page ? 'bg-red-600 text-white' : 'bg-gray-200 hover:bg-gray-300' %>">
+                                                class="w-10 h-10 rounded-lg transition-colors <%= i === page ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300' %>">
                                                 <%= i %>
                                             </button>
                                         <% } %>
+                                        <% if (endPage < totalPage) { %>
+                                            <% if (endPage < totalPage - 1) { %>
+                                                <span class="w-10 h-10 flex items-center justify-center text-gray-500">...</span>
+                                            <% } %>
+                                            <button onclick="changePage(<%= totalPage %>)"
+                                                class="w-10 h-10 rounded-lg transition-colors bg-gray-200 hover:bg-gray-300">
+                                                <%= totalPage %>
+                                            </button>
+                                        <% } %>
                                     </div>
-
-                                    <button onclick="changePage(<%= page + 1 %>)" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" <%= page >= totalPage ? 'disabled' : '' %>>
+                                    <button 
+                                        onclick="changePage(<%= page + 1 %>)" 
+                                        class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+                                        <%= page >= totalPage ? 'disabled' : '' %>>
                                         Next <i class="fas fa-chevron-right ml-1"></i>
                                     </button>
                                 </div>
@@ -129,7 +172,7 @@
                                 </div>
                                 <h2 class="text-2xl font-bold text-gray-900 mb-3">No Transactions Yet</h2>
                                 <p class="text-gray-600 mb-8">Your transaction history will appear here.</p>
-                                <button onclick="openAddMoneyModal()" class="bg-red-600 text-white px-8 py-3 rounded-lg hover:bg-red-700 transition-colors font-semibold">
+                                <button onclick="openAddMoneyModal()" class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold">
                                     <i class="fas fa-plus mr-2"></i>Add Money to Wallet
                                 </button>
                             </div>
@@ -175,31 +218,31 @@
                     <div class="relative">
                         <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 text-lg">₹</span>
                         <input type="number" id="addAmount" min="1" max="50000" step="0.01" 
-                            class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 text-lg"
+                            class="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
                             placeholder="0.00">
                     </div>
-                    <p id="emt" class="text-xs text-red-600 mt-2 hidden">
+                    <p id="emt" class="text-xs text-blue-600 mt-2 hidden">
                        please enter an amount
                     </p>
                     <p class="text-xs text-gray-500 mt-2">Minimum: ₹1 | Maximum: ₹50,000</p>
                 </div>
 
                 <div class="grid grid-cols-4 gap-2 mb-6">
-                    <button type="button" onclick="setAmount(500)" class="py-2 border border-gray-300 rounded-lg hover:border-red-600 hover:text-red-600 transition-colors">
+                    <button type="button" onclick="setAmount(500)" class="py-2 border border-gray-300 rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors">
                         ₹500
                     </button>
-                    <button type="button" onclick="setAmount(1000)" class="py-2 border border-gray-300 rounded-lg hover:border-red-600 hover:text-red-600 transition-colors">
+                    <button type="button" onclick="setAmount(1000)" class="py-2 border border-gray-300 rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors">
                         ₹1000
                     </button>
-                    <button type="button" onclick="setAmount(2000)" class="py-2 border border-gray-300 rounded-lg hover:border-red-600 hover:text-red-600 transition-colors">
+                    <button type="button" onclick="setAmount(2000)" class="py-2 border border-gray-300 rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors">
                         ₹2000
                     </button>
-                    <button type="button" onclick="setAmount(5000)" class="py-2 border border-gray-300 rounded-lg hover:border-red-600 hover:text-red-600 transition-colors">
+                    <button type="button" onclick="setAmount(5000)" class="py-2 border border-gray-300 rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors">
                         ₹5000
                     </button>
                 </div>
 
-                <button type="submit" class="w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition-colors font-semibold">
+                <button type="submit" class="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition-colors font-semibold">
                     <i class="fas fa-plus mr-2"></i>Add Money
                 </button>
             </form>

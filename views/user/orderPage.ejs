@@ -34,7 +34,7 @@
 
             <div class="flex items-center justify-between mb-8">
               <h2 class="text-xl font-medium text-gray-800">My Orders</h2>
-              <a href="/product" class="px-6 py-2 rounded-full bg-red-700 text-white text-sm hover:bg-red-800 whitespace-nowrap">
+              <a href="/product" class="px-6 py-2 rounded-full bg-blue-500 text-white text-sm hover:bg-blue-600 whitespace-nowrap">
                 <i class="fas fa-shopping-bag mr-2"></i>Continue Shopping
               </a>
             </div>
@@ -220,24 +220,72 @@
               </div>
             <% } %>
 
-            <% if (totalPages > 1) { %>
-              <div class="flex justify-center mt-8 space-x-2">
+           <% if (totalPages > 1) { %>
+              <div class="flex justify-center items-center mt-8 space-x-2">
                 <% if (page > 1) { %>
-                  <a href="/orders?page=<%= page - 1 %>" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded">
+                  <a href="/orders?page=<%= page - 1 %>" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors">
                     <i class="fas fa-chevron-left mr-1"></i>Previous
                   </a>
+                <% } else { %>
+                  <span class="px-4 py-2 bg-gray-100 text-gray-400 rounded cursor-not-allowed">
+                    <i class="fas fa-chevron-left mr-1"></i>Previous
+                  </span>
                 <% } %>
 
-                <% for (let i = 1; i <= totalPages; i++) { %>
-                  <a href="/orders?page=<%= i %>" class="px-4 py-2 rounded <%= i === page ? 'bg-red-700 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700' %>">
+                <% 
+                  const maxVisible = 5;
+                  let startPage, endPage;
+
+                  if (totalPages <= maxVisible) {
+                    startPage = 1;
+                    endPage = totalPages;
+                  } else {
+                    if (page <= 3) {
+                      startPage = 1;
+                      endPage = maxVisible;
+                    } else if (page >= totalPages - 2) {
+                      startPage = totalPages - maxVisible + 1;
+                      endPage = totalPages;
+                    } else {
+                      startPage = page - 2;
+                      endPage = page + 2;
+                    }
+                  }
+                %>
+
+                <% if (startPage > 1) { %>
+                  <a href="/orders?page=1" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors">
+                    1
+                  </a>
+                  <% if (startPage > 2) { %>
+                    <span class="px-2 text-gray-500">...</span>
+                  <% } %>
+                <% } %>
+
+                <% for (let i = startPage; i <= endPage; i++) { %>
+                  <a href="/orders?page=<%= i %>" 
+                    class="px-4 py-2 rounded transition-colors <%= i === page ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700' %>">
                     <%= i %>
                   </a>
                 <% } %>
 
+                <% if (endPage < totalPages) { %>
+                  <% if (endPage < totalPages - 1) { %>
+                    <span class="px-2 text-gray-500">...</span>
+                  <% } %>
+                  <a href="/orders?page=<%= totalPages %>" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors">
+                    <%= totalPages %>
+                  </a>
+                <% } %>
+
                 <% if (page < totalPages) { %>
-                  <a href="/orders?page=<%= page + 1 %>" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded">
+                  <a href="/orders?page=<%= page + 1 %>" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors">
                     Next<i class="fas fa-chevron-right ml-1"></i>
                   </a>
+                <% } else { %>
+                  <span class="px-4 py-2 bg-gray-100 text-gray-400 rounded cursor-not-allowed">
+                    Next<i class="fas fa-chevron-right ml-1"></i>
+                  </span>
                 <% } %>
               </div>
             <% } %>

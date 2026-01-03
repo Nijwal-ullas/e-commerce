@@ -170,7 +170,7 @@
             <%= product.brand?.name || 'Brand' %>
           </p>
 
-          <div class="flex items-center justify-center gap-2 mb-4">
+          <!-- <div class="flex items-center justify-center gap-2 mb-4">
             <div class="text-xl font-bold text-red-600">
               ₹<%= product.price ? product.price.toFixed(2) : '0.00' %>
             </div>
@@ -179,7 +179,7 @@
               ₹<%= product.oldPrice.toFixed(2) %>
             </div>
             <% } %>
-          </div>
+          </div> -->
 
           <div
             class="text-xs <%= product.hasStock ? 'text-green-600' : 'text-red-500' %>"
