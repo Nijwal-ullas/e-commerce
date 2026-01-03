@@ -453,7 +453,7 @@ const updateQuantity = async (req, res) => {
       0
     );
 
-    const shipping = subtotal > 1000 ? 0 : 0;
+    const shipping = subtotal > 500 ? 0 : 50;
     const total = subtotal + shipping;
 
     return res.json({
