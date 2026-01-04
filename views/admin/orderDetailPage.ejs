@@ -519,7 +519,7 @@
 
       const getNextValidStatuses = (currentStatus) => {
   if (currentStatus === "Delivered" || currentStatus === "Cancelled") {
-    return []; // REMOVE "Return requested" from here
+    return []; 
   }
 
   const idx = FLOW_STATUSES.indexOf(currentStatus);
@@ -907,45 +907,121 @@
         }
       }
 
-      async function rejectItemReturn(orderId, itemId) {
-        const result = await Swal.fire({
-          title: "Reject Item Return?",
-          html: "Are you sure you want to reject return for this item?",
-          icon: "warning",
-          showCancelButton: true,
-          confirmButtonColor: "#ef4444",
-          cancelButtonColor: "#6b7280",
-          confirmButtonText: "Yes, Reject Return",
-          cancelButtonText: "Cancel",
-        });
+    async function rejectItemReturn(orderId, itemId) {
+  const { value: formData } = await Swal.fire({
+    title: "Reject Return Request",
+    html: `
+      <div class="text-left space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Rejection Reason <span class="text-red-500">*</span>
+          </label>
+          <select 
+            id="rejectionReason" 
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+          >
+            <option value="">Select a reason</option>
+            <option value="Item not eligible for return">Item not eligible for return</option>
+            <option value="Return period expired">Return period expired</option>
+            <option value="Item shows signs of use or damage">Item shows signs of use or damage</option>
+            <option value="Missing original packaging or tags">Missing original packaging or tags</option>
+            <option value="Incomplete return request">Incomplete return request</option>
+            <option value="Does not meet return policy criteria">Does not meet return policy criteria</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        
+        <div id="otherReasonWrapper" class="hidden">
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Please specify <span class="text-red-500">*</span>
+          </label>
+          <textarea 
+            id="additionalComments" 
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500" 
+            rows="3"
+            placeholder="Enter the reason for rejection..."
+          ></textarea>
+        </div>
+      </div>
+    `,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#ef4444",
+    cancelButtonColor: "#6b7280",
+    confirmButtonText: "Reject Return",
+    cancelButtonText: "Cancel",
+    width: "500px",
 
-        if (!result.isConfirmed) return;
+    didOpen: () => {
+      const reasonSelect = document.getElementById("rejectionReason");
+      const otherWrapper = document.getElementById("otherReasonWrapper");
 
-        try {
-          const response = await axios.put(
-            `/admin/adminOrders/${orderId}/item/${itemId}/reject-return`
-          );
-
-          if (response.data.success) {
-            Swal.fire({
-              icon: "success",
-              title: "Return Rejected!",
-              text: response.data.message,
-              confirmButtonColor: "#10b981",
-            }).then(() => {
-              window.location.reload();
-            });
-          }
-        } catch (error) {
-          console.error("Reject item return error:", error);
-          Swal.fire({
-            icon: "error",
-            title: "Rejection Failed",
-            text: error.response?.data?.message || "Failed to reject item return",
-            confirmButtonColor: "#d33",
-          });
+      reasonSelect.addEventListener("change", () => {
+        if (reasonSelect.value === "Other") {
+          otherWrapper.classList.remove("hidden");
+        } else {
+          otherWrapper.classList.add("hidden");
+          document.getElementById("additionalComments").value = "";
         }
+      });
+    },
+
+    preConfirm: () => {
+      const reason = document.getElementById("rejectionReason").value;
+      const comments = document.getElementById("additionalComments").value.trim();
+
+      if (!reason) {
+        Swal.showValidationMessage("Please select a rejection reason");
+        return false;
       }
+
+      if (reason === "Other" && !comments) {
+        Swal.showValidationMessage("Please specify the rejection reason");
+        return false;
+      }
+
+      return { reason, comments };
+    }
+  });
+
+  if (!formData) return;
+
+  const rejectionMessage =
+    formData.reason === "Other"
+      ? formData.comments
+      : formData.comments
+      ? `${formData.reason} - ${formData.comments}`
+      : formData.reason;
+
+  try {
+    const response = await axios.put(
+      `/admin/adminOrders/${orderId}/item/${itemId}/reject-return`,
+      { rejectionReason: rejectionMessage }
+    );
+
+    if (response.data.success) {
+      await Swal.fire({
+        icon: "success",
+        title: "Return Rejected",
+        text: "The return request has been rejected successfully.",
+        confirmButtonColor: "#10b981",
+        timer: 2000
+      });
+      window.location.reload();
+    }
+  } catch (error) {
+    console.error("Reject item return error:", error);
+    Swal.fire({
+      icon: "error",
+      title: "Failed to Reject",
+      text:
+        error.response?.data?.message ||
+        "An error occurred while rejecting the return request.",
+      confirmButtonColor: "#ef4444"
+    });
+  }
+}
+
 
       async function refundItem(orderId, itemId, refundAmount) {
         const result = await Swal.fire({

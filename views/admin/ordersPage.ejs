@@ -160,6 +160,7 @@
               <span class="text-sm text-gray-700">
                 Page <%= currentPage %> of <%= totalPages %> — Total Orders: <%= totalOrders %>
               </span>
+              
               <div class="flex space-x-2">
                 <% 
                   let prevPage = Math.max(1, currentPage - 1);
@@ -169,27 +170,76 @@
                   if (search) queryParams.push(`search=${encodeURIComponent(search)}`);
                   if (statusFilter) queryParams.push(`status=${encodeURIComponent(statusFilter)}`);
                   let queryString = queryParams.length > 0 ? queryParams.join('&') + '&' : '';
+                  
+                  let startPage, endPage;
+                  const maxPagesToShow = 5;
+                  
+                  if (totalPages <= maxPagesToShow) {
+                    startPage = 1;
+                    endPage = totalPages;
+                  } else {
+                    // Calculate range around current page
+                    const halfRange = Math.floor(maxPagesToShow / 2);
+                    
+                    if (currentPage <= halfRange + 1) {
+                      startPage = 1;
+                      endPage = maxPagesToShow;
+                    } else if (currentPage >= totalPages - halfRange) {
+                      startPage = totalPages - maxPagesToShow + 1;
+                      endPage = totalPages;
+                    } else {
+                      startPage = currentPage - halfRange;
+                      endPage = currentPage + halfRange;
+                    }
+                  }
                 %>
                 
                 <a
                   href="<%= baseUrl %><%= queryString %>page=<%= prevPage %>"
-                  class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage <= 1 ? 'pointer-events-none opacity-50' : '' %>"
+                  class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 transition <%= currentPage <= 1 ? 'pointer-events-none opacity-50' : '' %>"
+                  <% if (currentPage <= 1) { %>disabled<% } %>
                 >
                   <i class="fas fa-chevron-left text-sm"></i>
                 </a>
 
-                <% for (let i = 1; i <= totalPages; i++) { %>
-                <a
-                  href="<%= baseUrl %><%= queryString %>page=<%= i %>"
-                  class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium <%= i === currentPage ? 'bg-blue-500 text-white' : 'text-gray-700 hover:bg-gray-100 border border-gray-300' %>"
-                >
-                  <%= i %>
-                </a>
+                <% if (startPage > 1) { %>
+                  <a
+                    href="<%= baseUrl %><%= queryString %>page=1"
+                    class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium text-gray-700 hover:bg-gray-100 border border-gray-300 transition"
+                  >
+                    1
+                  </a>
+                  
+                  <% if (startPage > 2) { %>
+                    <span class="w-8 h-8 flex items-center justify-center text-gray-500">...</span>
+                  <% } %>
                 <% } %>
 
+                <% for (let i = startPage; i <= endPage; i++) { %>
+                  <a
+                    href="<%= baseUrl %><%= queryString %>page=<%= i %>"
+                    class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium transition <%= i === currentPage ? 'bg-blue-500 text-white shadow-sm' : 'text-gray-700 hover:bg-gray-100 border border-gray-300' %>"
+                  >
+                    <%= i %>
+                  </a>
+                <% } %>
+
+                <% if (endPage < totalPages) { %>
+                  <% if (endPage < totalPages - 1) { %>
+                    <span class="w-8 h-8 flex items-center justify-center text-gray-500">...</span>
+                  <% } %>
+                  
+                  <a
+                    href="<%= baseUrl %><%= queryString %>page=<%= totalPages %>"
+                    class="w-8 h-8 flex items-center justify-center rounded text-sm font-medium text-gray-700 hover:bg-gray-100 border border-gray-300 transition"
+                  >
+                    <%= totalPages %>
+                  </a>
+                <% } %>
                 <a
                   href="<%= baseUrl %><%= queryString %>page=<%= nextPage %>"
-                  class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 <%= currentPage >= totalPages ? 'pointer-events-none opacity-50' : '' %>"
+                  class="w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 transition <%= currentPage >= totalPages ? 'pointer-events-none opacity-50' : '' %>"
+                  <% if (currentPage >= totalPages) { %>disabled<% } %>
                 >
                   <i class="fas fa-chevron-right text-sm"></i>
                 </a>
