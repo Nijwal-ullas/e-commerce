@@ -247,26 +247,26 @@
 
         <div class="lg:w-3/4">
           <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 bg-white p-6 rounded-lg shadow">
-  <p class="text-gray-600 text-base">
-    Showing <span id="showing-count" class="font-semibold text-gray-800">
-      <% 
-        const productsCount = products.length;
-        const showingStart = productsCount > 0 ? 1 : 0;
-        const showingEnd = productsCount;
-      %>
-      <%= showingStart %>-<%= showingEnd %>
-    </span> of <span id="total-count" class="font-semibold text-gray-800"><%= totalProducts %></span> results
-  </p>
-  <div class="flex items-center gap-3">
-    <span class="text-gray-600 text-base hidden sm:block">Sort by:</span>
-    <select id="sort-select" class="border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-base">
-      <option value="latest" selected>Latest</option>
-      <option value="price-low">Price: Low to High</option>
-      <option value="price-high">Price: High to Low</option>
-      <option value="name">Name: A to Z</option>
-    </select>
-  </div>
-</header>
+            <p class="text-gray-600 text-base">
+              Showing <span id="showing-count" class="font-semibold text-gray-800">
+                <% 
+                  const productsCount = products.length;
+                  const showingStart = productsCount > 0 ? 1 : 0;
+                  const showingEnd = productsCount;
+                %>
+                <%= showingStart %>-<%= showingEnd %>
+              </span> of <span id="total-count" class="font-semibold text-gray-800"><%= totalProducts %></span> results
+            </p>
+            <div class="flex items-center gap-3">
+              <span class="text-gray-600 text-base hidden sm:block">Sort by:</span>
+              <select id="sort-select" class="border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-base">
+                <option value="latest" selected>Latest</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="name">Name: A to Z</option>
+              </select>
+            </div>
+          </header>
 
           <section aria-label="Product listings" class="w-full">
             <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -324,13 +324,6 @@
                         </h3>
                       </a>
                       
-                      <!-- <div class="flex items-center justify-center gap-2 mb-2">
-                        <p class="text-red-600 font-bold text-xl">₹<%= productPrice.toFixed(2) %></p>
-                        <% if (hasDiscount) { %>
-                          <p class="text-gray-500 line-through text-sm">₹<%= productOldPrice.toFixed(2) %></p>
-                        <% } %>
-                      </div> -->
-                      
                       <% if (brandName) { %>
                         <p class="text-gray-500 text-sm mb-1"><%= brandName %></p>
                       <% } %>
@@ -358,26 +351,26 @@
           </section>
 
           <nav id="pagination-container" class="flex justify-center items-center mt-12 space-x-3" aria-label="Product pagination">
-  <% if (totalProducts > 0) { %>
-    <% 
-      const hasNextPage = totalPages > 1;
-      const hasPrevPage = false; // First page
-    %>
-    <button id="prev-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium <%= hasPrevPage ? '' : 'opacity-50 cursor-not-allowed' %>" <%= hasPrevPage ? '' : 'disabled' %>>
-      ← Previous
-    </button>
-    
-    <% for (let i = 1; i <= Math.min(5, totalPages); i++) { %>
-      <button class="page-btn px-5 py-3 border rounded-lg font-medium <%= i === currentPage ? 'bg-red-600 text-white border-red-600' : 'border-gray-300 hover:bg-red-600 hover:text-white hover:border-red-600' %>" data-page="<%= i %>">
-        <%= i %>
-      </button>
-    <% } %>
-    
-    <button id="next-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium <%= hasNextPage ? '' : 'opacity-50 cursor-not-allowed' %>" <%= hasNextPage ? '' : 'disabled' %>>
-      Next →
-    </button>
-  <% } %>
-</nav>
+            <% if (totalProducts > 0) { %>
+              <% 
+                const hasNextPage = totalPages > 1;
+                const hasPrevPage = false; // First page
+              %>
+              <button id="prev-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium <%= hasPrevPage ? '' : 'opacity-50 cursor-not-allowed' %>" <%= hasPrevPage ? '' : 'disabled' %>>
+                ← Previous
+              </button>
+              
+              <% for (let i = 1; i <= Math.min(5, totalPages); i++) { %>
+                <button class="page-btn px-5 py-3 border rounded-lg font-medium <%= i === currentPage ? 'bg-red-600 text-white border-red-600' : 'border-gray-300 hover:bg-red-600 hover:text-white hover:border-red-600' %>" data-page="<%= i %>">
+                  <%= i %>
+                </button>
+              <% } %>
+              
+              <button id="next-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium <%= hasNextPage ? '' : 'opacity-50 cursor-not-allowed' %>" <%= hasNextPage ? '' : 'disabled' %>>
+                Next →
+              </button>
+            <% } %>
+          </nav>
         </div>
       </div>
     </div>
@@ -388,26 +381,25 @@
   </div>
 
   <script>
+    window.addEventListener('pageshow', function () {
+      document.querySelectorAll('.brand-filter, .category-filter')
+        .forEach(cb => cb.checked = false);
 
-     window.addEventListener('pageshow', function () {
-    document.querySelectorAll('.brand-filter, .category-filter')
-      .forEach(cb => cb.checked = false);
+      document.querySelectorAll('.size-btn')
+        .forEach(btn => btn.classList.remove('active'));
 
-    document.querySelectorAll('.size-btn')
-      .forEach(btn => btn.classList.remove('active'));
+      const priceRange = document.getElementById('price-range');
+      if (priceRange) {
+        priceRange.value = 5000;
+        document.getElementById('max-price').textContent = '5000';
+      }
 
-    const priceRange = document.getElementById('price-range');
-    if (priceRange) {
-      priceRange.value = 5000;
-      document.getElementById('max-price').textContent = '5000';
-    }
+      const searchInput = document.getElementById('search-input');
+      if (searchInput) searchInput.value = '';
 
-    const searchInput = document.getElementById('search-input');
-    if (searchInput) searchInput.value = '';
-
-    const sortSelect = document.getElementById('sort-select');
-    if (sortSelect) sortSelect.value = 'latest';
-  });
+      const sortSelect = document.getElementById('sort-select');
+      if (sortSelect) sortSelect.value = 'latest';
+    });
     
     const serverWishlist = <%- JSON.stringify(userWishlist || []) %>;
     let userWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
@@ -465,13 +457,146 @@
             Swal.close();
         }
     };
-    
+
+    function applyWishlistUpdates() {
+        const leavingDetail = sessionStorage.getItem('leavingDetailPage');
+        
+        const detailSync = sessionStorage.getItem('wishlistDetailSync');
+        
+        let productId = null;
+        let isInWishlist = null;
+        
+        if (detailSync) {
+            try {
+                const syncData = JSON.parse(detailSync);
+                productId = syncData.productId;
+                isInWishlist = syncData.isInWishlist;
+                
+                sessionStorage.removeItem('wishlistDetailSync');
+            } catch (error) {
+                console.error('Error parsing detail sync:', error);
+            }
+        }
+        
+        if (!productId) {
+            const productElements = document.querySelectorAll('.product-card');
+            productElements.forEach(element => {
+                const pid = element.dataset.productId;
+                if (pid) {
+                    const storedState = localStorage.getItem(`wishlist_${pid}`);
+                    if (storedState) {
+                        try {
+                            const state = JSON.parse(storedState);
+                            if (Date.now() - state.timestamp < 300000) {
+                                productId = pid;
+                                isInWishlist = state.isInWishlist;
+                            }
+                        } catch (error) {
+                            console.error('Error parsing stored state:', error);
+                        }
+                    }
+                }
+            });
+        }
+        
+        if (productId && isInWishlist !== null) {
+            if (isInWishlist && !userWishlist.includes(productId)) {
+                userWishlist.push(productId);
+            } else if (!isInWishlist && userWishlist.includes(productId)) {
+                userWishlist = userWishlist.filter(id => id !== productId);
+            }
+            
+            localStorage.setItem('userWishlist', JSON.stringify(userWishlist));
+            
+            const wishlistBtn = document.querySelector(`.wishlist-btn[data-product-id="${productId}"]`);
+            if (wishlistBtn) {
+                const heartIcon = wishlistBtn.querySelector('i');
+                if (isInWishlist) {
+                    wishlistBtn.classList.add('active');
+                    heartIcon.classList.remove('far');
+                    heartIcon.classList.add('fas');
+                } else {
+                    wishlistBtn.classList.remove('active');
+                    heartIcon.classList.remove('fas');
+                    heartIcon.classList.add('far');
+                }
+            }
+            
+            console.log('Applied wishlist update for product:', productId, 'status:', isInWishlist);
+        }
+        
+        sessionStorage.removeItem('leavingDetailPage');
+    }
+
+    function updateAllWishlistButtons() {
+        document.querySelectorAll('.wishlist-btn').forEach(btn => {
+            const productId = btn.dataset.productId;
+            if (productId) {
+                const isInWishlist = userWishlist.includes(productId);
+                const heartIcon = btn.querySelector('i');
+                
+                if (isInWishlist) {
+                    btn.classList.add('active');
+                    heartIcon.classList.remove('far');
+                    heartIcon.classList.add('fas');
+                } else {
+                    btn.classList.remove('active');
+                    heartIcon.classList.remove('fas');
+                    heartIcon.classList.add('far');
+                }
+            }
+        });
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
       let currentPage = 1;
       const limit = 12;
       let totalProducts = <%= totalProducts || 0 %>;
       let currentFilters = {};
+      
+      applyWishlistUpdates();
+      updateAllWishlistButtons();
+      
+      window.addEventListener('storage', function(event) {
+          if (event.key === 'userWishlist') {
+              try {
+                  userWishlist = JSON.parse(event.newValue || '[]');
+                  updateAllWishlistButtons();
+              } catch (error) {
+                  console.error('Error processing storage event:', error);
+              }
+          } else if (event.key && event.key.startsWith('wishlist_')) {
+              const productId = event.key.replace('wishlist_', '');
+              if (event.newValue) {
+                  try {
+                      const state = JSON.parse(event.newValue);
+                      const wishlistBtn = document.querySelector(`.wishlist-btn[data-product-id="${productId}"]`);
+                      if (wishlistBtn) {
+                          const heartIcon = wishlistBtn.querySelector('i');
+                          if (state.isInWishlist) {
+                              wishlistBtn.classList.add('active');
+                              heartIcon.classList.remove('far');
+                              heartIcon.classList.add('fas');
+                          } else {
+                              wishlistBtn.classList.remove('active');
+                              heartIcon.classList.remove('fas');
+                              heartIcon.classList.add('far');
+                          }
+                      }
+                  } catch (error) {
+                      console.error('Error processing wishlist update:', error);
+                  }
+              }
+          }
+      });
+      
+      document.addEventListener('visibilitychange', function() {
+          if (document.visibilityState === 'visible') {
+              const localWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
+              userWishlist = localWishlist;
+              updateAllWishlistButtons();
+          }
+      });
       
       attachProductEventListeners();
       
@@ -747,6 +872,7 @@
 
             const productElement = document.createElement('article');
             productElement.className = 'bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 product-card group h-full flex flex-col';
+            productElement.setAttribute('data-product-id', productId);
             productElement.innerHTML = `
                 <div class="relative h-80 rounded-t-lg overflow-hidden flex-shrink-0">
                     <button 
@@ -785,8 +911,6 @@
                             ${productName}
                         </h3>
                     </a>
-                    
-                   
                     
                     ${brandName ? `
                         <p class="text-gray-500 text-sm mb-1">${brandName}</p>
@@ -915,6 +1039,12 @@
                         heartIcon.classList.remove('fas');
                         heartIcon.classList.add('far');
                         
+                        // Store product-specific state
+                        localStorage.setItem(`wishlist_${productId}`, JSON.stringify({
+                            isInWishlist: false,
+                            timestamp: Date.now()
+                        }));
+                        
                         const response = await axios.delete(`/wishlist/remove/${productId}`);
                         
                         if (response.data.success) {
@@ -932,6 +1062,12 @@
                         this.classList.add('active');
                         heartIcon.classList.remove('far');
                         heartIcon.classList.add('fas');
+                        
+                        // Store product-specific state
+                        localStorage.setItem(`wishlist_${productId}`, JSON.stringify({
+                            isInWishlist: true,
+                            timestamp: Date.now()
+                        }));
                         
                         const response = await axios.post('/wishlist/add', {
                             productId: productId
@@ -962,32 +1098,31 @@
       }
 
       async function clearAllFilters() {
-  document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-    checkbox.checked = false;
-  });
-  
-  document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
-  
-  document.getElementById('price-range').value = 5000;
-  document.getElementById('max-price').textContent = '5000';
-  
-  document.getElementById('search-input').value = '';
-  const clearSearchBtn = document.getElementById('clear-search');
-  if (clearSearchBtn) {
-    clearSearchBtn.classList.remove('opacity-100', 'pointer-events-auto');
-    clearSearchBtn.classList.add('opacity-0', 'pointer-events-none');
-  }
-  
-  document.getElementById('sort-select').value = 'latest';
-  
-  currentPage = 1;
-  currentFilters = {};
-  
-  // Load products from backend instead of showing static HTML
-  await loadProductsFromBackend({});
-  
-  showAlert.success('All filters cleared!');
-}
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+          checkbox.checked = false;
+        });
+        
+        document.querySelectorAll('.size-btn').forEach(btn => btn.classList.remove('active'));
+        
+        document.getElementById('price-range').value = 5000;
+        document.getElementById('max-price').textContent = '5000';
+        
+        document.getElementById('search-input').value = '';
+        const clearSearchBtn = document.getElementById('clear-search');
+        if (clearSearchBtn) {
+          clearSearchBtn.classList.remove('opacity-100', 'pointer-events-auto');
+          clearSearchBtn.classList.add('opacity-0', 'pointer-events-none');
+        }
+        
+        document.getElementById('sort-select').value = 'latest';
+        
+        currentPage = 1;
+        currentFilters = {};
+        
+        await loadProductsFromBackend({});
+        
+        showAlert.success('All filters cleared!');
+      }
 
       function showLoadingState() {
         const productGrid = document.getElementById('product-grid');
@@ -1018,14 +1153,14 @@
     });
 
     (function () {
-    if (document.referrer.includes('/products')) {
-      window.history.replaceState(
-        null,
-        '',
-        '/products'
-      );
-    }
-  })();
+      if (document.referrer.includes('/products')) {
+        window.history.replaceState(
+          null,
+          '',
+          '/products'
+        );
+      }
+    })();
   </script>
 </body>
 </html>

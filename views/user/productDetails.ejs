@@ -94,9 +94,6 @@
                     </div>
                     <% } %>
 
-                   
-
-
                     <div class="mb-6">
                         <p class="text-sm text-gray-600 mb-1">Offer price</p>
                         <div class="flex items-center gap-3">
@@ -333,13 +330,6 @@
                                             <%= relatedProduct.productName %>
                                         </h3>
                                         
-                                        <!-- <div class="flex items-center gap-2 mb-2">
-                                            <p class="text-red-600 font-bold text-lg">₹<%= relatedOfferPrice.toFixed(2) %></p>
-                                            <% if (hasDiscount) { %>
-                                                <p class="text-gray-500 line-through text-sm">₹<%= relatedOriginalPrice.toFixed(2) %></p>
-                                            <% } %>
-                                        </div> -->
-                                        
                                         <div class="flex justify-between items-center text-xs text-gray-500 mb-2">
                                             <% if (relatedProduct.brand?.name) { %>
                                                 <span><%= relatedProduct.brand.name %></span>
@@ -393,8 +383,6 @@
         let selectedQuantity = 1;
         const productId = '<%= product._id %>';
         const isBlocked = <%= isBlocked ? 'true' : 'false' %>;
-        
-
 
         const showAlert = {
             success: (message, timer = 2000) => {
@@ -608,11 +596,12 @@
         async function toggleWishlist() {
             try {
                 if (isBlocked) {
-        showAlert.warning(
-          "This product is blocked by admin and cannot be added to wishlist."
-        );
-        return;
-    }
+                    showAlert.warning(
+                        "This product is blocked by admin and cannot be added to wishlist."
+                    );
+                    return;
+                }
+                
                 const wishlistBtn = document.getElementById('wishlist-btn');
                 const heartIcon = wishlistBtn.querySelector('i');
                 
@@ -632,8 +621,16 @@
                         currentWishlist.push(productId);
                         localStorage.setItem('userWishlist', JSON.stringify(currentWishlist));
                         
-                        window.dispatchEvent(new CustomEvent('wishlistUpdated', {
-                            detail: { productId, action: 'added' }
+                        sessionStorage.setItem('wishlistUpdate', JSON.stringify({
+                            productId: productId,
+                            action: 'added',
+                            timestamp: Date.now()
+                        }));
+                        
+                        localStorage.setItem('lastWishlistAction', JSON.stringify({
+                            productId: productId,
+                            isInWishlist: true,
+                            timestamp: Date.now()
                         }));
                         
                         showAlert.success('Added to wishlist!');
@@ -654,8 +651,18 @@
                         const updatedWishlist = currentWishlist.filter(id => id !== productId);
                         localStorage.setItem('userWishlist', JSON.stringify(updatedWishlist));
                         
-                        window.dispatchEvent(new CustomEvent('wishlistUpdated', {
-                            detail: { productId, action: 'removed' }
+                        // Store wishlist update for product page
+                        sessionStorage.setItem('wishlistUpdate', JSON.stringify({
+                            productId: productId,
+                            action: 'removed',
+                            timestamp: Date.now()
+                        }));
+                        
+                        // Also store in a temporary cache for immediate back navigation
+                        localStorage.setItem('lastWishlistAction', JSON.stringify({
+                            productId: productId,
+                            isInWishlist: false,
+                            timestamp: Date.now()
                         }));
                         
                         showAlert.success('Removed from wishlist!');
@@ -729,6 +736,156 @@
             }
         }
 
+        async function addToCart(isBuyNow = false) {
+            if (!selectedVariant || selectedVariant.quantity <= 0) {
+                showAlert.warning('Please select a valid variant');
+                return;
+            }
+
+            const quantity = parseInt(document.getElementById('quantity').value);
+            
+            const actionBtn = isBuyNow ? document.getElementById('buy-now-btn') : document.getElementById('add-to-cart-btn');
+            const originalText = actionBtn.innerHTML;
+            
+            actionBtn.innerHTML = '🔄 Processing...';
+            actionBtn.disabled = true;
+
+            try {
+                const endpoint = isBuyNow ? `/buy-now/${productId}` : `/cart/${productId}`;
+                
+                const response = await axios.post(endpoint, {
+                    quantity: quantity,
+                    variantMl: selectedVariant.ml
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.data.success) {
+                    if (isBuyNow) {
+                        showAlert.success('Proceeding to checkout...');
+                        setTimeout(() => {
+                            window.location.href = "/checkout";
+                        }, 1000);
+                    } else {
+                        showAlert.success('Product added to cart!', 1500);
+                        setTimeout(() => {
+                            window.location.href = '/cart';
+                        }, 1500);
+                    }
+                } else {
+                    showAlert.info(response.data.message || 'User not found. Please login first.');
+                    actionBtn.innerHTML = originalText;
+                    actionBtn.disabled = false;
+                }
+            } catch (error) {
+                actionBtn.innerHTML = originalText;
+                actionBtn.disabled = false;
+                
+                console.error("Error:", error);
+                
+                if (error.response && error.response.status === 401) {
+                    showAlert.info(error.response.data.message || 'Please login to add items to cart');
+                    setTimeout(() => {
+                        window.location.href = "/login";
+                    }, 2000);
+                    return;
+                }
+                
+                if (error.response && error.response.data && error.response.data.message) {
+                    showAlert.error(error.response.data.message);
+                } else {
+                    showAlert.error("Something went wrong. Please try again.");
+                }
+            }
+        }
+
+        async function addRelatedToCart(relatedProductId) {
+            const btn = document.querySelector(`[data-product-id="${relatedProductId}"]`);
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '🔄 Adding...';
+            btn.disabled = true;
+
+            try {
+                const response = await axios.post(`/cart/${relatedProductId}`, {
+                    quantity: 1
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (response.data.success) {
+                    showAlert.success('Product added to cart successfully!', 1500);
+                    setTimeout(() => {
+                        window.location.href = '/cart';
+                    }, 1500);
+                } else {
+                    showAlert.info(response.data.message || 'Failed to add to cart');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+
+            } catch (error) {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                
+                if (error.response && error.response.status === 401) {
+                    showAlert.info(error.response.data.message || 'Please login to add items to cart');
+                    setTimeout(() => {
+                        window.location.href = "/login";
+                    }, 2000);
+                    return;
+                }
+                
+                showAlert.error(error.response?.data?.message || 'Network error. Please try again.');
+            }
+        }
+
+        function syncWishlistBeforeUnload() {
+            const localWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
+            const isInWishlist = localWishlist.includes(productId);
+            
+            sessionStorage.setItem('wishlistSyncDetail', JSON.stringify({
+                productId: productId,
+                isInWishlist: isInWishlist,
+                timestamp: Date.now()
+            }));
+        }
+
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted || performance.navigation.type === 2) {
+                const lastAction = localStorage.getItem('lastWishlistAction');
+                if (lastAction) {
+                    try {
+                        const actionData = JSON.parse(lastAction);
+                        if (actionData.productId === productId) {
+                            let userWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
+                            
+                            if (actionData.isInWishlist && !userWishlist.includes(productId)) {
+                                userWishlist.push(productId);
+                                localStorage.setItem('userWishlist', JSON.stringify(userWishlist));
+                            } else if (!actionData.isInWishlist) {
+                                userWishlist = userWishlist.filter(id => id !== productId);
+                                localStorage.setItem('userWishlist', JSON.stringify(userWishlist));
+                            }
+                            
+                            localStorage.removeItem('lastWishlistAction');
+                        }
+                    } catch (error) {
+                        console.error('Error processing last wishlist action:', error);
+                        localStorage.removeItem('lastWishlistAction');
+                    }
+                }
+            }
+        });
+
+        window.addEventListener('beforeunload', syncWishlistBeforeUnload);
+
         document.addEventListener('DOMContentLoaded', function() {
             initializeVariantSelection();
             updateAddToCartButton();
@@ -741,117 +898,142 @@
                 lensShape: "round",
                 lensSize: 200
             });
+            
+            sessionStorage.removeItem('wishlistUpdate');
+            sessionStorage.removeItem('wishlistSyncDetail');
         });
 
-        async function addToCart(isBuyNow = false) {
-    if (!selectedVariant || selectedVariant.quantity <= 0) {
-        showAlert.warning('Please select a valid variant');
-        return;
-    }
-
-    const quantity = parseInt(document.getElementById('quantity').value);
+function syncWishlistToStorage() {
+    const localWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
+    const isInWishlist = localWishlist.includes(productId);
     
-    const actionBtn = isBuyNow ? document.getElementById('buy-now-btn') : document.getElementById('add-to-cart-btn');
-    const originalText = actionBtn.innerHTML;
+    sessionStorage.setItem('wishlistDetailSync', JSON.stringify({
+        productId: productId,
+        isInWishlist: isInWishlist,
+        timestamp: Date.now(),
+        synced: true
+    }));
     
-    actionBtn.innerHTML = '🔄 Processing...';
-    actionBtn.disabled = true;
+    localStorage.setItem(`wishlist_${productId}`, JSON.stringify({
+        isInWishlist: isInWishlist,
+        timestamp: Date.now()
+    }));
+}
 
+async function toggleWishlist() {
     try {
-        const endpoint = isBuyNow ? `/buy-now/${productId}` : `/cart/${productId}`;
+        if (isBlocked) {
+            showAlert.warning("This product is blocked by admin and cannot be added to wishlist.");
+            return;
+        }
         
-        const response = await axios.post(endpoint, {
-            quantity: quantity,
-            variantMl: selectedVariant.ml
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        });
-
-        if (response.data.success) {
-            if (isBuyNow) {
-                showAlert.success('Proceeding to checkout...');
-                setTimeout(() => {
-                    window.location.href = "/checkout";
-                }, 1000);
+        const wishlistBtn = document.getElementById('wishlist-btn');
+        const heartIcon = wishlistBtn.querySelector('i');
+        
+        const currentWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
+        const isCurrentlyInWishlist = currentWishlist.includes(productId);
+        
+        if (!isCurrentlyInWishlist) {
+            heartIcon.classList.remove('far');
+            heartIcon.classList.add('fas');
+            wishlistBtn.classList.add('text-red-500');
+            
+            const response = await axios.post('/wishlist/add', {
+                productId: productId
+            });
+            
+            if (response.data.success) {
+                currentWishlist.push(productId);
+                localStorage.setItem('userWishlist', JSON.stringify(currentWishlist));
+                
+                syncWishlistToStorage();
+                
+                localStorage.setItem('wishlist_force_update', Date.now().toString());
+                
+                showAlert.success('Added to wishlist!');
             } else {
-                showAlert.success('Product added to cart!', 1500);
-                setTimeout(() => {
-                    window.location.href = '/cart';
-                }, 1500);
+                heartIcon.classList.remove('fas');
+                heartIcon.classList.add('far');
+                wishlistBtn.classList.remove('text-red-500');
+                showAlert.error(response.data.message || 'Failed to add to wishlist');
             }
         } else {
-            showAlert.info(response.data.message || 'User not found. Please login first.');
-            actionBtn.innerHTML = originalText;
-            actionBtn.disabled = false;
+            heartIcon.classList.remove('fas');
+            heartIcon.classList.add('far');
+            wishlistBtn.classList.remove('text-red-500');
+            
+            const response = await axios.delete(`/wishlist/remove/${productId}`);
+            
+            if (response.data.success) {
+                const updatedWishlist = currentWishlist.filter(id => id !== productId);
+                localStorage.setItem('userWishlist', JSON.stringify(updatedWishlist));
+                
+                syncWishlistToStorage();
+                
+                localStorage.setItem('wishlist_force_update', Date.now().toString());
+                
+                showAlert.success('Removed from wishlist!');
+            } else {
+                heartIcon.classList.remove('far');
+                heartIcon.classList.add('fas');
+                wishlistBtn.classList.add('text-red-500');
+                showAlert.error(response.data.message || 'Failed to remove from wishlist');
+            }
         }
     } catch (error) {
-        actionBtn.innerHTML = originalText;
-        actionBtn.disabled = false;
+        console.error('Error updating wishlist:', error);
         
-        console.error("Error:", error);
-        
-        if (error.response && error.response.status === 401) {
-            showAlert.info(error.response.data.message || 'Please login to add items to cart');
-            setTimeout(() => {
-                window.location.href = "/login";
-            }, 2000);
-            return;
-        }
-        
-        if (error.response && error.response.data && error.response.data.message) {
-            showAlert.error(error.response.data.message);
+        if (error.response?.status === 401) {
+            showAlert.warning('Please login to manage your wishlist');
         } else {
-            showAlert.error("Something went wrong. Please try again.");
+            showAlert.error('Error updating wishlist');
         }
+        
+        const wishlistBtn = document.getElementById('wishlist-btn');
+        const heartIcon = wishlistBtn.querySelector('i');
+        heartIcon.classList.remove('fas', 'far');
+        heartIcon.classList.add('far');
+        wishlistBtn.classList.remove('text-red-500');
     }
 }
 
-        async function addRelatedToCart(relatedProductId) {
-    const btn = document.querySelector(`[data-product-id="${relatedProductId}"]`);
-    const originalText = btn.innerHTML;
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+        syncWishlistToStorage();
+    }
+});
+
+window.addEventListener('beforeunload', function() {
+    syncWishlistToStorage();
     
-    btn.innerHTML = '🔄 Adding...';
-    btn.disabled = true;
+    sessionStorage.setItem('leavingDetailPage', 'true');
+});
 
-    try {
-        const response = await axios.post(`/cart/${relatedProductId}`, {
-            quantity: 1
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        });
-
-        if (response.data.success) {
-            showAlert.success('Product added to cart successfully!', 1500);
-            setTimeout(() => {
-                window.location.href = '/cart';
-            }, 1500);
-        } else {
-            showAlert.info(response.data.message || 'Failed to add to cart');
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
-
-    } catch (error) {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-        
-        if (error.response && error.response.status === 401) {
-            showAlert.info(error.response.data.message || 'Please login to add items to cart');
-            setTimeout(() => {
-                window.location.href = "/login";
-            }, 2000);
-            return;
-        }
-        
-        showAlert.error(error.response?.data?.message || 'Network error. Please try again.');
+window.addEventListener('pageshow', function(event) {
+    if (event.persisted) {
+        const localWishlist = JSON.parse(localStorage.getItem('userWishlist') || '[]');
+        const isInWishlist = localWishlist.includes(productId);
+        updateWishlistUI(isInWishlist);
     }
-}
+    
+    sessionStorage.removeItem('leavingDetailPage');
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeVariantSelection();
+    updateAddToCartButton();
+    checkInitialWishlistStatus();
+    
+    document.getElementById('wishlist-btn').addEventListener('click', toggleWishlist);
+    
+    $("#mainImage").elevateZoom({
+        zoomType: "lens",
+        lensShape: "round",
+        lensSize: 200
+    });
+    
+    syncWishlistToStorage();
+});
     </script>
 </body>
 </html>

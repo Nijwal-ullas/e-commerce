@@ -56,7 +56,6 @@
                       src="<%= user.profileImage || '/images/default-avatar.png' %>" 
                       alt="Profile Picture"
                       class="profile-image-preview" 
-                      onerror="this.src='/images/default-avatar.png'"
                     />
                   </div>
                 </div>
@@ -69,19 +68,30 @@
                       <%= user.email || 'Not provided' %>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-2">
-                      <a
-                        href="/profile/change-email"
-                        class="px-5 py-2 rounded-full bg-blue-500 text-white text-sm hover:bg-blue-600 whitespace-nowrap text-center"
-                      >
-                        <i class="fas fa-envelope mr-1"></i>Change Email
-                      </a>
-                      <a
-                        href="/profile/change-password"
-                        class="px-5 py-2 rounded-full bg-gray-700 text-white text-sm hover:bg-gray-800 whitespace-nowrap text-center"
-                      >
-                        <i class="fas fa-lock mr-1"></i>Change Password
-                      </a>
+
+                      <% if (user.authProvider === "local") { %>
+                        <a
+                          href="/profile/change-email"
+                          class="px-5 py-2 rounded-full bg-blue-500 text-white text-sm hover:bg-blue-600 whitespace-nowrap text-center"
+                        >
+                          <i class="fas fa-envelope mr-1"></i>Change Email
+                        </a>
+
+                        <a
+                          href="/profile/change-password"
+                          class="px-5 py-2 rounded-full bg-gray-700 text-white text-sm hover:bg-gray-800 whitespace-nowrap text-center"
+                        >
+                          <i class="fas fa-lock mr-1"></i>Change Password
+                        </a>
+
+                      <% } else if (user.authProvider === "google") { %>
+                        <span class="text-sm text-gray-500 italic">
+                          This account is managed via Google
+                        </span>
+                      <% } %>
+
                     </div>
+
                   </div>
                 </div>
 
