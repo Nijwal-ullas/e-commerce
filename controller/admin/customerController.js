@@ -14,7 +14,7 @@ const customerInfo = async (req, res) => {
     if (search) {
       const regex = new RegExp(search, "i");
       query = {
-        $or: [{ name: regex }, { email: regex }],
+        $or: [{ name: regex }, { email: regex }, { phone: regex }],
       };
     }
 

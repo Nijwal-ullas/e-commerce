@@ -433,6 +433,7 @@ const approveItemReturn = async (req, res) => {
 const rejectItemReturn = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
+    const { rejectionReason } = req.body;
 
     const orderDoc = await order.findById(orderId);
     if (!orderDoc) {
@@ -457,8 +458,17 @@ const rejectItemReturn = async (req, res) => {
       });
     }
 
+    if (!rejectionReason || rejectionReason.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Rejection reason is required",
+      });
+    }
+
     item.status = "Delivered";
     item.paymentStatus = "Paid";
+    item.returnRejectedReason = rejectionReason,
+    item.returnRejected = true;
     item.returnRejectionDate = new Date();
 
     recalculateOrderPaymentStatus(orderDoc);
