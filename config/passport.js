@@ -32,6 +32,7 @@ passport.use(
           name: profile.displayName,
           email,
           googleId: profile.id,
+          authProvider: "google"
         });
         await user.save();
 
