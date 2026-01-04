@@ -753,16 +753,6 @@ const requestOrderReturn = async (req, res) => {
     //   })
     // }
 
-    const itemDeliveryDate = item.deliveredDate || orderDoc.deliveredDate || orderDoc.updatedAt;
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    if (itemDeliveryDate < sevenDaysAgo) {
-      return res.status(400).json({
-        success: false,
-        message: "Return window closed. Returns must be requested within 7 days of item delivery.",
-      });
-    }
 
     item.status = "Return Requested";
     item.returnReason = reason.trim();
