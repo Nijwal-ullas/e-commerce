@@ -293,10 +293,10 @@
                               statusSteps = ['ordered', 'processing', 'shipped', 'delivered'];
                               currentStep = 'delivered';
                             } else if (itemStatusLower === 'return requested') {
-                              statusSteps = ['ordered', 'processing', 'shipped', 'delivered', 'return requested', 'return approved', 'returned'];
+                              statusSteps = ['ordered', 'processing', 'shipped', 'delivered', 'return requested'];
                               currentStep = 'return requested';
                             } else if (itemStatusLower === 'return approved') {
-                              statusSteps = ['ordered', 'processing', 'shipped', 'delivered', 'return requested', 'return approved', 'returned'];
+                              statusSteps = ['ordered', 'processing', 'shipped', 'delivered', 'return requested', 'return approved'];
                               currentStep = 'return approved';
                             } else if (itemStatusLower === 'returned') {
                               statusSteps = ['ordered', 'processing', 'shipped', 'delivered', 'return requested', 'return approved', 'returned'];
@@ -409,12 +409,42 @@
                             <% }); %>
                           </div>
                           
-                          <% if (item.returnReason && (hasReturnRequest || isReturnApproved || isReturned)) { %>
-                            <p class="text-xs text-gray-600 mt-2">
-                              <i class="fas fa-info-circle mr-1"></i>
-                              Reason: <%= item.returnReason %>
-                            </p>
-                          <% } %>
+                            <div class="mt-3 text-sm">
+                              <% if (item.returnRejected && item.returnRejectedReason) { %>
+                                <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
+                                  <div class="flex items-start gap-2">
+                                    <i class="fas fa-times-circle text-red-600 mt-0.5"></i>
+                                    <div class="flex-1">
+                                      <p class="text-xs font-semibold text-red-700 mb-1">Return Request Rejected</p>
+                                      <p class="text-xs text-red-600">
+                                        <%= item.returnRejectedReason %>
+                                      </p>
+                                      <% if (item.returnRejectionDate) { %>
+                                        <p class="text-[10px] text-red-500 mt-1">
+                                          Rejected on: <%= new Date(item.returnRejectionDate).toLocaleDateString('en-US', {
+                                            month: 'short', day: 'numeric', year: 'numeric'
+                                          }) %>
+                                        </p>
+                                      <% } %>
+                                    </div>
+                                  </div>
+                                </div>
+                              <% } else if (item.returnRejected) { %>
+                                <span class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-red-100 text-red-700 border border-red-200">
+                                  <i class="fas fa-times-circle mr-1"></i> Return Request Rejected
+                                </span>
+                              <% } else if (item.returnReason) { %>
+                                <div class="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                  <p class="text-xs text-yellow-800">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    <span class="font-medium">Return Reason:</span> <%= item.returnReason %>
+                                  </p>
+                                </div>
+                              <% } else { %>
+                                <span class="text-xs text-gray-400">-</span>
+                              <% } %>
+                            </div>
+
                           
                           <% if (item.cancellationReason && isCancelled) { %>
                             <p class="text-xs text-gray-600 mt-2">
