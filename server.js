@@ -8,12 +8,12 @@ import connectDB from "./config/db.js";
 
 import userRouter from "./router/user/userRouter.js";
 import userProductRouter from "./router/user/productRouter.js";
-import profileRouter from "./router/user/profileRouter.js"
-import addressRouter from "./router/user/addressRouter.js"
-import orderRouter from "./router/user/ordersRouter.js"
-import cartRouter from "./router/user/cartRouter.js"
-import checkoutRouter from "./router/user/checkoutRouter.js"
-import wishlistRouter from "./router/user/wishlistRouter.js"
+import profileRouter from "./router/user/profileRouter.js";
+import addressRouter from "./router/user/addressRouter.js";
+import orderRouter from "./router/user/ordersRouter.js";
+import cartRouter from "./router/user/cartRouter.js";
+import checkoutRouter from "./router/user/checkoutRouter.js";
+import wishlistRouter from "./router/user/wishlistRouter.js";
 import razorpayRouter from "./router/user/razorpayRouter.js";
 import walletRouter from "./router/user/walletRouter.js";
 
@@ -24,7 +24,7 @@ import customerRouter from "./router/admin/customerRoutes.js";
 import productRouter from "./router/admin/productRoutes.js";
 import ordersRouter from "./router/admin/ordersRouter.js";
 import couponRouter from "./router/admin/couponRouter.js";
-
+import adminProfileRouter from "./router/admin/profileRouter.js";
 
 import auth from "./middleware/auth.js";
 import passport from "./config/passport.js";
@@ -99,12 +99,12 @@ app.use(auth.setCurrentRoute);
 
 app.use("/", userRouter);
 app.use("/", userProductRouter);
-app.use("/",profileRouter);
-app.use("/",addressRouter);
-app.use("/",orderRouter);
-app.use("/",cartRouter);
-app.use("/",checkoutRouter);
-app.use("/",wishlistRouter);
+app.use("/", profileRouter);
+app.use("/", addressRouter);
+app.use("/", orderRouter);
+app.use("/", cartRouter);
+app.use("/", checkoutRouter);
+app.use("/", wishlistRouter);
 app.use("/", razorpayRouter);
 app.use("/", walletRouter);
 
@@ -114,12 +114,12 @@ app.use("/admin", categoryRouter);
 app.use("/admin", customerRouter);
 app.use("/admin", productRouter);
 app.use("/admin", ordersRouter);
-app.use("/admin",couponRouter);
+app.use("/admin", couponRouter);
+app.use("/admin", adminProfileRouter);
 
 app.use((req, res) => {
   res.status(404).render("error");
 });
-
 
 const port = process.env.PORT;
 app.listen(port, () => {
