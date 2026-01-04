@@ -80,17 +80,17 @@ const updateProfile = async (req, res) => {
       });
     }
 
-    const mobileExists = await User.findOne({ 
-      phone: mobile.trim(), 
-      _id: { $ne: userId } 
-    });
+    // const mobileExists = await User.findOne({ 
+    //   phone: mobile.trim(), 
+    //   _id: { $ne: userId } 
+    // });
 
-    if (mobileExists) {
-      return res.status(400).json({
-        success: false,
-        message: "Mobile number already in use by another account",
-      });
-    }
+    // if (mobileExists) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Mobile number already in use by another account",
+    //   });
+    // }
 
     let profileImage = "";
     let cloudinaryPublicId = "";
@@ -167,6 +167,7 @@ const verifyChangeEmail = async (req, res) => {
   try {
     const { newEmail, confirmEmail, currentPassword } = req.body;
     const userId = req.session.user;
+    const userData = await User.findById(userId)
 
     const existingUser = await User.findById(userId);
 
@@ -216,6 +217,14 @@ const verifyChangeEmail = async (req, res) => {
         message: "Incorrect password",
       });
     }
+
+    if (userData.authProvider === "google") {
+      return res.status(403).json({
+        success: false,
+        message: "Google accounts cannot change email"
+      });
+    }
+
 
     const otp = generateOtp();
     console.log(`${newEmail} otp : ${otp}`);
@@ -391,6 +400,14 @@ const registerChangePassword = async (req, res) => {
         message: "current password and new password cant be same",
       });
     }
+
+    if (userData.authProvider === "google") {
+      return res.status(403).json({
+        success: false,
+        message: "Google accounts cannot change password"
+      });
+    }
+
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     userData.password = hashedPassword;
