@@ -73,6 +73,8 @@ const OrdersSchema = new Schema(
         returnRequestDate: { type: Date },
         returnApprovalDate: { type: Date },
         returnRejectionDate: { type: Date },
+        returnRejected: { type: Boolean, default:false},
+        returnRejectedReason: { type: String},
         returnedDate: { type: Date },
         refundAmount: { type: Number },
         refundDate: { type: Date },
