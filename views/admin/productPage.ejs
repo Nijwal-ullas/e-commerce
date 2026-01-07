@@ -1041,7 +1041,7 @@
             
             if (result.isConfirmed) {
               try {
-                const response = await axios.delete(`/admin/Product/${productData._id}`);
+                const response = await axios.delete(`/admin/product/${productData._id}`);
                 
                 await Swal.fire({
                   title: 'Deleted!',
