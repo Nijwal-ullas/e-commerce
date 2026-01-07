@@ -6,8 +6,8 @@ const router = express.Router();
 router.use(auth.isBlocked);
 
 
-router.get("/product", productController.productPage);
-router.get("/products/filter", productController.getProducts);
+router.get("/product", productController.getProducts);
+router.get("/products/filter", productController.filterProducts);
 router.get("/product/:id", productController.getProductDetails);
 
 

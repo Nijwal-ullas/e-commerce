@@ -44,7 +44,8 @@ router.get(
 );
 
 
-router.get("/aboutPage",userController.aboutPage);
-router.get("/contactPage",userController.contactPage);
+router.get("/about",userController.getAboutPage);
+router.get("/contact",userController.getContact);
+router.post("/contact",userController.submitContact);
 
 export default router;
