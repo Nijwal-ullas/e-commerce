@@ -46,6 +46,14 @@
         .remove-btn:hover svg {
             transform: scale(1.1);
         }
+        .stock-warning {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
     </style>
 </head>
 
@@ -79,6 +87,8 @@
                             
                             const isBlocked = product.isListed === false;
                             const stock = !isBlocked ? (variant?.Quantity || product.stock || 0) : 0;
+                            const isOutOfStock = stock === 0;
+                            const exceedsStock = stock > 0 && item.quantity > stock;
                             const itemTotal = currentPrice * item.quantity;
 
                             const productName = product.productName || "Product";
@@ -86,11 +96,11 @@
                             const categoryName = product.category?.name || "Uncategorized";
                         %>
 
-                        <div class="p-6 <%= (stock <= 0 || isBlocked) ? 'bg-gray-50' : '' %>">
+                        <div class="p-6 <%= (isOutOfStock || isBlocked) ? 'bg-gray-50' : '' %>">
                             <div class="flex gap-4 sm:gap-6">
                                 <div class="flex-shrink-0">
                                     <img src="<%= image %>" 
-                                         class="product-image rounded-lg border border-gray-200 <%= (stock <= 0 || isBlocked) ? 'opacity-60' : '' %>" 
+                                         class="product-image rounded-lg border border-gray-200 <%= (isOutOfStock || isBlocked) ? 'opacity-60' : '' %>" 
                                          onerror="this.src='/images/placeholder.png'" 
                                          alt="<%= productName %>" />
                                 </div>
@@ -109,6 +119,8 @@
 
                                             <% if (variant) { %>
                                                 <p class="text-sm text-gray-600 mt-2">Size: <span class="font-medium text-gray-900"><%= variant.Ml %>ml</span></p>
+                                            <% } else { %>
+                                                <p class="text-sm text-red-600 mt-2">Variant no longer available</p>
                                             <% } %>
 
                                             <div class="mt-3">
@@ -117,10 +129,15 @@
                                                         <i class="fas fa-ban text-[10px]"></i>
                                                         UNAVAILABLE
                                                     </span>
-                                                <% } else if (stock <= 0) { %>
-                                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-100 px-3 py-1.5 rounded-full">
+                                                <% } else if (isOutOfStock) { %>
+                                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-100 px-3 py-1.5 rounded-full stock-warning">
                                                         <i class="fas fa-exclamation-circle text-[10px]"></i>
                                                         OUT OF STOCK
+                                                    </span>
+                                                <% } else if (exceedsStock) { %>
+                                                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-yellow-700 bg-yellow-100 px-3 py-1.5 rounded-full">
+                                                        <i class="fas fa-exclamation-triangle text-[10px]"></i>
+                                                        Only <%= stock %> available (you have <%= item.quantity %>)
                                                     </span>
                                                 <% } else if (stock < 5) { %>
                                                     <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-orange-700 bg-orange-100 px-3 py-1.5 rounded-full">
@@ -143,15 +160,19 @@
                                         <div class="flex items-center gap-3">
                                             <span class="text-sm text-gray-600">Qty:</span>
                                             <div class="flex items-center gap-2">
+                                                <!-- Decrement button - always enabled if quantity > 1 -->
                                                 <button class="quantity-btn" 
                                                         onclick="updateQuantity('<%= item._id %>', 'decrement')" 
-                                                        <%= item.quantity <= 1 || stock <= 0 || isBlocked ? 'disabled' : '' %>>
+                                                        <%= item.quantity <= 1 ? 'disabled' : '' %>>
                                                     −
                                                 </button>
-                                                <span class="w-10 text-center font-medium text-gray-900"><%= item.quantity %></span>
+                                                <span class="w-10 text-center font-medium text-gray-900 <%= exceedsStock ? 'text-yellow-600 font-bold' : '' %>">
+                                                    <%= item.quantity %>
+                                                </span>
+                                                <!-- Increment button - disabled if out of stock or at max -->
                                                 <button class="quantity-btn" 
                                                         onclick="updateQuantity('<%= item._id %>', 'increment')" 
-                                                        <%= item.quantity >= stock || item.quantity >= 10 || stock <= 0 || isBlocked ? 'disabled' : '' %>>
+                                                        <%= isOutOfStock || item.quantity >= 10 || (stock > 0 && item.quantity >= stock) || isBlocked ? 'disabled' : '' %>>
                                                     +
                                                 </button>
                                             </div>
@@ -167,14 +188,14 @@
                                             <% } %>
                                             
                                             <div class="flex items-center justify-end gap-2">
-                                                <span class="text-sm text-gray-600">₹<%= currentPrice.toFixed(2) %></span>
+                                                <span class="text-sm <%= isOutOfStock || isBlocked ? 'text-gray-400' : 'text-gray-600' %>">₹<%= currentPrice.toFixed(2) %></span>
                                                 <% if (hasDiscount) { %>
                                                     <span class="text-sm text-gray-500 line-through">₹<%= originalPrice.toFixed(2) %></span>
                                                 <% } %>
                                             </div>
                                             
                                             <% if (item.quantity) { %>
-                                                <div class="text-lg font-semibold text-gray-700">
+                                                <div class="text-lg font-semibold <%= isOutOfStock || isBlocked ? 'text-gray-400' : 'text-gray-700' %>">
                                                     Total: ₹<%= itemTotal.toFixed(2) %>
                                                 </div>
                                             <% } %>
@@ -236,6 +257,8 @@
                         let hasOutOfStock = false;
                         let hasBlockedProduct = false;
                         let inStockItems = 0;
+                        let outOfStockItems = 0;
+                        let blockedItems = 0;
                         
                         cartItems.forEach(item => {
                             const product = item.packageProductId;
@@ -247,8 +270,10 @@
                             
                             if (isBlocked) {
                                 hasBlockedProduct = true;
+                                blockedItems++;
                             } else if (stock <= 0) {
                                 hasOutOfStock = true;
+                                outOfStockItems++;
                             } else {
                                 const currentPrice = variant ? (variant.offerPrice || variant.Price) : (item.price || 0);
                                 const originalPrice = variant ? variant.Price : currentPrice;
@@ -269,6 +294,24 @@
                     %>
 
                     <div class="px-6 py-4 space-y-3">
+                        <!-- Stock Status Summary -->
+                        <% if (outOfStockItems > 0 || blockedItems > 0) { %>
+                        <div class="mb-3">
+                            <% if (outOfStockItems > 0) { %>
+                            <div class="flex items-center gap-2 text-sm text-red-600 mb-1">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span><%= outOfStockItems %> <%= outOfStockItems === 1 ? 'item' : 'items' %> out of stock</span>
+                            </div>
+                            <% } %>
+                            <% if (blockedItems > 0) { %>
+                            <div class="flex items-center gap-2 text-sm text-gray-600">
+                                <i class="fas fa-ban"></i>
+                                <span><%= blockedItems %> <%= blockedItems === 1 ? 'item' : 'items' %> unavailable</span>
+                            </div>
+                            <% } %>
+                        </div>
+                        <% } %>
+
                         <% if (hasOverallDiscount) { %>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Original Price</span>
@@ -320,7 +363,14 @@
                             <div class="flex gap-2">
                                 <i class="fas fa-exclamation-circle text-red-600 mt-0.5"></i>
                                 <div class="text-xs text-red-700">
-                                    <% if (hasBlockedProduct) { %>
+                                    <% if (hasBlockedProduct && hasOutOfStock) { %>
+                                        <p class="font-medium mb-1">Cannot proceed with checkout</p>
+                                        <p>Please remove:</p>
+                                        <ul class="mt-1 ml-2 list-disc list-inside">
+                                            <% if (hasBlockedProduct) { %><li>Unavailable items (<%= blockedItems %>)</li><% } %>
+                                            <% if (hasOutOfStock) { %><li>Out of stock items (<%= outOfStockItems %>)</li><% } %>
+                                        </ul>
+                                    <% } else if (hasBlockedProduct) { %>
                                         <p class="font-medium">Some items are unavailable</p>
                                         <p class="mt-1">Please remove unavailable items to proceed</p>
                                     <% } else if (hasOutOfStock) { %>
@@ -338,7 +388,7 @@
                                 class="w-full py-3 rounded-lg font-medium transition-colors duration-200 <%= canCheckout ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed' %>"
                                 <%= !canCheckout ? 'disabled' : '' %>>
                             <% if (canCheckout) { %>
-                                <i class="fas fa-lock mr-2"></i>Proceed to Checkout
+                                <i class="fas fa-lock mr-2"></i>Proceed to Checkout (<%= inStockItems %> items)
                             <% } else { %>
                                 <i class="fas fa-ban mr-2"></i>Cannot Proceed
                             <% } %>
@@ -389,6 +439,7 @@
 
         async function updateQuantity(itemId, action) {
             try {
+                showAlert.loading('Updating quantity...');
                 
                 const res = await axios.post("/cart/update-quantity", { itemId, action });
                 
@@ -397,12 +448,39 @@
                 if (res.data.success) {
                     window.location.reload();
                 } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Cannot Update',
+                    let icon = 'error';
+                    let title = 'Cannot Update';
+                    let showCancelButton = false;
+                    let confirmButtonText = 'OK';
+                    let cancelButtonText = '';
+                    
+                    if (res.data.allowDecreaseOnly) {
+                        icon = 'warning';
+                        title = 'Out of Stock';
+                        showCancelButton = true;
+                        confirmButtonText = 'Decrease Quantity';
+                        cancelButtonText = 'Keep as is';
+                    } else if (res.data.stockAvailable) {
+                        icon = 'info';
+                        title = 'Limited Stock Available';
+                    }
+                    
+                    const result = await Swal.fire({
+                        icon: icon,
+                        title: title,
                         text: res.data.message,
-                        confirmButtonColor: '#dc2626'
+                        confirmButtonColor: '#dc2626',
+                        showCancelButton: showCancelButton,
+                        cancelButtonColor: '#6b7280',
+                        confirmButtonText: confirmButtonText,
+                        cancelButtonText: cancelButtonText
                     });
+                    
+                    if (result.isConfirmed && res.data.allowDecreaseOnly) {
+                        updateQuantity(itemId, 'decrement');
+                    } else if (result.isConfirmed && res.data.stockAvailable) {
+                        window.location.reload();
+                    }
                 }
             } catch (error) {
                 showAlert.close();
@@ -418,6 +496,13 @@
                     }).then((result) => {
                         if (result.isConfirmed) window.location.href = '/login';
                     });
+                } else if (error.response?.status === 403) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Product Blocked',
+                        text: error.response.data.message,
+                        confirmButtonColor: '#dc2626'
+                    }).then(() => window.location.reload());
                 } else {
                     Swal.fire({
                         icon: 'error',
@@ -478,27 +563,108 @@
             }
         }
 
-        function proceedToCheckout() {
+        async function proceedToCheckout() {
+    try {
+        showAlert.loading('Validating cart items...');
+        const res = await axios.post("/cart/validate");
+        showAlert.close();
+
+        if (res.data.success) {
             window.location.href = "/checkout";
+        } else {
+            // If validation fails but returns success: false
+            Swal.fire({
+                icon: "error",
+                title: "Cannot Proceed",
+                text: res.data.message || "Cart validation failed",
+                confirmButtonColor: '#dc2626'
+            }).then(() => {
+                window.location.reload();
+            });
         }
+    } catch (error) {
+        showAlert.close();
         
+        if (error.response) {
+            Swal.fire({
+                icon: "error",
+                title: "Cannot Proceed",
+                text: error.response.data?.message || "Cart validation failed",
+                confirmButtonColor: '#dc2626'
+            }).then(() => {
+                if (error.response.status === 400) {
+                    window.location.reload();
+                }
+            });
+        } else if (error.request) {
+            Swal.fire({
+                icon: "error",
+                title: "Network Error",
+                text: "Please check your internet connection",
+                confirmButtonColor: '#dc2626'
+            });
+        } else {
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Something went wrong",
+                confirmButtonColor: '#dc2626'
+            });
+        }
+    }
+}
+
         document.addEventListener('DOMContentLoaded', function() {
+            const outOfStockItems = document.querySelectorAll('[class*="OUT OF STOCK"]');
+            const unavailableItems = document.querySelectorAll('[class*="UNAVAILABLE"]');
+            
+            if (outOfStockItems.length > 0 || unavailableItems.length > 0) {
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-4 right-4 bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg shadow-lg z-50 text-sm max-w-md';
+                notification.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <p class="font-medium">Cart needs attention</p>
+                            <p class="text-xs mt-1">Some items in your cart are unavailable or out of stock</p>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 5000);
+            }
+            
             const buttons = document.querySelectorAll('.quantity-btn, button[onclick*="removeFromCart"]');
             
             buttons.forEach(button => {
-                button.addEventListener('click', function() {
+                button.addEventListener('click', function(e) {
                     if (!this.disabled) {
                         const originalOnClick = this.getAttribute('onclick');
                         this.removeAttribute('onclick');
                         this.disabled = true;
                         
                         setTimeout(() => {
-                            this.setAttribute('onclick', originalOnClick);
-                            this.disabled = false;
-                        }, 500);
+                            if (this.parentNode) {
+                                this.setAttribute('onclick', originalOnClick);
+                                this.disabled = false;
+                            }
+                        }, 1000);
                     }
                 });
             });
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                const confirmRemove = confirm('Remove all invalid items from cart?');
+                if (confirmRemove) {
+                    window.location.href = '/cart/cleanup';
+                }
+            }
         });
     </script>
 </body>

@@ -1,96 +1,244 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rube Collection - Luxurious Perfumes</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>About Us - Ruhe Collections</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400&display=swap');
-        
-        body {
-            font-family: 'Lato', sans-serif;
-        }
-        
-        .heading-font {
-            font-family: 'Playfair Display', serif;
-        }
-        
-        .gradient-bg {
-            background: linear-gradient(135deg, #f5f5f0 0%, #ffffff 100%);
-        }
-        
-        .luxury-border {
-            border: 2px solid #8b0000;
-            box-shadow: 0 4px 6px rgba(139, 0, 0, 0.1);
-        }
+      @import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Montserrat:wght@300;400;500;600&display=swap");
+      
+      .logo {
+        font-family: "Playfair Display", serif;
+      }
+      
+      .brand-font {
+        font-family: "Playfair Display", serif;
+      }
+      
+      * {
+        font-family: "Montserrat", sans-serif;
+      }
+      
+      .hero-gradient {
+        background: linear-gradient(135deg, rgba(245, 243, 255, 0.9) 0%, rgba(250, 250, 255, 0.7) 100%);
+      }
+      
+      .section-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent 0%, #9f7aea 50%, transparent 100%);
+      }
+      
+      .glass-card {
+        backdrop-filter: blur(10px);
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      
+      .perfume-bottle {
+        background: linear-gradient(to bottom, #f5f3ff, #e0e7ff);
+        box-shadow: 0 20px 40px rgba(159, 122, 234, 0.15);
+      }
+      
+      .floating-element {
+        animation: float 6s ease-in-out infinite;
+      }
+      
+      @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-20px); }
+      }
     </style>
-</head>
-<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
-    <div class="max-w-2xl w-full bg-gradient-to-br from-slate-50 to-white luxury-border rounded-lg overflow-hidden">
-  
-        <div class="bg-gradient-to-r from-slate-700 to-slate-800 py-8 px-6">
-            <h1 class="heading-font text-4xl md:text-5xl text-center text-red-700 font-bold tracking-wide">
-                Rube Collection
-            </h1>
-        </div>
-        
+  </head>
 
-        <div class="p-8 md:p-12 space-y-8">
-
-            <section>
-                <h2 class="heading-font text-2xl text-red-800 font-semibold mb-3">Our Story</h2>
-                <p class="text-gray-700 leading-relaxed">
-                    Rube Perfume was founded to bring luxurious perfumes that celebrate elegance and individuality. Each fragrance is carefully crafted using the finest ingredients to provide a premium and memorable experience.
-                </p>
-            </section>
-       
-            <section>
-                <h2 class="heading-font text-2xl text-red-800 font-semibold mb-3">Our Mission</h2>
-                <p class="text-gray-700 leading-relaxed">
-                    To offer high-quality perfumes that inspire confidence and delight the senses.
-                </p>
-            </section>
-            
-
-            <section>
-                <h2 class="heading-font text-2xl text-red-800 font-semibold mb-4">Why Choose Us?</h2>
-                <ul class="space-y-2 text-gray-700">
-                    <li class="flex items-start">
-                        <span class="text-red-700 mr-2">•</span>
-                        <span>Premium Ingredients</span>
-                    </li>
-                    <li class="flex items-start">
-                        <span class="text-red-700 mr-2">•</span>
-                        <span>Long-Lasting Scents</span>
-                    </li>
-                    <li class="flex items-start">
-                        <span class="text-red-700 mr-2">•</span>
-                        <span>Authentic & Original Fragrances</span>
-                    </li>
-                    <li class="flex items-start">
-                        <span class="text-red-700 mr-2">•</span>
-                        <span>Exceptional Customer Service</span>
-                    </li>
-                </ul>
-            </section>
-            
-            <section>
-                <h2 class="heading-font text-2xl text-red-800 font-semibold mb-3">Explore Our Collection</h2>
-                <p class="text-gray-700 leading-relaxed mb-6">
-                    Discover our signature scents and find your perfect fragrance.
-                </p>
-                
-                <div class="text-center">
-                    <a href="/" class="bg-red-800 hover:bg-red-900 text-white font-semibold py-3 px-8 rounded-full transition duration-300 transform hover:scale-105 shadow-lg">
-                        Shop Now
-                    </a>
+  <body class="bg-gray-50 text-gray-800">
+       <%- include('../partials/user/header') %>
+    <!-- Main Content -->
+    <main>
+      <!-- Hero Section -->
+      <section class="hero-gradient py-16 md:py-24">
+        <div class="container mx-auto px-6">
+          <div class="flex flex-col lg:flex-row items-center justify-between gap-12">
+            <div class="lg:w-1/2">
+              <h2 class="brand-font text-4xl md:text-5xl font-bold text-purple-900 mb-6">
+                The Essence of <span class="italic text-indigo-600">Ruhe</span>
+              </h2>
+              <p class="text-lg text-purple-800 mb-8 max-w-2xl">
+                Ruhe Collections is more than a perfume brand; it's an olfactory journey that captures moments of tranquility, elegance, and timeless beauty. Each fragrance is a carefully crafted narrative, blending the world's finest ingredients into an expression of serene sophistication.
+              </p>
+              <a href="#story" class="inline-flex items-center text-indigo-700 font-medium hover:text-indigo-800 transition group">
+                Discover our story
+                <i class="fas fa-arrow-right ml-2 group-hover:ml-3 transition-all"></i>
+              </a>
+            </div>
+            <div class="lg:w-2/5 flex justify-center">
+              <div class="relative">
+                <div class="perfume-bottle w-64 h-80 rounded-lg flex flex-col items-center justify-end pb-10 floating-element">
+                  <div class="w-12 h-24 bg-gradient-to-b from-indigo-400 to-purple-600 rounded-t-lg mt-4"></div>
+                  <div class="w-40 h-48 bg-gradient-to-b from-purple-100 to-indigo-100 rounded-lg border border-purple-200 mt-4 relative">
+                    <div class="absolute bottom-0 w-full h-3/4 bg-gradient-to-b from-purple-300/30 to-indigo-500/40 rounded-b-lg"></div>
+                    <div class="absolute top-4 left-1/2 transform -translate-x-1/2 brand-font text-2xl text-purple-800 italic">Ruhe</div>
+                  </div>
                 </div>
-            </section>
+                <div class="absolute -bottom-6 -right-6 w-40 h-40 bg-purple-200/30 rounded-full -z-10"></div>
+                <div class="absolute -top-6 -left-6 w-32 h-32 bg-indigo-100/40 rounded-full -z-10"></div>
+              </div>
+            </div>
+          </div>
         </div>
-        
+      </section>
 
-        <div class="h-2 bg-gradient-to-r from-red-900 via-red-700 to-red-900"></div>
-    </div>
-</body>
+      <div class="section-divider my-12"></div>
+
+      <!-- Our Story Section -->
+      <section id="story" class="py-16">
+        <div class="container mx-auto px-6">
+          <div class="text-center mb-16">
+            <h2 class="brand-font text-3xl md:text-4xl font-bold text-purple-900 mb-4">Our Story</h2>
+            <p class="text-purple-800 max-w-3xl mx-auto">
+              Founded with a vision to create fragrances that evoke peace, balance, and refined elegance in everyday life.
+            </p>
+          </div>
+
+          <div class="flex flex-col md:flex-row items-center gap-12">
+            <div class="md:w-1/2">
+              <div class="glass-card p-8 rounded-2xl shadow-lg">
+                <h3 class="brand-font text-2xl font-bold text-purple-900 mb-4">From Passion to Fragrance</h3>
+                <p class="text-purple-800 mb-6">
+                  Ruhe Collections was born from a simple belief: that fragrance has the power to transform moments into memories. The word "Ruhe" means peace and tranquility in German, reflecting our philosophy of creating scents that bring calm, confidence, and joy to everyday life.
+                </p>
+                <p class="text-purple-800">
+                  We craft each fragrance with meticulous attention to detail, blending the finest ingredients from around the world. Our perfumes are more than just scents—they are experiences, emotions, and stories captured in a bottle.
+                </p>
+              </div>
+            </div>
+            <div class="md:w-1/2">
+              <img
+                src="https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=1000&q=80"
+                alt="Perfume ingredients"
+                class="rounded-2xl shadow-lg w-full h-80 object-cover"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Philosophy Section -->
+      <section class="py-16 bg-gradient-to-b from-white to-purple-50">
+        <div class="container mx-auto px-6">
+          <div class="max-w-4xl mx-auto text-center">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 mb-8">
+              <i class="fas fa-quote-right text-purple-600 text-2xl"></i>
+            </div>
+            <h2 class="brand-font text-3xl md:text-4xl font-bold text-purple-900 mb-6">Our Philosophy</h2>
+            <p class="text-lg text-purple-800 mb-6">
+              At Ruhe Collections, we believe that perfume is personal. It's an invisible accessory that speaks volumes about who you are. Every fragrance in our collection is designed to evoke a feeling, tell a story, and become part of your unique identity.
+            </p>
+            <p class="text-lg text-purple-800">
+              We are committed to quality, authenticity, and sustainability. From sourcing ethical ingredients to using eco-friendly packaging, we ensure that every aspect of our brand reflects our values and respect for both people and planet.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Values Section -->
+      <section class="py-16">
+        <div class="container mx-auto px-6">
+          <div class="text-center mb-16">
+            <h2 class="brand-font text-3xl md:text-4xl font-bold text-purple-900 mb-4">Our Values</h2>
+            <p class="text-purple-800 max-w-3xl mx-auto">The principles that guide every fragrance we create</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div class="bg-white p-8 rounded-2xl shadow-lg border border-purple-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+              <div class="w-16 h-16 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center mb-6">
+                <i class="fas fa-gem text-purple-600 text-2xl"></i>
+              </div>
+              <h3 class="brand-font text-xl font-bold text-purple-900 mb-4">Quality</h3>
+              <p class="text-purple-800">
+                We use only the finest ingredients and time-honored techniques to create fragrances that last and leave a lasting impression.
+              </p>
+            </div>
+
+            <div class="bg-white p-8 rounded-2xl shadow-lg border border-purple-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+              <div class="w-16 h-16 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center mb-6">
+                <i class="fas fa-heart text-pink-500 text-2xl"></i>
+              </div>
+              <h3 class="brand-font text-xl font-bold text-purple-900 mb-4">Authenticity</h3>
+              <p class="text-purple-800">
+                Each scent is uniquely crafted to tell a story, offering genuine and distinctive olfactory experiences.
+              </p>
+            </div>
+
+            <div class="bg-white p-8 rounded-2xl shadow-lg border border-purple-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+              <div class="w-16 h-16 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center mb-6">
+                <i class="fas fa-leaf text-emerald-500 text-2xl"></i>
+              </div>
+              <h3 class="brand-font text-xl font-bold text-purple-900 mb-4">Sustainability</h3>
+              <p class="text-purple-800">
+                We are committed to ethical sourcing and environmentally responsible practices in everything we do.
+              </p>
+            </div>
+
+            <div class="bg-white p-8 rounded-2xl shadow-lg border border-purple-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+              <div class="w-16 h-16 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center mb-6">
+                <i class="fas fa-crown text-amber-500 text-2xl"></i>
+              </div>
+              <h3 class="brand-font text-xl font-bold text-purple-900 mb-4">Elegance</h3>
+              <p class="text-purple-800">
+                From our fragrances to our packaging, we embody sophistication and timeless beauty in every detail.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CTA Section -->
+      <section class="py-20 bg-gradient-to-r from-white-900 to-white-900">
+        <div class="container mx-auto px-6 text-center">
+          <h2 class="brand-font text-3xl md:text-4xl font-bold text-purple-900 mb-6">
+            Join Our Journey
+          </h2>
+          <p class="text-purple-800 text-lg mb-10 max-w-2xl mx-auto">
+            We invite you to explore our collections and discover the scent that speaks to your soul. Whether you're searching for a signature fragrance or the perfect gift, Ruhe Collections offers an experience of luxury, peace, and timeless elegance.
+          </p>
+          <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a
+              href="/product"
+              class="bg-purple text-purple-900 font-bold px-8 py-4 rounded-full hover:bg-purple-50 hover:shadow-lg transition-all"
+            >
+              Explore Collections
+            </a>
+            <a
+              href="/contactPage"
+              class="bg-purple text-purple-900 font-bold px-8 py-4 rounded-full hover:bg-purple-50 hover:shadow-lg transition-all"
+            >
+              Contact
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+       <%- include("../partials/user/footer.ejs") %>
+
+
+    <script>
+      // Simple mobile menu toggle
+      document.querySelector('button.md\\:hidden').addEventListener('click', function() {
+        const nav = document.querySelector('nav.hidden');
+        if (nav.classList.contains('hidden')) {
+          nav.classList.remove('hidden');
+          nav.classList.add('flex', 'flex-col', 'absolute', 'top-16', 'left-0', 'w-full', 'bg-white', 'p-6', 'space-y-4', 'shadow-lg', 'z-50');
+        } else {
+          nav.classList.add('hidden');
+          nav.classList.remove('flex', 'flex-col', 'absolute', 'top-16', 'left-0', 'w-full', 'bg-white', 'p-6', 'space-y-4', 'shadow-lg', 'z-50');
+        }
+      });
+    </script>
+  </body>
 </html>
