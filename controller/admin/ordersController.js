@@ -3,6 +3,8 @@ import user from "../../model/userSchema.js";
 import product from "../../model/productSchema.js";
 import wallet from "../../model/walletSchema.js";
 import coupons from "../../model/couponSchema.js";
+import statusCode from "../../utilities/statusCodes.js";
+import errorMessage from "../../utilities/errorMessages.js";
 
 const FLOW_STATUSES = ["Pending", "Processing", "Shipped", "Delivered"];
 
@@ -46,20 +48,21 @@ const getOrdersPage = async (req, res) => {
     const totalOrders = await order.countDocuments(query);
     const totalPages = Math.ceil(totalOrders / limit) || 1;
 
-    const orders = await order.find(query)
+    const orders = await order
+      .find(query)
       .populate("userId", "name email")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
     const formattedOrders = orders.map((o) => ({
-        _id: o._id,
-        orderId: o.orderId,
-        username: o.userId?.name,
-        date: o.createdAt,
-        totalAmount: o.finalAmount,
-        paymentMethod: o.payment,
-        status: o.orderStatus,
+      _id: o._id,
+      orderId: o.orderId,
+      username: o.userId?.name,
+      date: o.createdAt,
+      totalAmount: o.finalAmount,
+      paymentMethod: o.payment,
+      status: o.orderStatus,
     }));
 
     res.render("admin/ordersPage", {
@@ -71,35 +74,33 @@ const getOrdersPage = async (req, res) => {
       statusFilter,
     });
   } catch (error) {
-    console.error("Error loading orders:", error);
-    res.status(500).render("error", {
-      message: "Failed to load orders",
-      error: error.message,
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
 
-const getDetailPage = async (req, res) => {
+const getOrderDetailPage = async (req, res) => {
   try {
     const { id } = req.params;
 
     if (!id) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Order Id is required",
       });
     }
 
-    const orderData = await order.findById(id)
+    const orderData = await order
+      .findById(id)
       .populate("userId", "name email phone")
       .populate("orderedItem.productId", "productName images category brand")
-      .populate(
-        "address",
-        "name flatNumber landmark city state pincode phone"
-      );
+      .populate("address", "name flatNumber landmark city state pincode phone");
 
     if (!orderData) {
-      return res.status(400).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Order not found",
       });
@@ -109,10 +110,10 @@ const getDetailPage = async (req, res) => {
       order: orderData,
     });
   } catch (error) {
-    console.error("Error loading order details:", error);
-    res.status(500).render("error", {
-      message: "Failed to load order details",
-      error: error.message,
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
@@ -282,21 +283,20 @@ function recalculateOrderPaymentStatus(orderDoc) {
   }
 }
 
-
 const updateItemStatus = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
     const { status } = req.body;
 
     if (!orderId || !itemId || !status) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Order Id, Item Id, and status are required",
       });
     }
 
     if (status === "Return Requested") {
-      return res.status(403).json({
+      return res.status(statusCode.FORBIDDEN).json({
         success: false,
         message:
           "Only customers can request returns. Please wait for customer to request return.",
@@ -305,7 +305,7 @@ const updateItemStatus = async (req, res) => {
 
     const orderDoc = await order.findById(orderId);
     if (!orderDoc) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Order not found",
       });
@@ -316,7 +316,7 @@ const updateItemStatus = async (req, res) => {
     );
 
     if (itemIndex === -1) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Item not found in order",
       });
@@ -330,7 +330,7 @@ const updateItemStatus = async (req, res) => {
       orderDoc.orderStatus
     );
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: `Invalid item status transition. Current: ${currentStatus}, Valid next: ${validStatuses.join(
           ", "
@@ -370,11 +370,10 @@ const updateItemStatus = async (req, res) => {
       paymentStatus: orderDoc.paymentStatus,
     });
   } catch (error) {
-    console.error("Error updating item status:", error);
-    res.status(500).json({
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: "Failed to update item status",
-      error: error.message,
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
@@ -385,7 +384,7 @@ const approveItemReturn = async (req, res) => {
 
     const orderDoc = await order.findById(orderId);
     if (!orderDoc) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Order not found",
       });
@@ -393,14 +392,14 @@ const approveItemReturn = async (req, res) => {
 
     const item = orderDoc.orderedItem.id(itemId);
     if (!item) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Item not found in order",
       });
     }
 
     if (item.status !== "Return Requested") {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Item does not have a pending return request",
       });
@@ -422,10 +421,10 @@ const approveItemReturn = async (req, res) => {
       orderStatus: orderDoc.orderStatus,
     });
   } catch (error) {
-    console.error("Approve item return error:", error);
-    res.status(500).json({
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: error.message || "Failed to approve item return",
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
@@ -437,7 +436,7 @@ const rejectItemReturn = async (req, res) => {
 
     const orderDoc = await order.findById(orderId);
     if (!orderDoc) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Order not found",
       });
@@ -445,21 +444,21 @@ const rejectItemReturn = async (req, res) => {
 
     const item = orderDoc.orderedItem.id(itemId);
     if (!item) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Item not found in order",
       });
     }
 
     if (item.status !== "Return Requested") {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Item does not have a pending return request",
       });
     }
 
     if (!rejectionReason || rejectionReason.trim() === "") {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Rejection reason is required",
       });
@@ -467,8 +466,7 @@ const rejectItemReturn = async (req, res) => {
 
     item.status = "Delivered";
     item.paymentStatus = "Paid";
-    item.returnRejectedReason = rejectionReason,
-    item.returnRejected = true;
+    (item.returnRejectedReason = rejectionReason), (item.returnRejected = true);
     item.returnRejectionDate = new Date();
 
     recalculateOrderPaymentStatus(orderDoc);
@@ -482,10 +480,10 @@ const rejectItemReturn = async (req, res) => {
       orderStatus: orderDoc.orderStatus,
     });
   } catch (error) {
-    console.error("Reject item return error:", error);
-    res.status(500).json({
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: error.message || "Failed to reject item return",
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
@@ -495,7 +493,7 @@ const refundItem = async (req, res) => {
     const { orderId, itemId } = req.params;
     const orderDoc = await order.findById(orderId);
     if (!orderDoc) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Order not found",
       });
@@ -503,14 +501,14 @@ const refundItem = async (req, res) => {
 
     const item = orderDoc.orderedItem.id(itemId);
     if (!item) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Item not found",
       });
     }
 
     if (item.status !== "Return Approved") {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Item must be approved for refund",
       });
@@ -541,12 +539,10 @@ const refundItem = async (req, res) => {
     let couponShare = 0;
 
     if (orderDoc.couponDiscount > 0 && originalSubtotal > 0) {
-      couponShare =
-        (itemTotal / originalSubtotal) * orderDoc.couponDiscount;
+      couponShare = (itemTotal / originalSubtotal) * orderDoc.couponDiscount;
     }
 
-    let refundAmount =
-      Math.round((itemTotal - couponShare) * 100) / 100;
+    let refundAmount = Math.round((itemTotal - couponShare) * 100) / 100;
 
     refundAmount = Math.max(refundAmount, 0);
 
@@ -578,11 +574,9 @@ const refundItem = async (req, res) => {
     const deliveryCharge = orderDoc.deliveryCharge || 0;
 
     orderDoc.totalPrice = remainingSubtotal;
-    orderDoc.discount = 0; 
+    orderDoc.discount = 0;
     orderDoc.finalAmount = Math.max(
-      remainingSubtotal -
-        (orderDoc.couponDiscount || 0) +
-        deliveryCharge,
+      remainingSubtotal - (orderDoc.couponDiscount || 0) + deliveryCharge,
       0
     );
 
@@ -600,15 +594,13 @@ const refundItem = async (req, res) => {
       remainingItems: activeItems.length,
     });
   } catch (error) {
-    console.error("Refund Item Error:", error);
-    return res.status(500).json({
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: "Failed to process refund",
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
-
-
 
 async function refundToWallet(userId, amount) {
   if (!amount || amount <= 0) return;
@@ -664,14 +656,18 @@ async function restoreStock(item) {
     }
 
     await productDoc.save();
-  } catch (err) {
-    console.error("Stock restore failed:", err);
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 }
 
 export default {
   getOrdersPage,
-  getDetailPage,
+  getOrderDetailPage,
   updateItemStatus,
   approveItemReturn,
   rejectItemReturn,

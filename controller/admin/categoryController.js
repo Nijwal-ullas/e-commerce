@@ -1,5 +1,7 @@
 import category from "../../model/categorySchema.js";
 import product from "../../model/productSchema.js";
+import statusCode from "../../utilities/statusCodes.js";
+import errorMessage from "../../utilities/errorMessages.js";
 
 const categoryNameRegex = /^[A-Za-z ]{2,20}$/;
 
@@ -30,7 +32,10 @@ const categoryPage = async (req, res) => {
     });
   } catch (error) {
     console.error(error.message);
-    res.status(500).send("Server Error");
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -38,14 +43,14 @@ const addCategory = async (req, res) => {
   const { name, description, offer } = req.body;
   try {
     if (!name || name.trim() === "") {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Category name is required",
       });
     }
 
     if (!categoryNameRegex.test(name.trim())) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message:
           "Category name must be 2-20 characters long and contain only letters",
@@ -53,16 +58,16 @@ const addCategory = async (req, res) => {
     }
 
     if (description && description.length > 200) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Description cannot exceed 200 characters",
       });
     }
 
-     const offerValue = parseInt(offer) || 0;
+    const offerValue = parseInt(offer) || 0;
 
     if (offerValue <= 0 || offerValue >= 100) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Offer percentage must be between 1 and 99",
       });
@@ -72,13 +77,11 @@ const addCategory = async (req, res) => {
       name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
     });
     if (existingCategory) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Category already exists",
       });
     }
-
-    
 
     const newCategory = new category({
       name: name.trim(),
@@ -86,14 +89,17 @@ const addCategory = async (req, res) => {
       offer: offerValue,
     });
     await newCategory.save();
-    res.status(201).json({
+    res.status(statusCode.CREATED).json({
       success: true,
       message: "Category added successfully",
       category: newCategory,
     });
   } catch (error) {
-    console.error("Error adding category:", error);
-    res.status(500).json({ message: "Server Error" });
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -108,14 +114,14 @@ const editCategory = async (req, res) => {
     });
 
     if (existing) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Category name already exists",
       });
     }
 
     if (!categoryNameRegex.test(name.trim())) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message:
           "Category name must be 2-20 characters long and contain only letters",
@@ -123,7 +129,7 @@ const editCategory = async (req, res) => {
     }
 
     if (description && description.length > 200) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Description cannot exceed 200 characters",
       });
@@ -132,7 +138,7 @@ const editCategory = async (req, res) => {
     const offerValue = parseInt(offer) || 0;
 
     if (offerValue <= 0 || offerValue >= 100) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Offer percentage must be between 1 and 99",
       });
@@ -175,42 +181,46 @@ const editCategory = async (req, res) => {
     );
 
     if (!updated) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Category not found",
       });
     }
 
-    res.status(200).json({
+    res.status(statusCode.OK).json({
       message: "Category updated successfully",
       category: updated,
     });
-
   } catch (error) {
-    console.error("Error editing category:", error);
-    res.status(500).json({ message: "Server Error" });
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
-
 
 const deleteCategory = async (req, res) => {
   try {
     const id = req.params.id;
     const deleted = await category.findByIdAndDelete(id);
     if (!deleted) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Category not found",
       });
     }
 
-    res.status(200).json({
+    res.status(statusCode.OK).json({
       success: true,
       message: "Category deleted successfully",
     });
   } catch (error) {
-    console.error("Error deleting category:", error);
-    res.status(500).json({ message: "Server Error" });
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -222,15 +232,21 @@ const listCategory = async (req, res) => {
       { new: true }
     );
     if (!cat) {
-      return res.status(404).json({ message: "Category not found" });
+      return res
+        .status(statusCode.NOT_FOUND)
+        .json({ success: false, message: "Category not found" });
     }
-    res.status(200).json({
+    res.status(statusCode.OK).json({
       success: true,
       message: "Category listed successfully",
       category,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -242,15 +258,21 @@ const unlistCategory = async (req, res) => {
       { new: true }
     );
     if (!cat) {
-      return res.status(404).json({ message: "Category not found" });
+      return res
+        .status(statusCode.NOT_FOUND)
+        .json({ success: false, message: "Category not found" });
     }
-    res.status(200).json({
+    res.status(statusCode.OK).json({
       success: true,
       message: "Category unlisted successfully",
       category,
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 

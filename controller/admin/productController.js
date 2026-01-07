@@ -1,6 +1,8 @@
 import Product from "../../model/productSchema.js";
 import Category from "../../model/categorySchema.js";
 import Brand from "../../model/brandSchema.js";
+import statusCode from "../../utilities/statusCodes.js";
+import errorMessage from "../../utilities/errorMessages.js";
 import {
   uploadToCloudinary,
   deleteFromCloudinary,
@@ -9,7 +11,7 @@ import {
 
 const nameRegex = /^[A-Za-z ]{3,20}$/;
 
-const productPage = async (req, res) => {
+const getProducts = async (req, res) => {
   try {
     const search = req.query.search?.trim() || "";
     const page = parseInt(req.query.page) || 1;
@@ -42,9 +44,12 @@ const productPage = async (req, res) => {
       categories,
       brands,
     });
-  } catch (err) {
-    console.error("Product page error:", err);
-    res.status(500).send("Server error");
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -65,14 +70,14 @@ const addProduct = async (req, res) => {
     description = description?.trim();
 
     if (!productName || !categoryId || !brandId) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Product name, brand, and category are required",
       });
     }
 
     if (!nameRegex.test(productName)) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message:
           "Product name must be 3-20 characters and contain only letters",
@@ -84,14 +89,14 @@ const addProduct = async (req, res) => {
     });
 
     if (exists) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Product with this name already exists",
       });
     }
 
     if (description?.length < 10) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Description must be at least 10 characters long",
       });
@@ -107,7 +112,7 @@ const addProduct = async (req, res) => {
     const productDiscount = Number(discount) || 0;
 
     if (productDiscount < 0 || productDiscount >= 100) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Product discount must be between 0 and 99%",
       });
@@ -116,7 +121,7 @@ const addProduct = async (req, res) => {
     const bestOffer = Math.max(categoryDiscount, productDiscount);
 
     if (!req.files || req.files.length < 3) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "At least 3 images are required",
       });
@@ -138,15 +143,15 @@ const addProduct = async (req, res) => {
       const quantity = Number(qtyArray[i]);
       const price = Number(priceArray[i]);
 
-      if(!ml || !quantity || !price){
-        return res.status(400).json({
+      if (!ml || !quantity || !price) {
+        return res.status(statusCode.BAD_REQUEST).json({
           success: false,
           message: "fill the form",
         });
       }
 
       if (usedML.has(ml)) {
-        return res.status(400).json({
+        return res.status(statusCode.BAD_REQUEST).json({
           success: false,
           message: `Variant ${ml}ml already exists. Duplicate ML not allowed.`,
         });
@@ -155,14 +160,14 @@ const addProduct = async (req, res) => {
       usedML.add(ml);
 
       if (isNaN(quantity) || quantity < 0) {
-        return res.status(400).json({
+        return res.status(statusCode.BAD_REQUEST).json({
           success: false,
           message: "Quantity must be 0 or more",
         });
       }
 
       if (isNaN(price) || price <= 0) {
-        return res.status(400).json({
+        return res.status(statusCode.BAD_REQUEST).json({
           success: false,
           message: "Price must be a valid number greater than 0",
         });
@@ -183,14 +188,14 @@ const addProduct = async (req, res) => {
     }
 
     if (variantItems.length === 0) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "At least one variant is required",
       });
     }
 
     if (variantItems.length > 4) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Maximum 4 variants allowed",
       });
@@ -209,7 +214,7 @@ const addProduct = async (req, res) => {
       for (const id of cloudinaryPublicIds) {
         await deleteFromCloudinary(id);
       }
-      return res.status(500).json({
+      return res.status(statusCode.SERVER_ERROR).json({
         success: false,
         message: "Failed to upload product images",
       });
@@ -229,20 +234,20 @@ const addProduct = async (req, res) => {
 
     await newProduct.save();
 
-    res.status(201).json({
+    res.status(statusCode.CREATED).json({
       success: true,
       message: "Product added successfully!",
     });
-  } catch (err) {
-    console.error("Add product error:", err);
-    res.status(500).json({
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: "Server error while adding product",
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
 
-const getProduct = async (req, res) => {
+const productViewPage = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
       .populate("category")
@@ -250,18 +255,18 @@ const getProduct = async (req, res) => {
       .lean();
 
     if (!product) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Product not found",
       });
     }
 
     res.json({ success: true, product });
-  } catch (err) {
-    console.error("Get product error:", err);
-    res.status(500).json({
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: "Server error while fetching product",
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
@@ -287,14 +292,14 @@ const editProduct = async (req, res) => {
 
     const product = await Product.findById(id);
     if (!product) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Product not found",
       });
     }
 
     if (!nameRegex.test(productName)) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message:
           "Product name must be 3–20 characters and contain only letters",
@@ -307,7 +312,7 @@ const editProduct = async (req, res) => {
     });
 
     if (existingProduct) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Another product with this name already exists",
       });
@@ -323,7 +328,7 @@ const editProduct = async (req, res) => {
     const productDiscount = Number(discount) || 0;
 
     if (productDiscount < 0 || productDiscount >= 100) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Product discount must be between 0 and 99%",
       });
@@ -347,14 +352,14 @@ const editProduct = async (req, res) => {
       const price = Number(priceArray[i]);
 
       if (isNaN(quantity) || quantity < 0) {
-        return res.status(400).json({
+        return res.status(statusCode.BAD_REQUEST).json({
           success: false,
           message: "Variant quantity must be 0 or more",
         });
       }
 
       if (isNaN(price) || price <= 0) {
-        return res.status(400).json({
+        return res.status(statusCode.BAD_REQUEST).json({
           success: false,
           message: "Variant price must be a valid number greater than 0",
         });
@@ -375,14 +380,14 @@ const editProduct = async (req, res) => {
     }
 
     if (variantItems.length === 0) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "At least one variant is required",
       });
     }
 
     if (variantItems.length > 4) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Maximum 4 variants allowed",
       });
@@ -412,7 +417,7 @@ const editProduct = async (req, res) => {
         for (const publicId of newCloudinaryPublicIds) {
           await deleteFromCloudinary(publicId);
         }
-        return res.status(500).json({
+        return res.status(statusCode.SERVER_ERROR).json({
           success: false,
           message: "Failed to upload new product images",
         });
@@ -431,7 +436,7 @@ const editProduct = async (req, res) => {
       for (const publicId of newCloudinaryPublicIds) {
         await deleteFromCloudinary(publicId);
       }
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "At least 3 images are required",
       });
@@ -457,15 +462,15 @@ const editProduct = async (req, res) => {
 
     await product.save();
 
-    res.status(200).json({
+    res.status(statusCode.OK).json({
       success: true,
       message: "Product updated successfully!",
     });
-  } catch (err) {
-    console.error("Edit product error:", err);
-    res.status(500).json({
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: "Server error while updating product",
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
@@ -475,7 +480,7 @@ const deleteProduct = async (req, res) => {
     const product = await Product.findById(req.params.id);
 
     if (!product) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Product not found",
       });
@@ -497,19 +502,19 @@ const deleteProduct = async (req, res) => {
       success: true,
       message: "Product deleted successfully",
     });
-  } catch (err) {
-    console.error("Delete product error:", err);
-    res.status(500).json({
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: "Server error while deleting product",
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
 
 export default {
-  productPage,
+  getProducts,
   addProduct,
   editProduct,
-  getProduct,
+  productViewPage,
   deleteProduct,
 };

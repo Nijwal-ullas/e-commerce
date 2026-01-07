@@ -1,5 +1,7 @@
 import Admin from "../../model/adminSchema.js";
 import bcrypt from "bcrypt";
+import statusCode from "../../utilities/statusCodes.js";
+import errorMessage from "../../utilities/errorMessages.js";
 import {
   uploadToCloudinary,
   deleteFromCloudinary,
@@ -22,8 +24,11 @@ const getProfile = async (req, res) => {
       admin,
     });
   } catch (error) {
-    console.error("Profile page error:", error);
-    res.status(500).send("Server error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -33,28 +38,28 @@ const updateProfile = async (req, res) => {
     const { name, phone } = req.body;
 
     if (!adminId) {
-      return res.status(401).json({
+      return res.status(statusCode.UNAUTHORIZED).json({
         success: false,
         message: "Unauthorized",
       });
     }
 
     if (!name || !phone) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "fill the required field",
       });
     }
 
     if (!nameRegex.test(name.trim())) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "enter a valid name",
       });
     }
 
     if (!phoneRegex.test(phone.trim())) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "enter valid phone number",
       });
@@ -66,13 +71,16 @@ const updateProfile = async (req, res) => {
       { new: true }
     );
 
-    return res.status(200).json({
+    return res.status(statusCode.OK).json({
       success: true,
       message: "updated successfully",
     });
   } catch (error) {
-    console.error("updating error:", error);
-    res.status(500).send("Server error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -85,7 +93,7 @@ const changeEmail = async (req, res) => {
     }
     const admin = await Admin.findById(adminId);
     if (!password || !newEmail) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "fill the required field",
       });
@@ -94,14 +102,14 @@ const changeEmail = async (req, res) => {
     const isMatch = await bcrypt.compare(password, admin.password);
 
     if (!isMatch) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "incorrect password",
       });
     }
 
     if (!emailRegex.test(newEmail.trim())) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "enter a valid email",
       });
@@ -113,13 +121,16 @@ const changeEmail = async (req, res) => {
       { new: true }
     );
 
-    res.status(200).json({
+    res.status(statusCode.OK).json({
       success: true,
       message: "email changed succussfully",
     });
   } catch (error) {
-    console.error("updating error:", error);
-    res.status(500).send("Server error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -134,7 +145,7 @@ const changePassword = async (req, res) => {
     }
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "fill the required fields",
       });
@@ -143,21 +154,21 @@ const changePassword = async (req, res) => {
     const isMatch = await bcrypt.compare(currentPassword, admin.password);
 
     if (!isMatch) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "current password is wrong",
       });
     }
 
     if (newPassword < 6) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "password must be atleast 6 character",
       });
     }
 
     if (newPassword !== confirmPassword) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "new password not match",
       });
@@ -171,13 +182,16 @@ const changePassword = async (req, res) => {
       { new: true }
     );
 
-    res.status(200).json({
+    res.status(statusCode.OK).json({
       success: true,
       message: "changed succussfully",
     });
   } catch (error) {
-    console.error("updating error:", error);
-    res.status(500).send("Server error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -186,7 +200,7 @@ const uploadImage = async (req, res) => {
     const adminId = req.session.adminId;
 
     if (!adminId) {
-      return res.status(401).json({
+      return res.status(statusCode.UNAUTHORIZED).json({
         success: false,
         message: "Unauthorized",
       });
@@ -194,14 +208,14 @@ const uploadImage = async (req, res) => {
 
     const admin = await Admin.findById(adminId);
     if (!admin) {
-      return res.status(404).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Admin not found",
       });
     }
 
     if (!req.file || !req.file.buffer) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "No image uploaded",
       });
@@ -220,14 +234,17 @@ const uploadImage = async (req, res) => {
     admin.cloudinaryPublicId = uploadResult.public_id;
     await admin.save();
 
-    return res.status(200).json({
+    return res.status(statusCode.OK).json({
       success: true,
       imageUrl: uploadResult.secure_url,
       message: "Image uploaded successfully",
     });
   } catch (error) {
-    console.error("Image upload error:", error);
-    res.status(500).send("Server error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 

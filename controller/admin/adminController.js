@@ -7,6 +7,8 @@ import coupon from "../../model/couponSchema.js";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
 import { getDateRange } from "../../utilities/salesDate.js";
+import statusCode from "../../utilities/statusCodes.js";
+import errorMessage from "../../utilities/errorMessages.js";
 
 const loadAdminLoginPage = async (req, res) => {
   try {
@@ -15,8 +17,11 @@ const loadAdminLoginPage = async (req, res) => {
     }
     res.render("admin/loginPage", { message: null });
   } catch (error) {
-    console.log(error.message);
-    res.status(500).send("Internal Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -33,7 +38,7 @@ const login = async (req, res) => {
     }
 
     if (!email || !password) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Please fill all fields",
       });
@@ -41,17 +46,17 @@ const login = async (req, res) => {
 
     const existingUser = await admin.findOne({ email });
     if (!existingUser) {
-      return res.status(401).json({
+      return res.status(statusCode.UNAUTHORIZED).json({
         success: false,
-        message: "Invalid email or password",
+        message: "Invalid email",
       });
     }
 
     const isMatch = await bcrypt.compare(password, existingUser.password);
     if (!isMatch) {
-      return res.status(401).json({
+      return res.status(statusCode.UNAUTHORIZED).json({
         success: false,
-        message: "Invalid email or password",
+        message: "Invalid  password",
       });
     }
 
@@ -64,10 +69,10 @@ const login = async (req, res) => {
       redirect: "/admin/dashboard",
     });
   } catch (error) {
-    console.error("Login Error:", error.message);
-    res.status(500).json({
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: "Internal Server Error",
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
@@ -219,8 +224,11 @@ const loadDashboardPage = async (req, res) => {
       topCategory,
     });
   } catch (error) {
-    console.log(error.message);
-    res.status(500).send("Internal Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -247,10 +255,10 @@ const getOrderStatusReport = async (req, res) => {
       data: statusData,
     });
   } catch (error) {
-    console.error("Order status report error:", error);
-    res.status(500).json({
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: "Failed to load order status report",
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
@@ -311,9 +319,12 @@ const getSalesReport = async (req, res) => {
       data: report,
       summary,
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false });
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -504,9 +515,12 @@ const getOverallSales = async (req, res) => {
         refundAmount: refunds[0]?.refundAmount || 0,
       },
     });
-  } catch (err) {
-    console.error("Overall sales error", err);
-    res.status(500).json({ success: false });
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -641,9 +655,12 @@ const downloadExcel = async (req, res) => {
 
     await workbook.xlsx.write(res);
     res.end();
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Excel download failed");
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -839,9 +856,12 @@ const downloadPdf = async (req, res) => {
     });
 
     doc.end();
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("PDF download failed");
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -860,8 +880,11 @@ const logout = async (req, res) => {
       res.redirect("/admin/login");
     });
   } catch (error) {
-    console.log(error.message);
-    res.status(500).send("Internal Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 

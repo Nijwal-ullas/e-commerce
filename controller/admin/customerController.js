@@ -1,5 +1,6 @@
 import user from "../../model/userSchema.js";
-
+import statusCode from "../../utilities/statusCodes.js";
+import errorMessage from "../../utilities/errorMessages.js";
 
 const customerInfo = async (req, res) => {
   try {
@@ -35,28 +36,32 @@ const customerInfo = async (req, res) => {
       limit,
     });
   } catch (error) {
-    console.error("Error loading customers:", error);
-    res.status(500).send("Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
-
-
-
 
 const blockCustomer = async (req, res) => {
   try {
     const userId = req.query.id;
-    const { page = 1, search = "" } = req.query; 
+    const { page = 1, search = "" } = req.query;
 
     await user.updateOne({ _id: userId }, { $set: { isBlocked: true } });
 
-    res.redirect(`/admin/users?page=${page}&search=${encodeURIComponent(search)}`);
+    res.redirect(
+      `/admin/users?page=${page}&search=${encodeURIComponent(search)}`
+    );
   } catch (error) {
-    console.error("Error blocking user:", error);
-    res.status(500).send("Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
-
 
 const unblockCustomer = async (req, res) => {
   try {
@@ -65,16 +70,16 @@ const unblockCustomer = async (req, res) => {
 
     await user.updateOne({ _id: userId }, { $set: { isBlocked: false } });
 
-    res.redirect(`/admin/users?page=${page}&search=${encodeURIComponent(search)}`);
+    res.redirect(
+      `/admin/users?page=${page}&search=${encodeURIComponent(search)}`
+    );
   } catch (error) {
-    console.error("Error unblocking user:", error);
-    res.status(500).send("Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
-
-
-
-
-
 
 export default { customerInfo, blockCustomer, unblockCustomer };
