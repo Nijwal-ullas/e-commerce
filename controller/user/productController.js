@@ -2,8 +2,10 @@ import product from "../../model/productSchema.js";
 import category from "../../model/categorySchema.js";
 import brand from "../../model/brandSchema.js";
 import user from "../../model/userSchema.js";
+import statusCode from "../../utilities/statusCodes.js";
+import errorMessage from "../../utilities/errorMessages.js";
 
-const productPage = async (req, res) => {
+const getProducts = async (req, res) => {
   try {
     let userData = null;
     let userWishlist = [];
@@ -19,15 +21,16 @@ const productPage = async (req, res) => {
 
     const brands = await brand.find();
     const categories = await category.find({ isListed: true });
-    
+
     const page = 1;
     const limit = 12;
     const skip = (page - 1) * limit;
-    
+
     const totalProductsCount = await product.countDocuments({ isListed: true });
     const totalPages = Math.ceil(totalProductsCount / limit);
-    
-    const products = await product.find({ isListed: true })
+
+    const products = await product
+      .find({ isListed: true })
       .populate("category", "name")
       .populate("brand", "name")
       .sort({ createdAt: -1 })
@@ -35,33 +38,51 @@ const productPage = async (req, res) => {
       .limit(limit)
       .lean();
 
-    const productsWithPrices = products.map(product => {
+    const productsWithPrices = products.map((product) => {
       let minOfferPrice = 0;
       let minOriginalPrice = 0;
       let hasStock = false;
       let bestDiscount = 0;
 
       if (product.VariantItem && product.VariantItem.length > 0) {
-        const inStockVariants = product.VariantItem.filter(v => v.Quantity > 0);
+        const inStockVariants = product.VariantItem.filter(
+          (v) => v.Quantity > 0
+        );
         hasStock = inStockVariants.length > 0;
 
         if (inStockVariants.length > 0) {
-          minOfferPrice = Math.min(...inStockVariants.map(v => v.offerPrice || 0));
-          minOriginalPrice = Math.min(...inStockVariants.map(v => v.Price || v.offerPrice || 0));
+          minOfferPrice = Math.min(
+            ...inStockVariants.map((v) => v.offerPrice || 0)
+          );
+          minOriginalPrice = Math.min(
+            ...inStockVariants.map((v) => v.Price || v.offerPrice || 0)
+          );
         } else {
-          minOfferPrice = Math.min(...product.VariantItem.map(v => v.offerPrice || 0));
-          minOriginalPrice = Math.min(...product.VariantItem.map(v => v.Price || v.offerPrice || 0));
+          minOfferPrice = Math.min(
+            ...product.VariantItem.map((v) => v.offerPrice || 0)
+          );
+          minOriginalPrice = Math.min(
+            ...product.VariantItem.map((v) => v.Price || v.offerPrice || 0)
+          );
         }
 
-        product.VariantItem.forEach(variant => {
-          if (variant.Price && variant.offerPrice && variant.Price > variant.offerPrice) {
-            const discount = Math.round(((variant.Price - variant.offerPrice) / variant.Price) * 100);
+        product.VariantItem.forEach((variant) => {
+          if (
+            variant.Price &&
+            variant.offerPrice &&
+            variant.Price > variant.offerPrice
+          ) {
+            const discount = Math.round(
+              ((variant.Price - variant.offerPrice) / variant.Price) * 100
+            );
             bestDiscount = Math.max(bestDiscount, discount);
           }
         });
 
         if (minOriginalPrice > 0 && minOriginalPrice > minOfferPrice) {
-          const minPriceDiscount = Math.round(((minOriginalPrice - minOfferPrice) / minOriginalPrice) * 100);
+          const minPriceDiscount = Math.round(
+            ((minOriginalPrice - minOfferPrice) / minOriginalPrice) * 100
+          );
           bestDiscount = Math.max(bestDiscount, minPriceDiscount);
         }
       }
@@ -75,7 +96,7 @@ const productPage = async (req, res) => {
         price: minOfferPrice,
         oldPrice: minOriginalPrice > minOfferPrice ? minOriginalPrice : null,
         hasStock: hasStock,
-        bestDiscount: bestDiscount > 0 ? bestDiscount : null
+        bestDiscount: bestDiscount > 0 ? bestDiscount : null,
       };
     });
 
@@ -89,14 +110,16 @@ const productPage = async (req, res) => {
       totalPages: totalPages,
       currentPage: page,
     });
-  } catch (err) {
-    console.error("Error loading product page:", err);
-    res.status(500).send("Server Error");
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
-
-const getProducts = async (req, res) => {
+const filterProducts = async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(Math.max(1, parseInt(req.query.limit) || 12), 100);
@@ -105,14 +128,18 @@ const getProducts = async (req, res) => {
     let filterQuery = { isListed: true };
 
     if (req.query.brands) {
-      const brandIds = req.query.brands.split(',').filter(id => id && id.trim() !== '');
+      const brandIds = req.query.brands
+        .split(",")
+        .filter((id) => id && id.trim() !== "");
       if (brandIds.length > 0) {
         filterQuery.brand = { $in: brandIds };
       }
     }
 
     if (req.query.categories) {
-      const categoryIds = req.query.categories.split(',').filter(id => id && id.trim() !== '');
+      const categoryIds = req.query.categories
+        .split(",")
+        .filter((id) => id && id.trim() !== "");
       if (categoryIds.length > 0) {
         filterQuery.category = { $in: categoryIds };
       }
@@ -123,7 +150,7 @@ const getProducts = async (req, res) => {
       if (searchTerm.length > 0) {
         filterQuery.productName = {
           $regex: searchTerm,
-          $options: 'i'
+          $options: "i",
         };
       }
     }
@@ -133,8 +160,8 @@ const getProducts = async (req, res) => {
       filterQuery.VariantItem = {
         $elemMatch: {
           Ml: size,
-          Quantity: { $gt: 0 }
-        }
+          Quantity: { $gt: 0 },
+        },
       };
     }
 
@@ -145,47 +172,66 @@ const getProducts = async (req, res) => {
       }
       filterQuery.VariantItem.$elemMatch = {
         ...(filterQuery.VariantItem.$elemMatch || {}),
-        offerPrice: { $lte: maxPrice }
+        offerPrice: { $lte: maxPrice },
       };
     }
 
     const totalCount = await product.countDocuments(filterQuery);
-    
-    const products = await product.find(filterQuery)
-      .populate('category', 'name')
-      .populate('brand', 'name')
+
+    const products = await product
+      .find(filterQuery)
+      .populate("category", "name")
+      .populate("brand", "name")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    const productsWithPrices = products.map(product => {
+    const productsWithPrices = products.map((product) => {
       let minOfferPrice = 0;
       let minOriginalPrice = 0;
       let hasStock = false;
       let bestDiscount = 0;
 
       if (product.VariantItem && product.VariantItem.length > 0) {
-        const inStockVariants = product.VariantItem.filter(v => v.Quantity > 0);
+        const inStockVariants = product.VariantItem.filter(
+          (v) => v.Quantity > 0
+        );
         hasStock = inStockVariants.length > 0;
 
         if (inStockVariants.length > 0) {
-          minOfferPrice = Math.min(...inStockVariants.map(v => v.offerPrice || 0));
-          minOriginalPrice = Math.min(...inStockVariants.map(v => v.Price || v.offerPrice || 0));
+          minOfferPrice = Math.min(
+            ...inStockVariants.map((v) => v.offerPrice || 0)
+          );
+          minOriginalPrice = Math.min(
+            ...inStockVariants.map((v) => v.Price || v.offerPrice || 0)
+          );
         } else {
-          minOfferPrice = Math.min(...product.VariantItem.map(v => v.offerPrice || 0));
-          minOriginalPrice = Math.min(...product.VariantItem.map(v => v.Price || v.offerPrice || 0));
+          minOfferPrice = Math.min(
+            ...product.VariantItem.map((v) => v.offerPrice || 0)
+          );
+          minOriginalPrice = Math.min(
+            ...product.VariantItem.map((v) => v.Price || v.offerPrice || 0)
+          );
         }
 
-        product.VariantItem.forEach(variant => {
-          if (variant.Price && variant.offerPrice && variant.Price > variant.offerPrice) {
-            const discount = Math.round(((variant.Price - variant.offerPrice) / variant.Price) * 100);
+        product.VariantItem.forEach((variant) => {
+          if (
+            variant.Price &&
+            variant.offerPrice &&
+            variant.Price > variant.offerPrice
+          ) {
+            const discount = Math.round(
+              ((variant.Price - variant.offerPrice) / variant.Price) * 100
+            );
             bestDiscount = Math.max(bestDiscount, discount);
           }
         });
 
         if (minOriginalPrice > 0 && minOriginalPrice > minOfferPrice) {
-          const minPriceDiscount = Math.round(((minOriginalPrice - minOfferPrice) / minOriginalPrice) * 100);
+          const minPriceDiscount = Math.round(
+            ((minOriginalPrice - minOfferPrice) / minOriginalPrice) * 100
+          );
           bestDiscount = Math.max(bestDiscount, minPriceDiscount);
         }
       }
@@ -199,18 +245,18 @@ const getProducts = async (req, res) => {
         price: minOfferPrice,
         oldPrice: minOriginalPrice > minOfferPrice ? minOriginalPrice : null,
         hasStock: hasStock,
-        bestDiscount: bestDiscount > 0 ? bestDiscount : null
+        bestDiscount: bestDiscount > 0 ? bestDiscount : null,
       };
     });
 
     if (req.query.sortBy) {
       const sortOptions = {
-        'price-low': (a, b) => a.price - b.price,
-        'price-high': (a, b) => b.price - a.price,
-        'latest': (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
-        'name': (a, b) => a.productName.localeCompare(b.productName)
+        "price-low": (a, b) => a.price - b.price,
+        "price-high": (a, b) => b.price - a.price,
+        latest: (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+        name: (a, b) => a.productName.localeCompare(b.productName),
       };
-      
+
       if (sortOptions[req.query.sortBy]) {
         productsWithPrices.sort(sortOptions[req.query.sortBy]);
       }
@@ -222,22 +268,20 @@ const getProducts = async (req, res) => {
       totalProducts: totalCount,
       totalPages: Math.ceil(totalCount / limit),
       currentPage: page,
-      limit: limit
+      limit: limit,
     });
-
   } catch (error) {
-    console.error("Error fetching products:", error);
-    res.status(500).json({
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: "Server Error",
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
 
-
 const getProductDetails = async (req, res) => {
   try {
-    const userId = req.session.user
+    const userId = req.session.user;
     const productId = req.params.id;
 
     if (
@@ -257,7 +301,6 @@ const getProductDetails = async (req, res) => {
     if (!productData) {
       return res.redirect("/product");
     }
-    
 
     let bestDiscount = 0;
     let productPrice = 0;
@@ -269,13 +312,21 @@ const getProductDetails = async (req, res) => {
       productOldPrice = firstVariant.Price || 0;
 
       if (productOldPrice > 0 && productOldPrice > productPrice) {
-        const variantDiscount = Math.round(((productOldPrice - productPrice) / productOldPrice) * 100);
+        const variantDiscount = Math.round(
+          ((productOldPrice - productPrice) / productOldPrice) * 100
+        );
         bestDiscount = Math.max(bestDiscount, variantDiscount);
       }
 
-      productData.VariantItem.forEach(variant => {
-        if (variant.Price && variant.offerPrice && variant.Price > variant.offerPrice) {
-          const variantDiscount = Math.round(((variant.Price - variant.offerPrice) / variant.Price) * 100);
+      productData.VariantItem.forEach((variant) => {
+        if (
+          variant.Price &&
+          variant.offerPrice &&
+          variant.Price > variant.offerPrice
+        ) {
+          const variantDiscount = Math.round(
+            ((variant.Price - variant.offerPrice) / variant.Price) * 100
+          );
           bestDiscount = Math.max(bestDiscount, variantDiscount);
         }
       });
@@ -289,7 +340,7 @@ const getProductDetails = async (req, res) => {
       ...productData,
       price: productPrice,
       oldPrice: productOldPrice > productPrice ? productOldPrice : null,
-      bestDiscount: bestDiscount > 0 ? bestDiscount : null
+      bestDiscount: bestDiscount > 0 ? bestDiscount : null,
     };
 
     let userData = null;
@@ -315,7 +366,7 @@ const getProductDetails = async (req, res) => {
       .populate("category")
       .lean();
 
-    const relatedProductsWithDiscounts = relatedProducts.map(related => {
+    const relatedProductsWithDiscounts = relatedProducts.map((related) => {
       let relatedBestDiscount = 0;
       let relatedPrice = 0;
       let relatedOldPrice = 0;
@@ -326,14 +377,25 @@ const getProductDetails = async (req, res) => {
         relatedOldPrice = firstRelatedVariant.Price || 0;
 
         if (relatedOldPrice > 0 && relatedOldPrice > relatedPrice) {
-          const variantDiscount = Math.round(((relatedOldPrice - relatedPrice) / relatedOldPrice) * 100);
+          const variantDiscount = Math.round(
+            ((relatedOldPrice - relatedPrice) / relatedOldPrice) * 100
+          );
           relatedBestDiscount = Math.max(relatedBestDiscount, variantDiscount);
         }
 
-        related.VariantItem.forEach(variant => {
-          if (variant.Price && variant.offerPrice && variant.Price > variant.offerPrice) {
-            const variantDiscount = Math.round(((variant.Price - variant.offerPrice) / variant.Price) * 100);
-            relatedBestDiscount = Math.max(relatedBestDiscount, variantDiscount);
+        related.VariantItem.forEach((variant) => {
+          if (
+            variant.Price &&
+            variant.offerPrice &&
+            variant.Price > variant.offerPrice
+          ) {
+            const variantDiscount = Math.round(
+              ((variant.Price - variant.offerPrice) / variant.Price) * 100
+            );
+            relatedBestDiscount = Math.max(
+              relatedBestDiscount,
+              variantDiscount
+            );
           }
         });
       }
@@ -346,7 +408,7 @@ const getProductDetails = async (req, res) => {
         ...related,
         price: relatedPrice,
         oldPrice: relatedOldPrice > relatedPrice ? relatedOldPrice : null,
-        bestDiscount: relatedBestDiscount > 0 ? relatedBestDiscount : null
+        bestDiscount: relatedBestDiscount > 0 ? relatedBestDiscount : null,
       };
     });
 
@@ -362,7 +424,7 @@ const getProductDetails = async (req, res) => {
       user: userData,
       userWishlist,
       breadcrumb,
-      isBlocked : !productData.isListed
+      isBlocked: !productData.isListed,
     });
   } catch (error) {
     console.error("Error:", error);
@@ -370,9 +432,8 @@ const getProductDetails = async (req, res) => {
   }
 };
 
-
 export default {
-  productPage,
   getProducts,
+  filterProducts,
   getProductDetails,
 };

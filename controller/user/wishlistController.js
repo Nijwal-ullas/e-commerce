@@ -1,5 +1,7 @@
 import wishlist from "../../model/wishlistSchema.js";
 import product from "../../model/productSchema.js";
+import statusCode from "../../utilities/statusCodes.js";
+import errorMessage from "../../utilities/errorMessages.js";
 
 const isValidObjectId = (id) => {
   if (typeof id !== "string" && !(id instanceof String)) return false;
@@ -43,11 +45,13 @@ const getWishlist = async (req, res) => {
       totalItems,
     });
   } catch (error) {
-    console.error("Wishlist page error:", error);
-    return res.status(500).send("Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
-
 
 const addToWishlist = async (req, res) => {
   try {
@@ -55,32 +59,31 @@ const addToWishlist = async (req, res) => {
     const { productId } = req.body;
 
     if (!userId) {
-      return res.redirect("/login")
-       
+      return res.redirect("/login");
     }
 
     if (!productId) {
       return res
-        .status(400)
+        .status(statusCode.BAD_REQUEST)
         .json({ success: false, message: "Product ID is required" });
     }
 
     if (!isValidObjectId(productId)) {
       return res
-        .status(400)
+        .status(statusCode.BAD_REQUEST)
         .json({ success: false, message: "Invalid product ID" });
     }
 
     const productExists = await product.findById(productId);
     if (!productExists) {
       return res
-        .status(400)
+        .status(statusCode.NOT_FOUND)
         .json({ success: false, message: "Product not found" });
     }
 
     if (productExists.isListed === false) {
       return res
-        .status(400)
+        .status(statusCode.NOT_FOUND)
         .json({ success: false, message: "This product is not available" });
     }
 
@@ -96,7 +99,7 @@ const addToWishlist = async (req, res) => {
       );
       if (existingItem) {
         return res
-          .status(400)
+          .status(statusCode.BAD_REQUEST)
           .json({ success: false, message: "Product already in wishlist" });
       }
       userWishlist.products.push({ productId, addedAt: new Date() });
@@ -109,13 +112,13 @@ const addToWishlist = async (req, res) => {
       wishlistCount: userWishlist.products.length,
     });
   } catch (error) {
-    console.error("Add to wishlist error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Failed to add to wishlist" });
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
-
 
 const removeFromWishlist = async (req, res) => {
   try {
@@ -123,11 +126,11 @@ const removeFromWishlist = async (req, res) => {
     const { productId } = req.params;
 
     if (!userId) {
-      return res.redirect("/login")
+      return res.redirect("/login");
     }
 
     if (!isValidObjectId(productId)) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Invalid product ID",
       });
@@ -136,7 +139,7 @@ const removeFromWishlist = async (req, res) => {
     const userWishlist = await wishlist.findOne({ userId });
 
     if (!userWishlist) {
-      return res.status(400).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Wishlist not found",
       });
@@ -149,7 +152,7 @@ const removeFromWishlist = async (req, res) => {
     );
 
     if (userWishlist.products.length === originalLength) {
-      return res.status(400).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Product not found in wishlist",
       });
@@ -163,10 +166,10 @@ const removeFromWishlist = async (req, res) => {
       wishlistCount: userWishlist.products.length,
     });
   } catch (error) {
-    console.error("Remove from wishlist error:", error);
-    return res.status(500).json({
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: "Failed to remove from wishlist",
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
@@ -176,13 +179,13 @@ const clearWishlist = async (req, res) => {
     const userId = req.session.user;
 
     if (!userId) {
-      return res.redirect("/login")
+      return res.redirect("/login");
     }
 
     const userWishlist = await wishlist.findOne({ userId });
 
     if (!userWishlist) {
-      return res.status(400).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "Wishlist not found",
       });
@@ -196,14 +199,13 @@ const clearWishlist = async (req, res) => {
       message: "Wishlist cleared successfully",
     });
   } catch (error) {
-    console.error("Clear wishlist error:", error);
-    return res.status(500).json({
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: "Failed to clear wishlist",
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
-
 
 const checkWishlist = async (req, res) => {
   try {
@@ -218,7 +220,7 @@ const checkWishlist = async (req, res) => {
     }
 
     if (!isValidObjectId(productId)) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Invalid product ID",
       });
@@ -242,15 +244,13 @@ const checkWishlist = async (req, res) => {
       inWishlist,
     });
   } catch (error) {
-    console.error("Check wishlist error:", error);
-    return res.status(500).json({
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
       success: false,
-      message: "Failed to check wishlist",
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
-
-
 
 export default {
   getWishlist,

@@ -2,8 +2,10 @@ import user from "../../model/userSchema.js";
 import Order from "../../model/orderSchema.js";
 import product from "../../model/productSchema.js";
 import wallet from "../../model/walletSchema.js";
-import Coupons from "../../model/couponSchema.js";  
+import Coupons from "../../model/couponSchema.js";
 import PDFDocument from "pdfkit";
+import statusCode from "../../utilities/statusCodes.js";
+import errorMessage from "../../utilities/errorMessages.js";
 
 const getOrder = async (req, res) => {
   try {
@@ -25,7 +27,10 @@ const getOrder = async (req, res) => {
     const totalOrders = await Order.countDocuments({ userId });
     const totalPages = Math.ceil(totalOrders / limit);
 
-    const allOrders = await Order.find({ userId }, "orderedItem finalAmount totalPrice");
+    const allOrders = await Order.find(
+      { userId },
+      "orderedItem finalAmount totalPrice"
+    );
     const totalItems = allOrders.reduce(
       (sum, order) => sum + (order.orderedItem?.length || 0),
       0
@@ -42,11 +47,14 @@ const getOrder = async (req, res) => {
       totalPages,
       totalOrders,
       totalItems,
-      totalRevenue
+      totalRevenue,
     });
   } catch (error) {
-    console.log(error);
-    return res.status(500).send("Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -72,9 +80,9 @@ const getOrderDetails = async (req, res) => {
       .lean();
 
     if (!orderDetails) {
-      return res.status(400).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
-        message: " order not found"
+        message: " order not found",
       });
     }
 
@@ -83,9 +91,9 @@ const getOrderDetails = async (req, res) => {
       .select("name email phone profileImage");
 
     if (!userData) {
-      return res.status(400).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
-        message: " userData not found"
+        message: " userData not found",
       });
     }
 
@@ -149,19 +157,21 @@ const getOrderDetails = async (req, res) => {
 
     orderDetails.status = orderDetails.orderStatus || "Pending";
     orderDetails.paymentMethod = orderDetails.payment || "COD";
-    orderDetails.deliveryCharge = (orderDetails.totalPrice - orderDetails.discount) >= 500 ? 0 : 50;
+    orderDetails.deliveryCharge =
+      orderDetails.totalPrice - orderDetails.discount >= 500 ? 0 : 50;
 
     return res.render("user/orderDetailPage", {
       user: userData,
       order: orderDetails,
       shippingAddress: shippingAddress,
-      pageTitle: `Order #${
-        orderDetails.orderId
-      }`,
+      pageTitle: `Order #${orderDetails.orderId}`,
     });
   } catch (error) {
-    console.error("Error in getOrderDetails:", error);
-    return res.status(500).send("Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -169,18 +179,24 @@ const cancelOrder = async (req, res) => {
   try {
     const userId = req.session.user;
     if (!userId)
-      return res.status(400).json({ success: false, message: "Login first" });
+      return res
+        .status(statusCode.UNAUTHORIZED)
+        .json({ success: false, message: "Login first" });
 
     const { orderId } = req.params;
     const { itemId, reason, cancelAll } = req.body;
 
     const orderDoc = await Order.findOne({ _id: orderId, userId });
     if (!orderDoc)
-      return res.status(400).json({ success: false, message: "Order not found" });
+      return res
+        .status(statusCode.NOT_FOUND)
+        .json({ success: false, message: "Order not found" });
 
-    const canCancelOrder = ["Pending", "Processing"].includes(orderDoc.orderStatus);
+    const canCancelOrder = ["Pending", "Processing"].includes(
+      orderDoc.orderStatus
+    );
     if (!canCancelOrder)
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: `Cannot cancel order with status ${orderDoc.orderStatus}`,
       });
@@ -189,10 +205,12 @@ const cancelOrder = async (req, res) => {
       return await cancelAllItems(orderDoc, userId, reason, res);
 
     return await cancelSingleItem(orderDoc, userId, itemId, reason, res);
-
   } catch (error) {
-    console.error("Cancel error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -201,21 +219,23 @@ function getUpdatedOrderStatus(items) {
     return "Cancelled";
   }
 
-  const allDelivered = items.every(item => item.status === "Delivered");
+  const allDelivered = items.every((item) => item.status === "Delivered");
   if (allDelivered) {
     return "Delivered";
   }
 
-  const allCancelled = items.every(item => item.status === "Cancelled");
+  const allCancelled = items.every((item) => item.status === "Cancelled");
   if (allCancelled) {
     return "Cancelled";
   }
 
-  const hasShipped = items.some(item => item.status === "Shipped");
-  const hasProcessing = items.some(item => item.status === "Processing");
-  const hasPending = items.some(item => item.status === "Pending");
-  const hasDelivered = items.some(item => item.status === "Delivered");
-  const hasReturnRequested = items.some(item => item.status === "Return Requested");
+  const hasShipped = items.some((item) => item.status === "Shipped");
+  const hasProcessing = items.some((item) => item.status === "Processing");
+  const hasPending = items.some((item) => item.status === "Pending");
+  const hasDelivered = items.some((item) => item.status === "Delivered");
+  const hasReturnRequested = items.some(
+    (item) => item.status === "Return Requested"
+  );
 
   if (hasShipped) return "Shipped";
   if (hasProcessing) return "Processing";
@@ -223,12 +243,12 @@ function getUpdatedOrderStatus(items) {
   if (hasReturnRequested) return "Return Requested";
   if (hasDelivered) return "Partially Delivered";
 
-  const hasCancelled = items.some(item => item.status === "Cancelled");
+  const hasCancelled = items.some((item) => item.status === "Cancelled");
   if (hasCancelled) {
     return "Partially Cancelled";
   }
 
-  return "Processing"; 
+  return "Processing";
 }
 
 async function cancelAllItems(orderDoc, userId, reason, res) {
@@ -246,14 +266,18 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
     }
   }
 
-  const cancelledItems = orderDoc.orderedItem.filter(i => i.status === "Cancelled");
-  const deliveredItems = orderDoc.orderedItem.filter(i => i.status === "Delivered");
+  const cancelledItems = orderDoc.orderedItem.filter(
+    (i) => i.status === "Cancelled"
+  );
+  const deliveredItems = orderDoc.orderedItem.filter(
+    (i) => i.status === "Delivered"
+  );
 
   let refundAmount = 0;
-  
+
   if (orderDoc.payment !== "Cod" && cancelledItems.length > 0) {
     refundAmount = orderDoc.finalAmount;
-    
+
     if (refundAmount > 0) {
       await refundToWallet(userId, refundAmount);
     }
@@ -276,10 +300,9 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
       success: true,
       message: "Order fully cancelled",
       refundedToWallet: orderDoc.payment !== "Cod" ? refundAmount : 0,
-      orderStatus: "Cancelled"
+      orderStatus: "Cancelled",
     });
   }
-
 
   let newBaseTotal = 0;
   let newOfferTotal = 0;
@@ -290,10 +313,12 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
 
     let variant = null;
     if (item.variantId)
-      variant = productDoc.VariantItem.find(v => v._id.toString() === item.variantId.toString());
+      variant = productDoc.VariantItem.find(
+        (v) => v._id.toString() === item.variantId.toString()
+      );
 
     if (!variant && item.ml)
-      variant = productDoc.VariantItem.find(v => v.Ml === item.ml);
+      variant = productDoc.VariantItem.find((v) => v.Ml === item.ml);
 
     if (!variant) continue;
 
@@ -306,10 +331,10 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
 
   orderDoc.totalPrice = newBaseTotal;
   orderDoc.discount = newBaseTotal - newOfferTotal;
-  
+
   const afterDiscount = newOfferTotal - orderDoc.couponDiscount;
   const deliveryCharge = afterDiscount >= 500 ? 0 : 50;
-  
+
   orderDoc.finalAmount = afterDiscount + deliveryCharge;
 
   orderDoc.orderStatus = getUpdatedOrderStatus(deliveredItems);
@@ -322,17 +347,17 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
     refundedToWallet: orderDoc.payment !== "Cod" ? refundAmount : 0,
     couponAdjusted: couponAdjusted,
     orderStatus: orderDoc.orderStatus,
-    remainingItems: deliveredItems.length
+    remainingItems: deliveredItems.length,
   });
 }
 
 async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
-  const item = orderDoc.orderedItem.find(i => i._id.toString() === itemId);
+  const item = orderDoc.orderedItem.find((i) => i._id.toString() === itemId);
   if (!item)
     return res.status(404).json({ success: false, message: "Item not found" });
 
   if (!["Pending", "Processing"].includes(item.status)) {
-    return res.status(400).json({
+    return res.status(statusCode.BAD_REQUEST).json({
       success: false,
       message: "Item cannot be cancelled now",
     });
@@ -340,55 +365,55 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
 
   item.status = "Cancelled";
   item.cancellationReason = reason || "";
-  
+
   const couponCode = orderDoc.couponCode;
   const couponId = orderDoc.couponId;
-  
+
   const cancelledPrice = item.price * item.quantity;
   let refundAmount = 0;
-  
+
   const activeItems = orderDoc.orderedItem.filter(
-    i => i.status !== "Cancelled"
+    (i) => i.status !== "Cancelled"
   );
-  
+
   const remainingSubtotal = activeItems.reduce(
     (sum, i) => sum + i.price * i.quantity,
     0
   );
-  
+
   let coupon = null;
   let couponValid = false;
-  
+
   if (orderDoc.couponId) {
     coupon = await Coupons.findById(orderDoc.couponId);
     couponValid = coupon && remainingSubtotal >= coupon.minCartValue;
   }
-  
+
   if (orderDoc.payment !== "Cod") {
     refundAmount = cancelledPrice;
-    
+
     if (!couponValid) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
-        message: "cannot remove this item because remaining item is not applicable for coupon"
-      })
-      
+        message:
+          "cannot remove this item because remaining item is not applicable for coupon",
+      });
+
       // refundAmount -= orderDoc.couponDiscount;
       // refundAmount = Math.max(refundAmount, 0);
-      
+
       // orderDoc.couponCode = null;
       // orderDoc.couponId = null;
       // orderDoc.couponDiscount = 0;
       // orderDoc.couponUsed = false;
     }
-    
+
     if (refundAmount > 0) {
       await refundToWallet(userId, refundAmount);
     }
   }
-  
-  await restoreStock(item);
 
+  await restoreStock(item);
 
   if (activeItems.length === 0) {
     orderDoc.orderStatus = "Cancelled";
@@ -402,10 +427,9 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
       success: true,
       message: "Item cancelled and order closed",
       refundedToWallet: refundAmount,
-      orderStatus: "Cancelled"
+      orderStatus: "Cancelled",
     });
   }
-
 
   let newBase = 0;
   let newDiscount = 0;
@@ -416,13 +440,17 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
 
     let variant = null;
     if (activeItem.variantId)
-      variant = productDoc.VariantItem.find(v => v._id.toString() === activeItem.variantId.toString());
+      variant = productDoc.VariantItem.find(
+        (v) => v._id.toString() === activeItem.variantId.toString()
+      );
 
     if (!variant && activeItem.ml)
-      variant = productDoc.VariantItem.find(v => v.Ml === activeItem.ml);
+      variant = productDoc.VariantItem.find((v) => v.Ml === activeItem.ml);
 
     const basePrice = variant ? variant.Price : activeItem.price;
-    const finalPrice = variant ? (variant.offerPrice || variant.Price) : activeItem.price;
+    const finalPrice = variant
+      ? variant.offerPrice || variant.Price
+      : activeItem.price;
 
     newBase += basePrice * activeItem.quantity;
     newDiscount += (basePrice - finalPrice) * activeItem.quantity;
@@ -434,7 +462,7 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
   orderDoc.totalPrice = newBase;
   orderDoc.discount = newDiscount;
   orderDoc.finalAmount = afterDiscount + delivery;
-  
+
   orderDoc.orderStatus = getUpdatedOrderStatus(activeItems);
 
   await orderDoc.save();
@@ -445,10 +473,9 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
     refundedToWallet: refundAmount,
     newFinalAmount: orderDoc.finalAmount,
     orderStatus: orderDoc.orderStatus,
-    remainingItems: activeItems.length
+    remainingItems: activeItems.length,
   });
 }
-
 
 async function refundToWallet(userId, amount) {
   if (!amount || amount <= 0) return;
@@ -459,7 +486,7 @@ async function refundToWallet(userId, amount) {
     userWallet = new wallet({
       UserId: userId,
       Balance: "0",
-      Wallet_transaction: []
+      Wallet_transaction: [],
     });
   }
 
@@ -470,7 +497,7 @@ async function refundToWallet(userId, amount) {
     Amount: amount.toString(),
     Type: "credit",
     CreatedAt: new Date(),
-    Description: "Refund for cancelled item"
+    Description: "Refund for cancelled item",
   });
 
   await userWallet.save();
@@ -485,13 +512,14 @@ async function restoreStock(item) {
       let variant = null;
 
       if (item.variantId)
-        variant = productDoc.VariantItem.find(v => v._id.toString() === item.variantId.toString());
+        variant = productDoc.VariantItem.find(
+          (v) => v._id.toString() === item.variantId.toString()
+        );
 
       if (!variant && item.ml)
-        variant = productDoc.VariantItem.find(v => v.Ml === item.ml);
+        variant = productDoc.VariantItem.find((v) => v.Ml === item.ml);
 
       if (variant) variant.Quantity += item.quantity;
-
     } else {
       productDoc.stock += item.quantity;
     }
@@ -507,17 +535,18 @@ const downloadInvoice = async (req, res) => {
     const { orderId } = req.params;
     const userId = req.session.user;
 
-    if (!userId) return res.redirect("/login")
+    if (!userId) return res.redirect("/login");
 
     const userData = await user.findById(userId);
     const orderDoc = await Order.findOne({ _id: orderId, userId }).populate(
       "orderedItem.productId"
     );
 
-    if (!orderDoc) return res.status(400).json({
-     success : false,
-     message : "order does not exist"
-     });
+    if (!orderDoc)
+      return res.status(statusCode.NOT_FOUND).json({
+        success: false,
+        message: "order does not exist",
+      });
 
     const invoiceName = `Invoice_${orderDoc.orderId}.pdf`;
 
@@ -532,37 +561,66 @@ const downloadInvoice = async (req, res) => {
 
     doc.fontSize(24).fillColor("#2563eb").text("INVOICE", { align: "center" });
     doc.moveDown(0.5);
-    doc.fontSize(10).fillColor("#6b7280").text("Tax Invoice", { align: "center" });
+    doc
+      .fontSize(10)
+      .fillColor("#6b7280")
+      .text("Tax Invoice", { align: "center" });
     doc.moveDown(1);
 
     const topY = doc.y;
-    
+
     doc.fontSize(12).fillColor("#000000").text("Ruhe Collection", 50, topY);
-    doc.fontSize(9).fillColor("#4b5563")
+    doc
+      .fontSize(9)
+      .fillColor("#4b5563")
       .text("123 Business Street", 50)
       .text("City, State - 123456", 50)
       .text("Phone: +91 1234567890", 50)
       .text("Email: info@ruhecollection.com", 50);
 
-    doc.fontSize(10).fillColor("#000000")
-      .text(`Invoice No: ${orderDoc.orderId}`, 350, topY, { width: 200, align: "right" });
-    doc.fontSize(9).fillColor("#4b5563")
-      .text(`Date: ${new Date(orderDoc.createdAt).toLocaleDateString('en-IN')}`, 350, doc.y, { width: 200, align: "right" })
-      .text(`Order Status: ${orderDoc.orderStatus}`, 350, doc.y, { width: 200, align: "right" })
-      .text(`Payment: ${orderDoc.payment}`, 350, doc.y, { width: 200, align: "right" });
+    doc
+      .fontSize(10)
+      .fillColor("#000000")
+      .text(`Invoice No: ${orderDoc.orderId}`, 350, topY, {
+        width: 200,
+        align: "right",
+      });
+    doc
+      .fontSize(9)
+      .fillColor("#4b5563")
+      .text(
+        `Date: ${new Date(orderDoc.createdAt).toLocaleDateString("en-IN")}`,
+        350,
+        doc.y,
+        { width: 200, align: "right" }
+      )
+      .text(`Order Status: ${orderDoc.orderStatus}`, 350, doc.y, {
+        width: 200,
+        align: "right",
+      })
+      .text(`Payment: ${orderDoc.payment}`, 350, doc.y, {
+        width: 200,
+        align: "right",
+      });
 
     doc.moveDown(2);
 
     doc.fontSize(11).fillColor("#000000").text("BILL TO:", 50);
-    doc.fontSize(10).fillColor("#4b5563")
+    doc
+      .fontSize(10)
+      .fillColor("#4b5563")
       .text(userData.name || "Customer", 50)
       .text(userData.email || "", 50)
       .text(userData.phone || "", 50);
 
     if (orderDoc.shippingAddress && orderDoc.shippingAddress.length > 0) {
       const addr = orderDoc.shippingAddress[0];
-      doc.text(`${addr.flatNumber || ""} ${addr.streetName || ""}`, 50)
-        .text(`${addr.city || ""}, ${addr.state || ""} - ${addr.pincode || ""}`, 50)
+      doc
+        .text(`${addr.flatNumber || ""} ${addr.streetName || ""}`, 50)
+        .text(
+          `${addr.city || ""}, ${addr.state || ""} - ${addr.pincode || ""}`,
+          50
+        )
         .text(addr.phone || "", 50);
     }
 
@@ -577,7 +635,9 @@ const downloadInvoice = async (req, res) => {
 
     doc.rect(50, tableTop, 495, 25).fillAndStroke("#2563eb", "#2563eb");
 
-    doc.fontSize(10).fillColor("#ffffff")
+    doc
+      .fontSize(10)
+      .fillColor("#ffffff")
       .text("ITEM DESCRIPTION", itemCol + 5, tableTop + 8, { width: 220 })
       .text("QTY", qtyCol, tableTop + 8, { width: 50, align: "center" })
       .text("PRICE", priceCol, tableTop + 8, { width: 70, align: "right" })
@@ -588,7 +648,9 @@ const downloadInvoice = async (req, res) => {
 
     orderDoc.orderedItem.forEach((item, index) => {
       if (index % 2 === 1) {
-        doc.rect(50, currentY, 495, lineHeight).fillAndStroke("#f3f4f6", "#e5e7eb");
+        doc
+          .rect(50, currentY, 495, lineHeight)
+          .fillAndStroke("#f3f4f6", "#e5e7eb");
       } else {
         doc.rect(50, currentY, 495, lineHeight).stroke("#e5e7eb");
       }
@@ -597,11 +659,26 @@ const downloadInvoice = async (req, res) => {
       const variantInfo = item.ml;
       const oldPrice = item.oldPrice;
 
-      doc.fontSize(9).fillColor("#000000")
-        .text(`${productName}(${variantInfo}ml)`, itemCol + 5, currentY + 6, { width: 220 })
-        .text(item.quantity.toString(), qtyCol, currentY + 6, { width: 50, align: "center" })
-        .text(`${oldPrice.toFixed(2)}`, priceCol, currentY + 6, { width: 70, align: "right" })
-        .text(`${(oldPrice * item.quantity).toFixed(2)}`, amountCol, currentY + 6, { width: 115, align: "right" });
+      doc
+        .fontSize(9)
+        .fillColor("#000000")
+        .text(`${productName}(${variantInfo}ml)`, itemCol + 5, currentY + 6, {
+          width: 220,
+        })
+        .text(item.quantity.toString(), qtyCol, currentY + 6, {
+          width: 50,
+          align: "center",
+        })
+        .text(`${oldPrice.toFixed(2)}`, priceCol, currentY + 6, {
+          width: 70,
+          align: "right",
+        })
+        .text(
+          `${(oldPrice * item.quantity).toFixed(2)}`,
+          amountCol,
+          currentY + 6,
+          { width: 115, align: "right" }
+        );
 
       currentY += lineHeight;
     });
@@ -611,50 +688,116 @@ const downloadInvoice = async (req, res) => {
     const summaryLabelWidth = 100;
     const summaryValueWidth = 95;
 
-    doc.fontSize(9).fillColor("#4b5563")
-      .text("Subtotal:", summaryX, currentY, { width: summaryLabelWidth, align: "left" })
-      .text(`${orderDoc.totalPrice.toFixed(2)}`, summaryX + summaryLabelWidth, currentY, { width: summaryValueWidth, align: "right" });
+    doc
+      .fontSize(9)
+      .fillColor("#4b5563")
+      .text("Subtotal:", summaryX, currentY, {
+        width: summaryLabelWidth,
+        align: "left",
+      })
+      .text(
+        `${orderDoc.totalPrice.toFixed(2)}`,
+        summaryX + summaryLabelWidth,
+        currentY,
+        { width: summaryValueWidth, align: "right" }
+      );
     currentY += 18;
 
     if (orderDoc.discount > 0) {
-      doc.fillColor("#16a34a")
-        .text("Product Discount:", summaryX, currentY, { width: summaryLabelWidth, align: "left" })
-        .text(`-${orderDoc.discount.toFixed(2)}`, summaryX + summaryLabelWidth, currentY, { width: summaryValueWidth, align: "right" });
+      doc
+        .fillColor("#16a34a")
+        .text("Product Discount:", summaryX, currentY, {
+          width: summaryLabelWidth,
+          align: "left",
+        })
+        .text(
+          `-${orderDoc.discount.toFixed(2)}`,
+          summaryX + summaryLabelWidth,
+          currentY,
+          { width: summaryValueWidth, align: "right" }
+        );
       currentY += 18;
     }
 
     if (orderDoc.couponDiscount > 0) {
-      doc.fillColor("#16a34a")
-        .text(`Coupon (${orderDoc.couponCode}):`, summaryX, currentY, { width: summaryLabelWidth, align: "left" })
-        .text(`-${orderDoc.couponDiscount.toFixed(2)}`, summaryX + summaryLabelWidth, currentY, { width: summaryValueWidth, align: "right" });
+      doc
+        .fillColor("#16a34a")
+        .text(`Coupon (${orderDoc.couponCode}):`, summaryX, currentY, {
+          width: summaryLabelWidth,
+          align: "left",
+        })
+        .text(
+          `-${orderDoc.couponDiscount.toFixed(2)}`,
+          summaryX + summaryLabelWidth,
+          currentY,
+          { width: summaryValueWidth, align: "right" }
+        );
       currentY += 18;
     }
 
     const shippingCharge = orderDoc.shippingCharge || 0;
-    doc.fillColor("#4b5563")
-      .text("Shipping:", summaryX, currentY, { width: summaryLabelWidth, align: "left" })
-      .text(shippingCharge === 0 ? "FREE" : `${shippingCharge.toFixed(2)}`, summaryX + summaryLabelWidth, currentY, { width: summaryValueWidth, align: "right" });
+    doc
+      .fillColor("#4b5563")
+      .text("Shipping:", summaryX, currentY, {
+        width: summaryLabelWidth,
+        align: "left",
+      })
+      .text(
+        shippingCharge === 0 ? "FREE" : `${shippingCharge.toFixed(2)}`,
+        summaryX + summaryLabelWidth,
+        currentY,
+        { width: summaryValueWidth, align: "right" }
+      );
     currentY += 18;
 
     if (orderDoc.walletUsed > 0) {
-      doc.fillColor("#7c3aed")
-        .text("Wallet Used:", summaryX, currentY, { width: summaryLabelWidth, align: "left" })
-        .text(`-${orderDoc.walletUsed.toFixed(2)}`, summaryX + summaryLabelWidth, currentY, { width: summaryValueWidth, align: "right" });
+      doc
+        .fillColor("#7c3aed")
+        .text("Wallet Used:", summaryX, currentY, {
+          width: summaryLabelWidth,
+          align: "left",
+        })
+        .text(
+          `-${orderDoc.walletUsed.toFixed(2)}`,
+          summaryX + summaryLabelWidth,
+          currentY,
+          { width: summaryValueWidth, align: "right" }
+        );
       currentY += 18;
     }
 
     currentY += 5;
-    doc.rect(summaryX - 5, currentY - 5, 205, 25).fillAndStroke("#2563eb", "#2563eb");
-    
-    doc.fontSize(11).fillColor("#ffffff")
-      .text("TOTAL AMOUNT:", summaryX, currentY + 2, { width: summaryLabelWidth, align: "left" })
-      .text(`${orderDoc.finalAmount.toFixed(2)}`, summaryX + summaryLabelWidth, currentY + 2, { width: summaryValueWidth, align: "right" });
+    doc
+      .rect(summaryX - 5, currentY - 5, 205, 25)
+      .fillAndStroke("#2563eb", "#2563eb");
+
+    doc
+      .fontSize(11)
+      .fillColor("#ffffff")
+      .text("TOTAL AMOUNT:", summaryX, currentY + 2, {
+        width: summaryLabelWidth,
+        align: "left",
+      })
+      .text(
+        `${orderDoc.finalAmount.toFixed(2)}`,
+        summaryX + summaryLabelWidth,
+        currentY + 2,
+        { width: summaryValueWidth, align: "right" }
+      );
 
     if (orderDoc.discount > 0 || orderDoc.couponDiscount > 0) {
       currentY += 35;
-      const totalSavings = (orderDoc.discount || 0) + (orderDoc.couponDiscount || 0);
-      doc.fontSize(9).fillColor("#16a34a")
-        .text(`You saved ${totalSavings.toFixed(2)} on this order!`, 50, currentY, { align: "center" });
+      const totalSavings =
+        (orderDoc.discount || 0) + (orderDoc.couponDiscount || 0);
+      doc
+        .fontSize(9)
+        .fillColor("#16a34a")
+        .text(
+          `You saved ${totalSavings.toFixed(2)} on this order!`,
+          50,
+          currentY,
+          { align: "center" }
+        );
     }
 
     currentY += 40;
@@ -663,32 +806,42 @@ const downloadInvoice = async (req, res) => {
       currentY = 50;
     }
 
-   
     currentY += 55;
-    doc.fontSize(9).fillColor("#2563eb")
-      .text("Thank you for shopping with Ruhe Collection!", 50, currentY, { align: "center" });
+    doc
+      .fontSize(9)
+      .fillColor("#2563eb")
+      .text("Thank you for shopping with Ruhe Collection!", 50, currentY, {
+        align: "center",
+      });
 
     const pageCount = doc.bufferedPageRange().count;
     for (let i = 0; i < pageCount; i++) {
       doc.switchToPage(i);
-      doc.fontSize(8).fillColor("#9ca3af")
-        .text(`Page ${i + 1} of ${pageCount}`, 50, doc.page.height - 50, { align: "center" });
+      doc
+        .fontSize(8)
+        .fillColor("#9ca3af")
+        .text(`Page ${i + 1} of ${pageCount}`, 50, doc.page.height - 50, {
+          align: "center",
+        });
     }
 
     doc.end();
-
-  } catch (err) {
-    console.error("Invoice error:", err);
-    res.status(500).send("Failed to download invoice");
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
-
 
 const requestOrderReturn = async (req, res) => {
   try {
     const userId = req.session.user;
     if (!userId)
-      return res.status(401).json({ success: false, message: "Login first" });
+      return res
+        .status(statusCode.UNAUTHORIZED)
+        .json({ success: false, message: "Login first" });
 
     const { orderId } = req.params;
     const { reason, itemId } = req.body;
@@ -696,7 +849,7 @@ const requestOrderReturn = async (req, res) => {
     const orderDoc = await Order.findOne({ _id: orderId, userId });
     if (!orderDoc)
       return res
-        .status(404)
+        .status(statusCode.NOT_FOUND)
         .json({ success: false, message: "Order not found" });
 
     if (!reason || reason.trim() === "") {
@@ -707,7 +860,7 @@ const requestOrderReturn = async (req, res) => {
     }
 
     if (!itemId) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Item ID is required for return request",
       });
@@ -716,7 +869,7 @@ const requestOrderReturn = async (req, res) => {
     const item = orderDoc.orderedItem.find((i) => i._id.toString() === itemId);
     if (!item)
       return res
-        .status(404)
+        .status(statusCode.NOT_FOUND)
         .json({ success: false, message: "Item not found" });
 
     if (item.status !== "Delivered") {
@@ -726,8 +879,10 @@ const requestOrderReturn = async (req, res) => {
       });
     }
 
-    if (["Return Requested", "Return Approved", "Returned"].includes(item.status)) {
-      return res.status(400).json({
+    if (
+      ["Return Requested", "Return Approved", "Returned"].includes(item.status)
+    ) {
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "This item is already in return process",
       });
@@ -753,7 +908,6 @@ const requestOrderReturn = async (req, res) => {
     //   })
     // }
 
-
     item.status = "Return Requested";
     item.returnReason = reason.trim();
     item.returnRequestDate = new Date();
@@ -763,19 +917,23 @@ const requestOrderReturn = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Return request submitted successfully. Awaiting admin approval.",
+      message:
+        "Return request submitted successfully. Awaiting admin approval.",
       item: item,
     });
   } catch (error) {
-    console.error("Return request error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
 export default {
   getOrder,
-  cancelOrder,
   getOrderDetails,
+  cancelOrder,
   downloadInvoice,
   requestOrderReturn,
 };

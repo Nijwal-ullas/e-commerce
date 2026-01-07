@@ -1,5 +1,7 @@
 import Address from "../../model/addressSchema.js";
 import User from "../../model/userSchema.js";
+import statusCode from "../../utilities/statusCodes.js";
+import errorMessage from "../../utilities/errorMessages.js";
 
 const pincodeRegex = /^\d{6}$/;
 const phoneRegex = /^[6-9]\d{9}$/;
@@ -30,8 +32,11 @@ const loadAddressPage = async (req, res) => {
       totalPages,
     });
   } catch (error) {
-    console.log(error);
-    return res.status(500).send("Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -63,8 +68,11 @@ const loadAddAddress = async (req, res) => {
       addressId: addressId,
     });
   } catch (error) {
-    console.log(error);
-    return res.status(500).send("Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -97,35 +105,35 @@ const registerAddress = async (req, res) => {
       !userName ||
       !phone
     ) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Please fill all required fields",
       });
     }
 
     if (!pincodeRegex.test(pincode.trim())) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Pincode must be six digits",
       });
     }
 
     if (!phoneRegex.test(phone.trim())) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Phone number must be ten digits",
       });
     }
 
     if (alternatePhone && !phoneRegex.test(alternatePhone.trim())) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Alternative phone number must be ten digits",
       });
     }
 
     if (alternatePhone && phone === alternatePhone) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Phone numbers must be different",
       });
@@ -135,7 +143,7 @@ const registerAddress = async (req, res) => {
 
     const addressCount = await Address.countDocuments({ userId });
     if (addressCount >= 5) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "You can only save up to 5 addresses",
       });
@@ -143,7 +151,7 @@ const registerAddress = async (req, res) => {
     const userData = await User.findById(userId);
 
     if (!userData) {
-      return res.status(400).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "User does not exist",
       });
@@ -171,7 +179,7 @@ const registerAddress = async (req, res) => {
       );
 
       if (!result) {
-        return res.status(404).json({
+        return res.status(statusCode.NOT_FOUND).json({
           success: false,
           message: "Address not found",
         });
@@ -196,7 +204,7 @@ const registerAddress = async (req, res) => {
       await result.save();
     }
 
-    return res.status(200).json({
+    return res.status(statusCode.OK).json({
       success: true,
       message: finalAddressId
         ? "Address updated successfully"
@@ -204,8 +212,11 @@ const registerAddress = async (req, res) => {
       address: result,
     });
   } catch (error) {
-    console.log(error);
-    return res.status(500).send("Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -220,19 +231,22 @@ const deleteAddress = async (req, res) => {
     });
 
     if (!deleted) {
-      return res.status(400).json({
+      return res.status(statusCode.NOT_FOUND).json({
         success: false,
         message: "address not found",
       });
     }
 
-    return res.status(200).json({
+    return res.status(statusCode.OK).json({
       success: true,
       message: "address deleted successfully",
     });
   } catch (error) {
-    console.log(error);
-    return res.status(500).send("Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 
@@ -240,12 +254,12 @@ const defaultAddress = async (req, res) => {
   try {
     const userId = req.session.user;
     if (!userId) {
-      return res.status(401).json({
+      return res.status(statusCode.UNAUTHORIZED).json({
         success: false,
       });
     }
     const { id: addressId } = req.params;
-    
+
     await Address.updateMany({ userId }, { $set: { isDefault: false } });
 
     await Address.updateOne(
@@ -253,13 +267,16 @@ const defaultAddress = async (req, res) => {
       { $set: { isDefault: true } }
     );
 
-    res.status(200).json({
+    res.status(statusCode.OK).json({
       success: true,
       message: "default address updated",
     });
   } catch (error) {
-    console.log(error);
-    return res.status(500).send("Server Error");
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
+    });
   }
 };
 

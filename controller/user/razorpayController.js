@@ -1,11 +1,11 @@
-import razorpay from "../../helpers/razorpay.js"; 
+import razorpay from "../../helpers/razorpay.js";
 import Order from "../../model/orderSchema.js";
 import Cart from "../../model/cartSchema.js";
 import Product from "../../model/productSchema.js";
 import Address from "../../model/addressSchema.js";
 import crypto from "crypto";
-
-
+import statusCode from "../../utilities/statusCodes.js";
+import errorMessage from "../../utilities/errorMessages.js";
 
 export const createRazorpayOrder = async (req, res) => {
   try {
@@ -13,50 +13,62 @@ export const createRazorpayOrder = async (req, res) => {
     const { addressId, couponCode: inputCouponCode } = req.body;
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Login first" });
+      return res
+        .status(statusCode.UNAUTHORIZED)
+        .json({ success: false, message: "Login first" });
     }
-    
+
     if (!addressId) {
-      return res.status(400).json({ success: false, message: "Address is required" });
+      return res
+        .status(statusCode.BAD_REQUEST)
+        .json({ success: false, message: "Address is required" });
     }
 
     if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      return res.status(500).json({ 
-        success: false, 
-        message: "Payment gateway not configured. Please contact support." 
+      return res.status(statusCode.SERVER_ERROR).json({
+        success: false,
+        message: "Payment gateway not configured. Please contact support.",
       });
     }
 
     let cartItems = [];
     let isBuyNow = false;
-    
+
     if (req.session.buyNowItem) {
       isBuyNow = true;
       const buyNowItem = req.session.buyNowItem;
       const productData = await Product.findById(buyNowItem.productId);
-      
+
       if (!productData) {
         delete req.session.buyNowItem;
-        return res.status(400).json({ success: false, message: "Product not found" });
+        return res
+          .status(statusCode.NOT_FOUND)
+          .json({ success: false, message: "Product not found" });
       }
-      
-      cartItems = [{
-        packageProductId: productData,
-        variantId: buyNowItem.variantId,
-        variantMl: buyNowItem.variantMl,
-        price: buyNowItem.price,
-        oldPrice: buyNowItem.oldPrice,
-        quantity: buyNowItem.quantity,
-        totalPrice: buyNowItem.totalPrice,
-        variantName: buyNowItem.variantName || `${buyNowItem.variantMl}ml`
-      }];
+
+      cartItems = [
+        {
+          packageProductId: productData,
+          variantId: buyNowItem.variantId,
+          variantMl: buyNowItem.variantMl,
+          price: buyNowItem.price,
+          oldPrice: buyNowItem.oldPrice,
+          quantity: buyNowItem.quantity,
+          totalPrice: buyNowItem.totalPrice,
+          variantName: buyNowItem.variantName || `${buyNowItem.variantMl}ml`,
+        },
+      ];
     } else {
-      const cartDoc = await Cart.findOne({ userId: userId }).populate("cart_items.packageProductId");
-      
+      const cartDoc = await Cart.findOne({ userId: userId }).populate(
+        "cart_items.packageProductId"
+      );
+
       if (!cartDoc || !cartDoc.cart_items || cartDoc.cart_items.length === 0) {
-        return res.status(400).json({ success: false, message: "Cart is empty" });
+        return res
+          .status(statusCode.BAD_REQUEST)
+          .json({ success: false, message: "Cart is empty" });
       }
-      
+
       cartItems = cartDoc.cart_items;
     }
 
@@ -64,61 +76,76 @@ export const createRazorpayOrder = async (req, res) => {
     let totalDiscount = 0;
     let hasOutOfStock = false;
 
-    const orderedItem = cartItems.map((item) => {
-      const productDoc = item.packageProductId;
-      if (!productDoc) return null;
+    const orderedItem = cartItems
+      .map((item) => {
+        const productDoc = item.packageProductId;
+        if (!productDoc) return null;
 
-      let variantDoc = null;
-      if (item.variantId && productDoc.VariantItem) {
-        variantDoc = productDoc.VariantItem.find(
-          (v) => v._id.toString() === item.variantId.toString()
-        );
-      }
-      
-      if (!variantDoc && item.variantMl && productDoc.VariantItem) {
-        variantDoc = productDoc.VariantItem.find((v) => v.Ml === parseInt(item.variantMl));
-      }
-      
-      if (!variantDoc && item.variantName && productDoc.VariantItem) {
-        const mlFromName = parseInt(item.variantName.replace('ml', '').trim());
-        variantDoc = productDoc.VariantItem.find((v) => v.Ml === mlFromName);
-      }
+        let variantDoc = null;
+        if (item.variantId && productDoc.VariantItem) {
+          variantDoc = productDoc.VariantItem.find(
+            (v) => v._id.toString() === item.variantId.toString()
+          );
+        }
 
-      const originalPrice = variantDoc ? variantDoc.Price : (productDoc.price || 0);
-      const offerPrice = variantDoc ? (variantDoc.offerPrice || variantDoc.Price) : (productDoc.offerPrice || originalPrice);
-      const finalPrice = offerPrice;
+        if (!variantDoc && item.variantMl && productDoc.VariantItem) {
+          variantDoc = productDoc.VariantItem.find(
+            (v) => v.Ml === parseInt(item.variantMl)
+          );
+        }
 
-      const itemOriginalTotal = originalPrice * item.quantity;
-      const itemFinalTotal = finalPrice * item.quantity;
-      const itemDiscount = itemOriginalTotal - itemFinalTotal;
+        if (!variantDoc && item.variantName && productDoc.VariantItem) {
+          const mlFromName = parseInt(
+            item.variantName.replace("ml", "").trim()
+          );
+          variantDoc = productDoc.VariantItem.find((v) => v.Ml === mlFromName);
+        }
 
-      totalPrice += itemOriginalTotal;
-      totalDiscount += itemDiscount;
+        const originalPrice = variantDoc
+          ? variantDoc.Price
+          : productDoc.price || 0;
+        const offerPrice = variantDoc
+          ? variantDoc.offerPrice || variantDoc.Price
+          : productDoc.offerPrice || originalPrice;
+        const finalPrice = offerPrice;
 
-      if (variantDoc && variantDoc.Quantity < item.quantity) {
-        hasOutOfStock = true;
-      }
+        const itemOriginalTotal = originalPrice * item.quantity;
+        const itemFinalTotal = finalPrice * item.quantity;
+        const itemDiscount = itemOriginalTotal - itemFinalTotal;
 
-      const mlValue = variantDoc ? variantDoc.Ml : (item.variantMl || item.ml || null);
+        totalPrice += itemOriginalTotal;
+        totalDiscount += itemDiscount;
 
-      return {
-        productId: productDoc._id,
-        variantId: variantDoc ? variantDoc._id : (item.variantId || null),
-        ml: mlValue,
-        quantity: item.quantity,
+        if (variantDoc && variantDoc.Quantity < item.quantity) {
+          hasOutOfStock = true;
+        }
 
-        price: finalPrice,
-        originalPrice: originalPrice,
-        status: "Pending",
-        paymentStatus: "Pending",
-        productName: productDoc.productName,
-        oldPrice: originalPrice,
-        hasDiscount: variantDoc && variantDoc.offerPrice && variantDoc.Price > variantDoc.offerPrice
-      };
-    }).filter(Boolean);
+        const mlValue = variantDoc
+          ? variantDoc.Ml
+          : item.variantMl || item.ml || null;
+
+        return {
+          productId: productDoc._id,
+          variantId: variantDoc ? variantDoc._id : item.variantId || null,
+          ml: mlValue,
+          quantity: item.quantity,
+
+          price: finalPrice,
+          originalPrice: originalPrice,
+          status: "Pending",
+          paymentStatus: "Pending",
+          productName: productDoc.productName,
+          oldPrice: originalPrice,
+          hasDiscount:
+            variantDoc &&
+            variantDoc.offerPrice &&
+            variantDoc.Price > variantDoc.offerPrice,
+        };
+      })
+      .filter(Boolean);
 
     if (hasOutOfStock) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
         message: "Some items are out of stock",
       });
@@ -128,43 +155,45 @@ export const createRazorpayOrder = async (req, res) => {
 
     let couponDiscount = 0;
     let appliedCouponId = null;
-    let couponCode = '';
+    let couponCode = "";
     let couponDetails = null;
 
-    let effectiveCouponCode = inputCouponCode || (req.session.appliedCoupon ? req.session.appliedCoupon.code : null);
+    let effectiveCouponCode =
+      inputCouponCode ||
+      (req.session.appliedCoupon ? req.session.appliedCoupon.code : null);
 
     if (effectiveCouponCode) {
       const Coupons = (await import("../../model/couponSchema.js")).default;
-      
+
       const coupon = await Coupons.findOne({
         code: effectiveCouponCode,
         status: true,
-        expireAt: { $gt: new Date() }
+        expireAt: { $gt: new Date() },
       });
 
       if (!coupon) {
-        return res.status(400).json({
+        return res.status(statusCode.BAD_REQUEST).json({
           success: false,
-          message: "Invalid or expired coupon"
+          message: "Invalid or expired coupon",
         });
       }
 
       const userOrdersWithCoupon = await Order.countDocuments({
         userId: userId,
-        couponCode: effectiveCouponCode
+        couponCode: effectiveCouponCode,
       });
 
       if (userOrdersWithCoupon >= 1) {
-        return res.status(400).json({
+        return res.status(statusCode.BAD_REQUEST).json({
           success: false,
-          message: "You have already used this coupon"
+          message: "You have already used this coupon",
         });
       }
 
       if (afterDiscount < coupon.minCartValue) {
-        return res.status(400).json({
+        return res.status(statusCode.BAD_REQUEST).json({
           success: false,
-          message: `Minimum cart value ₹${coupon.minCartValue} required for this coupon`
+          message: `Minimum cart value ₹${coupon.minCartValue} required for this coupon`,
         });
       }
 
@@ -175,7 +204,7 @@ export const createRazorpayOrder = async (req, res) => {
         code: coupon.code,
         discountValue: coupon.discountValue,
         description: coupon.description,
-        minCartValue: coupon.minCartValue
+        minCartValue: coupon.minCartValue,
       };
     }
 
@@ -189,31 +218,35 @@ export const createRazorpayOrder = async (req, res) => {
 
       if (productDoc.VariantItem && productDoc.VariantItem.length > 0) {
         let variantDoc = null;
-        
+
         if (cartItem.variantId) {
           variantDoc = productDoc.VariantItem.find(
             (v) => v._id.toString() === cartItem.variantId.toString()
           );
         }
-        
+
         if (!variantDoc && cartItem.variantMl) {
-          variantDoc = productDoc.VariantItem.find((v) => v.Ml === parseInt(cartItem.variantMl));
+          variantDoc = productDoc.VariantItem.find(
+            (v) => v.Ml === parseInt(cartItem.variantMl)
+          );
         }
-        
+
         if (!variantDoc && cartItem.variantName) {
-          const mlFromName = parseInt(cartItem.variantName.replace('ml', '').trim());
+          const mlFromName = parseInt(
+            cartItem.variantName.replace("ml", "").trim()
+          );
           variantDoc = productDoc.VariantItem.find((v) => v.Ml === mlFromName);
         }
 
         if (!variantDoc) {
-          return res.status(400).json({
+          return res.status(statusCode.BAD_REQUEST).json({
             success: false,
             message: `Variant not found for ${productDoc.productName}`,
           });
         }
 
         if (variantDoc.Quantity < cartItem.quantity) {
-          return res.status(400).json({
+          return res.status(statusCode.BAD_REQUEST).json({
             success: false,
             message: `Insufficient stock for ${productDoc.productName}`,
           });
@@ -223,7 +256,9 @@ export const createRazorpayOrder = async (req, res) => {
 
     const addressData = await Address.findById(addressId);
     if (!addressData) {
-      return res.status(400).json({ success: false, message: "Invalid address" });
+      return res
+        .status(statusCode.BAD_REQUEST)
+        .json({ success: false, message: "Invalid address" });
     }
 
     const newOrder = new Order({
@@ -259,15 +294,15 @@ export const createRazorpayOrder = async (req, res) => {
     await newOrder.save();
 
     const razorpayOptions = {
-      amount: Math.round(finalAmount * 100), 
+      amount: Math.round(finalAmount * 100),
       currency: "INR",
       receipt: `order_${newOrder._id}`,
       notes: {
         order_id: newOrder._id.toString(),
         user_id: userId.toString(),
         coupon_code: couponCode || "none",
-        coupon_discount: couponDiscount
-      }
+        coupon_discount: couponDiscount,
+      },
     };
 
     let razorpayOrder;
@@ -275,12 +310,14 @@ export const createRazorpayOrder = async (req, res) => {
       razorpayOrder = await razorpay.orders.create(razorpayOptions);
     } catch (razorpayError) {
       console.error("Razorpay Error:", razorpayError);
-      
+
       await Order.findByIdAndDelete(newOrder._id);
-      
-      return res.status(500).json({ 
-        success: false, 
-        message: `Payment gateway error: ${razorpayError.message || 'Failed to create payment order'}` 
+
+      return res.status(statusCode.SERVER_ERROR).json({
+        success: false,
+        message: `Payment gateway error: ${
+          razorpayError.message || "Failed to create payment order"
+        }`,
       });
     }
 
@@ -299,26 +336,24 @@ export const createRazorpayOrder = async (req, res) => {
       isBuyNow: isBuyNow,
       couponApplied: couponCode ? true : false,
       couponDiscount: couponDiscount,
-      finalAmount: finalAmount
+      finalAmount: finalAmount,
     });
-
-  } catch (err) {
-    console.error("Create Razorpay Order Error:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Order creation failed. Please try again." 
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
 
-
 export const verifyPayment = async (req, res) => {
   try {
-    const { 
-      razorpay_payment_id, 
-      razorpay_order_id, 
+    const {
+      razorpay_payment_id,
+      razorpay_order_id,
       razorpay_signature,
-      orderId 
+      orderId,
     } = req.body;
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
@@ -328,25 +363,25 @@ export const verifyPayment = async (req, res) => {
       .digest("hex");
 
     if (expectedSignature !== razorpay_signature) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Payment verification failed: Invalid signature" 
+      return res.status(statusCode.BAD_REQUEST).json({
+        success: false,
+        message: "Payment verification failed: Invalid signature",
       });
     }
 
     const orderDoc = await Order.findById(orderId);
     if (!orderDoc) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Order not found" 
+      return res.status(statusCode.NOT_FOUND).json({
+        success: false,
+        message: "Order not found",
       });
     }
 
     if (orderDoc.paymentStatus === "Paid") {
-      return res.json({ 
-        success: true, 
-        message: "Payment already verified", 
-        orderId 
+      return res.json({
+        success: true,
+        message: "Payment already verified",
+        orderId,
       });
     }
 
@@ -355,8 +390,8 @@ export const verifyPayment = async (req, res) => {
     orderDoc.razorpayPaymentId = razorpay_payment_id;
     orderDoc.razorpaySignature = razorpay_signature;
     orderDoc.paymentDate = new Date();
-    
-    orderDoc.orderedItem.forEach(item => {
+
+    orderDoc.orderedItem.forEach((item) => {
       item.status = "Pending";
       item.paymentStatus = "Paid";
     });
@@ -374,36 +409,39 @@ export const verifyPayment = async (req, res) => {
           }
         }
       } catch (stockError) {
-        console.error("Stock update error for product:", item.productId, stockError);
+        console.error(
+          "Stock update error for product:",
+          item.productId,
+          stockError
+        );
       }
     }
 
     const isBuyNow = req.session.buyNowItem !== undefined;
-    
+
     if (isBuyNow) {
       delete req.session.buyNowItem;
     } else {
       await Cart.findOneAndUpdate(
-        { userId: orderDoc.userId }, 
+        { userId: orderDoc.userId },
         { cart_items: [] }
       );
     }
 
     delete req.session.appliedCoupon;
 
-    res.json({ 
-      success: true, 
-      message: "Payment verified successfully", 
+    res.json({
+      success: true,
+      message: "Payment verified successfully",
       orderId,
       couponCode: orderDoc.couponCode,
-      couponDiscount: orderDoc.couponDiscount
+      couponDiscount: orderDoc.couponDiscount,
     });
-
-  } catch (err) {
-    console.error("Verify Payment Error:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Payment verification failed. Please contact support." 
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
@@ -414,66 +452,64 @@ const handlePaymentFailure = async (req, res) => {
     const userId = req.session.user;
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Login first" });
+      return res
+        .status(statusCode.UNAUTHORIZED)
+        .json({ success: false, message: "Login first" });
     }
 
     const orderDoc = await Order.findOneAndUpdate(
-      { 
-        _id: orderId, 
+      {
+        _id: orderId,
         userId: userId,
-        paymentStatus: "Pending"
+        paymentStatus: "Pending",
       },
       {
-        paymentStatus: "Failed",   
+        paymentStatus: "Failed",
         orderStatus: "Payment Failed",
-        failedAt: new Date(),     
-        $inc: { retryAttempts: 1 } 
+        failedAt: new Date(),
+        $inc: { retryAttempts: 1 },
       },
       { new: true }
     );
 
     if (orderDoc) {
       req.session.pendingRetryOrder = orderId;
-      
-      return res.json({ 
-        success: true, 
+
+      return res.json({
+        success: true,
         message: "Payment failed, order marked for retry",
-        orderId: orderId
+        orderId: orderId,
       });
     }
 
     return res.json({
-      success: true
+      success: true,
     });
-
-  } catch (err) {
-    console.error("Payment failure handler error:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to handle payment failure" 
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
 
-
-
 const orderFailurePage = async (req, res) => {
   try {
     const failedOrderId = req.session.pendingRetryOrder || null;
-    
+
     res.render("user/orderFailurePage", {
       failedOrderId: failedOrderId,
-      user: req.session.user || null
+      user: req.session.user || null,
     });
   } catch (err) {
     console.error("Order failure page error:", err);
     res.render("user/orderFailurePage", {
       failedOrderId: null,
-      user: req.session.user || null
+      user: req.session.user || null,
     });
   }
 };
-
 
 export const retryPayment = async (req, res) => {
   try {
@@ -481,36 +517,38 @@ export const retryPayment = async (req, res) => {
     const { orderId } = req.body;
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Login first" });
+      return res
+        .status(statusCode.UNAUTHORIZED)
+        .json({ success: false, message: "Login first" });
     }
 
     const pendingOrderId = req.session.pendingRetryOrder || orderId;
 
     if (!pendingOrderId) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "No failed order found. Please start a new order." 
+      return res.status(statusCode.BAD_REQUEST).json({
+        success: false,
+        message: "No failed order found. Please start a new order.",
       });
     }
 
     const failedOrder = await Order.findOne({
       _id: pendingOrderId,
       userId: userId,
-      paymentStatus: "Failed"
+      paymentStatus: "Failed",
     });
 
     if (!failedOrder) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Order not found or already completed" 
+      return res.status(statusCode.NOT_FOUND).json({
+        success: false,
+        message: "Order not found or already completed",
       });
     }
 
-    const maxRetryAttempts = 3; 
+    const maxRetryAttempts = 3;
     if (failedOrder.retryAttempts >= maxRetryAttempts) {
-      return res.status(400).json({
+      return res.status(statusCode.BAD_REQUEST).json({
         success: false,
-        message: "Maximum retry attempts reached. Please contact support."
+        message: "Maximum retry attempts reached. Please contact support.",
       });
     }
 
@@ -522,8 +560,8 @@ export const retryPayment = async (req, res) => {
         order_id: failedOrder._id.toString(),
         user_id: userId.toString(),
         coupon_code: failedOrder.couponCode || "none",
-        is_retry: true
-      }
+        is_retry: true,
+      },
     };
 
     let razorpayOrder;
@@ -531,16 +569,16 @@ export const retryPayment = async (req, res) => {
       razorpayOrder = await razorpay.orders.create(razorpayOptions);
     } catch (razorpayError) {
       console.error("Razorpay retry error:", razorpayError);
-      return res.status(500).json({ 
-        success: false, 
-        message: `Payment gateway error: ${razorpayError.message}` 
+      return res.status(statusCode.SERVER_ERROR).json({
+        success: false,
+        message: `Payment gateway error: ${razorpayError.message}`,
       });
     }
 
     failedOrder.razorpayOrderId = razorpayOrder.id;
-    failedOrder.paymentStatus = "Pending"; 
+    failedOrder.paymentStatus = "Pending";
     failedOrder.orderStatus = "Pending";
-    failedOrder.retryAttempts += 1;  
+    failedOrder.retryAttempts += 1;
     failedOrder.lastRetryAt = new Date();
     await failedOrder.save();
 
@@ -553,23 +591,21 @@ export const retryPayment = async (req, res) => {
       amount: razorpayOrder.amount,
       currency: razorpayOrder.currency,
       key_id: process.env.RAZORPAY_KEY_ID,
-      isRetry: true
+      isRetry: true,
     });
-
-  } catch (err) {
-    console.error("Retry payment error:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to retry payment. Please try again." 
+  } catch (error) {
+    console.error(error.message);
+    res.status(statusCode.SERVER_ERROR).json({
+      success: false,
+      message: errorMessage.SERVER_ERROR,
     });
   }
 };
-
 
 export default {
   createRazorpayOrder,
   verifyPayment,
   handlePaymentFailure,
   orderFailurePage,
-  retryPayment
+  retryPayment,
 };
