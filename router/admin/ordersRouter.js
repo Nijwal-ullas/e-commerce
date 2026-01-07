@@ -4,7 +4,7 @@ import orderController from "../../controller/admin/ordersController.js";
 import auth from "../../middleware/auth.js";
 
 router.get("/adminOrders", auth.adminAuth, orderController.getOrdersPage);
-router.get("/adminOrders/:id", auth.adminAuth, orderController.getDetailPage);
+router.get("/adminOrders/:id", auth.adminAuth, orderController.getOrderDetailPage);
 router.put("/adminOrders/:orderId/item/:itemId/status", auth.adminAuth, orderController.updateItemStatus);
 router.put("/adminOrders/:orderId/item/:itemId/approve-return", auth.adminAuth, orderController.approveItemReturn);
 router.put("/adminOrders/:orderId/item/:itemId/reject-return", auth.adminAuth, orderController.rejectItemReturn);

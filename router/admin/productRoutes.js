@@ -6,12 +6,11 @@ import upload from "../../helpers/multer.js";
 
 
 
-router.get('/product', auth.adminAuth, productController.productPage);
+router.get('/product', auth.adminAuth, productController.getProducts);
 router.post('/product', auth.adminAuth, upload.array('images', 10), upload.errorHandler, productController.addProduct);
-router.get('/product/:id', auth.adminAuth, productController.getProduct);
+router.get('/product/:id', auth.adminAuth, productController.productViewPage);
 router.put('/product/:id', auth.adminAuth, upload.array('images', 10), upload.errorHandler, productController.editProduct)
-router.delete('/Product/:id', auth.adminAuth, productController.deleteProduct);
-router.get('/productsJSON', auth.adminAuth, productController.getProduct);
+router.delete('/product/:id', auth.adminAuth, productController.deleteProduct);
 
 
 
