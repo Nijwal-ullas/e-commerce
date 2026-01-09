@@ -58,10 +58,10 @@ const addBrand = async (req, res) => {
       });
     }
 
-    if (description && description.length > 300) {
+    if (description && description.length > 500) {
       return res.status(statusCode.BAD_REQUEST).json({
         success: false,
-        message: "Description cannot exceed 300 characters",
+        message: "Description cannot exceed 500 characters",
       });
     }
 
@@ -156,10 +156,10 @@ const editBrand = async (req, res) => {
       });
     }
 
-    if (description && description.length > 300) {
+    if (description && description.length > 500) {
       return res.status(statusCode.BAD_REQUEST).json({
         success: false,
-        message: "Description cannot exceed 300 characters",
+        message: "Description cannot exceed 500 characters",
       });
     }
 
