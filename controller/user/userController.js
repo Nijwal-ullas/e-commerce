@@ -17,7 +17,7 @@ const generateReferralCode = () => {
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{6,}$/;
-const nameRegex = /^[A-Za-z]{6,20}$/;
+const nameRegex = /^(?=(?:.*[A-Za-z]){5,})[A-Za-z ]+$/;
 
 const getAboutPage = async (req, res) => {
   try {
@@ -50,7 +50,7 @@ const submitContact = async (req, res) => {
     if (!name || !email || !message) {
       return res.status(statusCode.BAD_REQUEST).json({
         success: false,
-        message: "All fields are required"
+        message: "All fields are required",
       });
     }
 
@@ -58,9 +58,8 @@ const submitContact = async (req, res) => {
 
     res.status(statusCode.CREATED).json({
       success: true,
-      message: "Message saved successfully"
+      message: "Message saved successfully",
     });
-
   } catch (error) {
     console.error(error.message);
     res.status(statusCode.SERVER_ERROR).json({
@@ -69,7 +68,6 @@ const submitContact = async (req, res) => {
     });
   }
 };
-
 
 const loadHomePage = async (req, res) => {
   try {
@@ -294,7 +292,7 @@ const register = async (req, res) => {
     if (!nameRegex.test(name.trim())) {
       return res.status(statusCode.BAD_REQUEST).json({
         success: false,
-        message: "Name must be 6-20 letters long and contain only alphabets",
+        message: "Name must be 5-20 letters long and contain only alphabets",
       });
     }
 
@@ -501,7 +499,7 @@ const resendOtp = async (req, res) => {
 
     const email = userData.email;
     const otp = generateOtp();
-    console.log(`New otp for ${email} : ${otp}`);
+    console.log(`Resend otp for ${email} : ${otp}`);
 
     req.session.userOtp = otp;
     req.session.otpExpire = Date.now() + 1 * 60 * 1000;
@@ -720,6 +718,7 @@ const resendForgotOtp = async (req, res) => {
     }
 
     const otp = generateOtp();
+    console.log(`Resend otp for ${email} : ${otp}`);
     req.session.forgotOtp = otp;
     req.session.forgotOtpExpire = Date.now() + 60000;
 
@@ -744,9 +743,9 @@ export default {
   submitContact,
   loadHomePage,
   loadLoginPage,
+  login,
   loadRegisterPage,
   register,
-  login,
   loadRegisterOtpPage,
   registerOtpPage,
   resendOtp,
