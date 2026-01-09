@@ -197,7 +197,7 @@
         resendBtn.classList.add("disabled");
 
         try {
-          const res = await axios.post("/resend-otp");
+          const res = await axios.post("/resend-forgot-otp");
 
           Swal.fire({
             icon: res.data.success ? "success" : "error",

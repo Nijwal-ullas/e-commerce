@@ -36,12 +36,13 @@
         cursor: not-allowed;
         pointer-events: none;
       }
+      .hidden {
+        display: none;
+      }
     </style>
   </head>
 
   <body class="bg-gray-100">
-    <%- include('../partials/user/header') %>
-
     <main
       class="flex items-center justify-center min-h-screen bg-gray-100 px-4"
     >
@@ -71,7 +72,7 @@
         <div class="text-center mb-2">
           <span class="text-sm text-gray-600">OTP sent to</span>
           <span class="text-sm text-red-600">
-            <%= email || 'your email' %>
+            <%- email %>
           </span>
         </div>
 
@@ -92,7 +93,7 @@
           <a
             href="#"
             id="resendBtn"
-            class="text-sm text-gray-600 hover:text-gray-800 disabled"
+            class="text-sm text-gray-600 hover:text-gray-800 disabled hidden"
           >
             Resend OTP
           </a>
@@ -107,15 +108,11 @@
       </div>
     </main>
 
-    <%- include('../partials/user/footer') %>
-
     <script>
       const otpInputs = document.querySelectorAll(".otpBox");
       const verifyBtn = document.getElementById("verifyBtn");
       const resendBtn = document.getElementById("resendBtn");
       const timerEl = document.getElementById("timer");
-
-      resendBtn.classList.add("disabled");
 
       otpInputs.forEach((input, index) => {
         input.addEventListener("keyup", (e) => {
@@ -137,7 +134,7 @@
           clearInterval(timer);
           timerEl.textContent = "OTP expired! Please resend.";
           disableOtpInputs(true);
-          resendBtn.classList.remove("disabled");
+          resendBtn.classList.remove("disabled", "hidden");
         } else {
           timerEl.textContent = `00:${
             timeLeft < 10 ? "0" + timeLeft : timeLeft
@@ -200,8 +197,9 @@
 
       resendBtn.addEventListener("click", async (e) => {
         e.preventDefault();
-        resendBtn.classList.add("disabled");
-        resendBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Sending...';
+        
+        // Hide the resend button immediately
+        resendBtn.classList.add("hidden");
 
         try {
           const res = await fetch("/resend-otps", {
@@ -224,6 +222,7 @@
               showConfirmButton: false
             });
 
+            // Clear and enable OTP inputs
             otpInputs.forEach((box) => {
               box.value = "";
               box.disabled = false;
@@ -232,14 +231,11 @@
             verifyBtn.disabled = false;
             otpInputs[0].focus();
 
-            timeLeft = 60;
+            // Restart the timer
+            timeLeft = 59;
             clearInterval(timer);
             timer = setInterval(updateTimer, 1000);
             
-            setTimeout(() => {
-              resendBtn.classList.remove("disabled");
-              resendBtn.innerHTML = 'Resend OTP';
-            }, 30000);
           } else {
             Swal.fire({
               icon: "error",
@@ -247,8 +243,8 @@
               text: data.message,
             });
             
-            resendBtn.classList.remove("disabled");
-            resendBtn.innerHTML = 'Resend OTP';
+            // Show resend button again if failed
+            resendBtn.classList.remove("hidden");
           }
         } catch (error) {
           console.error("Fetch error:", error);
@@ -258,8 +254,8 @@
             text: "Cannot connect to server. Please check your connection.",
           });
           
-          resendBtn.classList.remove("disabled");
-          resendBtn.innerHTML = 'Resend OTP';
+          // Show resend button again if error
+          resendBtn.classList.remove("hidden");
         }
       });
     </script>

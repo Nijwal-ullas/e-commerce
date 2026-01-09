@@ -202,6 +202,7 @@
                   </a>
                   <button
                     type="submit"
+                    id="updateEmailBtn"
                     class="px-8 py-3 bg-red-700 hover:bg-red-800 text-white rounded-md font-medium transition"
                   >
                     Update Email
@@ -218,6 +219,19 @@
 
     <script>
       const form = document.getElementById("changeEmailForm");
+      const updateBtn = document.getElementById("updateEmailBtn");
+
+      function setLoading(isLoading) {
+        if (isLoading) {
+          updateBtn.disabled = true;
+          updateBtn.textContent = "Updating...";
+          updateBtn.classList.add("opacity-60", "cursor-not-allowed");
+        } else {
+          updateBtn.disabled = false;
+          updateBtn.textContent = "Update Email";
+          updateBtn.classList.remove("opacity-60", "cursor-not-allowed");
+        }
+      }
 
       const newEmailInput = document.querySelector('input[name="newEmail"]');
       const confirmEmailInput = document.querySelector(
@@ -275,6 +289,8 @@
         if (hasError) return;
 
         try {
+          setLoading(true);
+
           const response = await axios.post("/profile/change-email", {
             newEmail,
             confirmEmail,
@@ -282,7 +298,9 @@
           });
 
           if (response.data.success) {
-            window.location.href = response.data.redirectUrl;
+            setTimeout(() => {
+              window.location.href = response.data.redirectUrl;
+            }, 800); 
           }
         } catch (err) {
           const errorMsg =
@@ -290,6 +308,8 @@
 
           passwordError.textContent = errorMsg;
           passwordError.classList.remove("hidden");
+        } finally {
+          setLoading(false);
         }
       });
     </script>
