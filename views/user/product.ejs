@@ -1018,83 +1018,103 @@
       }
 
       function attachProductEventListeners() {
-        document.querySelectorAll('.wishlist-btn').forEach(btn => {
-            btn.addEventListener('click', async function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                const productId = this.dataset.productId;
-                
-                if (!productId) {
-                    showAlert.error('Invalid product');
-                    return;
-                }
-                
-                try {
-                    const heartIcon = this.querySelector('i');
-                    const isCurrentlyInWishlist = userWishlist.includes(productId);
-                    
-                    if (isCurrentlyInWishlist) {
-                        userWishlist = userWishlist.filter(id => id !== productId);
-                        this.classList.remove('active');
-                        heartIcon.classList.remove('fas');
-                        heartIcon.classList.add('far');
-                        
-                        // Store product-specific state
-                        localStorage.setItem(`wishlist_${productId}`, JSON.stringify({
-                            isInWishlist: false,
-                            timestamp: Date.now()
-                        }));
-                        
-                        const response = await axios.delete(`/wishlist/remove/${productId}`);
-                        
-                        if (response.data.success) {
-                            showAlert.success('Removed from wishlist!');
-                            localStorage.setItem('userWishlist', JSON.stringify(userWishlist));
-                        } else {
-                            userWishlist.push(productId);
-                            this.classList.add('active');
-                            heartIcon.classList.remove('far');
-                            heartIcon.classList.add('fas');
-                            showAlert.error(response.data.message || 'Failed to remove from wishlist');
-                        }
-                    } else {
-                        userWishlist.push(productId);
-                        this.classList.add('active');
-                        heartIcon.classList.remove('far');
-                        heartIcon.classList.add('fas');
-                        
-                        // Store product-specific state
-                        localStorage.setItem(`wishlist_${productId}`, JSON.stringify({
-                            isInWishlist: true,
-                            timestamp: Date.now()
-                        }));
-                        
-                        const response = await axios.post('/wishlist/add', {
-                            productId: productId
-                        });
-                        
-                        if (response.data.success) {
-                            showAlert.success('Added to wishlist!');
-                            localStorage.setItem('userWishlist', JSON.stringify(userWishlist));
-                        } else {
-                            userWishlist = userWishlist.filter(id => id !== productId);
-                            this.classList.remove('active');
-                            heartIcon.classList.remove('fas');
-                            heartIcon.classList.add('far');
-                            showAlert.error(response.data.message || 'Failed to add to wishlist');
-                        }
-                    }
-                } catch (error) {
-                    console.error('Error with wishlist:', error);
-                    
-                    if (error.response?.status === 401) {
-                        showAlert.warning('Please login to manage your wishlist');
-                    } else {
-                        showAlert.error('Error updating wishlist');
-                    }
-                }
-            });
-        });
+          document.querySelectorAll('.wishlist-btn').forEach(btn => {
+              btn.addEventListener('click', async function(e) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const productId = this.dataset.productId;
+                  
+                  if (!productId) {
+                      showAlert.error('Invalid product');
+                      return;
+                  }
+                  
+                  const heartIcon = this.querySelector('i');
+                  const isCurrentlyInWishlist = userWishlist.includes(productId);
+                  let newWishlistState;
+                  
+                  const originalClassState = this.classList.contains('active');
+                  const originalIconState = heartIcon.classList.contains('fas');
+                  
+                  try {
+                      if (isCurrentlyInWishlist) {
+                          this.classList.remove('active');
+                          heartIcon.classList.remove('fas');
+                          heartIcon.classList.add('far');
+                          newWishlistState = false;
+                          
+                          const response = await axios.delete(`/wishlist/remove/${productId}`);
+                          
+                          if (response.data.success) {
+                              userWishlist = userWishlist.filter(id => id !== productId);
+                              localStorage.setItem('userWishlist', JSON.stringify(userWishlist));
+                              
+                              localStorage.setItem(`wishlist_${productId}`, JSON.stringify({
+                                  isInWishlist: false,
+                                  timestamp: Date.now()
+                              }));
+                              
+                              showAlert.success('Removed from wishlist!');
+                          } else {
+                              if (originalClassState) this.classList.add('active');
+                              if (originalIconState) {
+                                  heartIcon.classList.add('fas');
+                                  heartIcon.classList.remove('far');
+                              }
+                              showAlert.error(response.data.message || 'Failed to remove from wishlist');
+                          }
+                      } else {
+                          this.classList.add('active');
+                          heartIcon.classList.remove('far');
+                          heartIcon.classList.add('fas');
+                          newWishlistState = true;
+                          
+                          const response = await axios.post('/wishlist/add', {
+                              productId: productId
+                          });
+                          
+                          if (response.data.success) {
+                              userWishlist.push(productId);
+                              localStorage.setItem('userWishlist', JSON.stringify(userWishlist));
+                              
+                              localStorage.setItem(`wishlist_${productId}`, JSON.stringify({
+                                  isInWishlist: true,
+                                  timestamp: Date.now()
+                              }));
+                              
+                              showAlert.success('Added to wishlist!');
+                          } else {
+                              if (!originalClassState) this.classList.remove('active');
+                              if (!originalIconState) {
+                                  heartIcon.classList.add('far');
+                                  heartIcon.classList.remove('fas');
+                              }
+                              showAlert.error(response.data.message || 'Failed to add to wishlist');
+                          }
+                      }
+                  } catch (error) {
+                      console.error('Error with wishlist:', error);
+                      
+                      if (isCurrentlyInWishlist) {
+                          this.classList.add('active');
+                          heartIcon.classList.add('fas');
+                          heartIcon.classList.remove('far');
+                      } else {
+                          this.classList.remove('active');
+                          heartIcon.classList.add('far');
+                          heartIcon.classList.remove('fas');
+                      }
+                      
+                      if (error.response?.status === 401) {
+                          showAlert.warning('Please login to manage your wishlist');
+                      } else if (error.response?.status === 403) {
+                          showAlert.warning('Unauthorized access');
+                      } else {
+                          showAlert.error('Error updating wishlist');
+                      }
+                  }
+              });
+          });
       }
 
       async function clearAllFilters() {
