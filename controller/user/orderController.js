@@ -389,24 +389,24 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
     couponValid = coupon && remainingSubtotal >= coupon.minCartValue;
   }
 
-  if (orderDoc.couponId && !couponValid && activeItems.length > 0) {
-    return res.status(statusCode.BAD_REQUEST).json({
-      success: false,
-      message:
-        "cannot remove this item because remaining item is not applicable for coupon",
-    });
-
-    // refundAmount -= orderDoc.couponDiscount;
-    // refundAmount = Math.max(refundAmount, 0);
-
-    // orderDoc.couponCode = null;
-    // orderDoc.couponId = null;
-    // orderDoc.couponDiscount = 0;
-    // orderDoc.couponUsed = false;
-  }
   if (orderDoc.payment !== "Cod") {
     refundAmount = cancelledPrice;
 
+    if (orderDoc.couponId && !couponValid && activeItems.length > 0) {
+      return res.status(statusCode.BAD_REQUEST).json({
+        success: false,
+        message:
+          "cannot remove this item because remaining item is not applicable for coupon",
+      });
+
+      // refundAmount -= orderDoc.couponDiscount;
+      // refundAmount = Math.max(refundAmount, 0);
+
+      // orderDoc.couponCode = null;
+      // orderDoc.couponId = null;
+      // orderDoc.couponDiscount = 0;
+      // orderDoc.couponUsed = false;
+    }
 
     if (refundAmount > 0) {
       await refundToWallet(userId, refundAmount);
