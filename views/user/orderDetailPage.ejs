@@ -32,30 +32,32 @@
       .status-line {
         display: flex;
         align-items: center;
-        margin-top: 8px;
+        margin-top: 12px;
         padding: 4px 0;
         position: relative;
       }
       
-      .status-line::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: #e5e7eb;
-        transform: translateY(-50%);
-        z-index: 1;
-      }
-      
       .status-point {
         position: relative;
-        z-index: 2;
         display: flex;
         flex-direction: column;
         align-items: center;
-        margin-right: 40px;
+        flex: 1;
+      }
+      
+      .status-point:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        top: 8px;
+        left: calc(50% + 8px);
+        width: calc(100% - 16px);
+        height: 2px;
+        background: #e5e7eb;
+        z-index: 1;
+      }
+      
+      .status-point.completed:not(:last-child)::after {
+        background: #10b981;
       }
       
       .status-dot {
@@ -64,6 +66,8 @@
         border-radius: 50%;
         border: 3px solid white;
         margin-bottom: 4px;
+        position: relative;
+        z-index: 2;
       }
       
       .status-dot.completed {
@@ -101,6 +105,7 @@
         text-align: center;
         white-space: nowrap;
         color: #6b7280;
+        margin-top: 2px;
       }
       
       .status-label.active {
@@ -276,34 +281,33 @@
                             const itemStatus = item.status || order.status || order.orderStatus || 'Pending';
                             const itemStatusLower = itemStatus.toLowerCase();
                             
-                            // Determine status steps for this item
                             let statusSteps = [];
-                            let currentStep = '';
+                            let currentStepIndex = -1;
                             
-                            if (itemStatusLower === 'pending') {
+                            if (itemStatusLower === 'cancelled') {
+                              statusSteps = ['ordered', 'cancelled'];
+                              currentStepIndex = 1;
+                            } else if (itemStatusLower === 'pending') {
                               statusSteps = ['ordered', 'processing', 'shipped', 'delivered'];
-                              currentStep = 'ordered';
+                              currentStepIndex = 0;
                             } else if (itemStatusLower === 'processing') {
                               statusSteps = ['ordered', 'processing', 'shipped', 'delivered'];
-                              currentStep = 'processing';
+                              currentStepIndex = 1;
                             } else if (itemStatusLower === 'shipped') {
                               statusSteps = ['ordered', 'processing', 'shipped', 'delivered'];
-                              currentStep = 'shipped';
+                              currentStepIndex = 2;
                             } else if (itemStatusLower === 'delivered') {
                               statusSteps = ['ordered', 'processing', 'shipped', 'delivered'];
-                              currentStep = 'delivered';
+                              currentStepIndex = 3;
                             } else if (itemStatusLower === 'return requested') {
                               statusSteps = ['ordered', 'processing', 'shipped', 'delivered', 'return requested'];
-                              currentStep = 'return requested';
+                              currentStepIndex = 4;
                             } else if (itemStatusLower === 'return approved') {
                               statusSteps = ['ordered', 'processing', 'shipped', 'delivered', 'return requested', 'return approved'];
-                              currentStep = 'return approved';
+                              currentStepIndex = 5;
                             } else if (itemStatusLower === 'returned') {
                               statusSteps = ['ordered', 'processing', 'shipped', 'delivered', 'return requested', 'return approved', 'returned'];
-                              currentStep = 'returned';
-                            } else if (itemStatusLower === 'cancelled') {
-                              statusSteps = ['ordered', 'cancelled'];
-                              currentStep = 'cancelled';
+                              currentStepIndex = 6;
                             }
                             
                             const canCancelItem = ['pending', 'processing'].includes(itemStatusLower);
@@ -373,35 +377,37 @@
                             <% } %>
                           </div>
                           
-                          <div class="status-line mt-3">
+                          <div class="status-line">
                             <% statusSteps.forEach((step, index) => { 
                               let dotClass = 'pending';
                               let labelClass = '';
+                              let isCompleted = index < currentStepIndex;
+                              let isCurrent = index === currentStepIndex;
                               
-                              if (step === currentStep) {
+                              if (isCurrent) {
                                 dotClass = 'current';
                                 labelClass = 'active';
-                              } else if (statusSteps.indexOf(step) < statusSteps.indexOf(currentStep)) {
+                              } else if (isCompleted) {
                                 dotClass = 'completed';
                                 labelClass = 'completed';
                               }
                               
-                              // Special dot classes for specific statuses
                               if (step === 'cancelled') dotClass = 'cancelled';
                               else if (step === 'return requested') dotClass = 'return-requested';
                               else if (step === 'return approved') dotClass = 'return-approved';
                               else if (step === 'returned') dotClass = 'returned';
                               
-                              // Format label
                               let stepLabel = step.charAt(0).toUpperCase() + step.slice(1);
                               if (step === 'return requested') stepLabel = 'Return Req';
                               else if (step === 'return approved') stepLabel = 'Return Approved';
+                              
+                              let pointClass = isCompleted ? 'status-point completed' : 'status-point';
                             %>
-                              <div class="status-point">
+                              <div class="<%= pointClass %>">
                                 <div class="status-dot <%= dotClass %>"></div>
                                 <span class="status-label <%= labelClass %>">
                                   <%= stepLabel %>
-                                  <% if (step === 'delivered' && item.deliveredDate && dotClass === 'completed') { %>
+                                  <% if (step === 'delivered' && item.deliveredDate && isCompleted) { %>
                                     <br><span class="text-[9px]"><%= new Date(item.deliveredDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) %></span>
                                   <% } %>
                                 </span>
@@ -409,42 +415,39 @@
                             <% }); %>
                           </div>
                           
-                            <div class="mt-3 text-sm">
-                              <% if (item.returnRejected && item.returnRejectedReason) { %>
-                                <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
-                                  <div class="flex items-start gap-2">
-                                    <i class="fas fa-times-circle text-red-600 mt-0.5"></i>
-                                    <div class="flex-1">
-                                      <p class="text-xs font-semibold text-red-700 mb-1">Return Request Rejected</p>
-                                      <p class="text-xs text-red-600">
-                                        <%= item.returnRejectedReason %>
+                          <div class="mt-3 text-sm">
+                            <% if (item.returnRejected && item.returnRejectedReason) { %>
+                              <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <div class="flex items-start gap-2">
+                                  <i class="fas fa-times-circle text-red-600 mt-0.5"></i>
+                                  <div class="flex-1">
+                                    <p class="text-xs font-semibold text-red-700 mb-1">Return Request Rejected</p>
+                                    <p class="text-xs text-red-600">
+                                      <%= item.returnRejectedReason %>
+                                    </p>
+                                    <% if (item.returnRejectionDate) { %>
+                                      <p class="text-[10px] text-red-500 mt-1">
+                                        Rejected on: <%= new Date(item.returnRejectionDate).toLocaleDateString('en-US', {
+                                          month: 'short', day: 'numeric', year: 'numeric'
+                                        }) %>
                                       </p>
-                                      <% if (item.returnRejectionDate) { %>
-                                        <p class="text-[10px] text-red-500 mt-1">
-                                          Rejected on: <%= new Date(item.returnRejectionDate).toLocaleDateString('en-US', {
-                                            month: 'short', day: 'numeric', year: 'numeric'
-                                          }) %>
-                                        </p>
-                                      <% } %>
-                                    </div>
+                                    <% } %>
                                   </div>
                                 </div>
-                              <% } else if (item.returnRejected) { %>
-                                <span class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-red-100 text-red-700 border border-red-200">
-                                  <i class="fas fa-times-circle mr-1"></i> Return Request Rejected
-                                </span>
-                              <% } else if (item.returnReason) { %>
-                                <div class="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                  <p class="text-xs text-yellow-800">
-                                    <i class="fas fa-info-circle mr-1"></i>
-                                    <span class="font-medium">Return Reason:</span> <%= item.returnReason %>
-                                  </p>
-                                </div>
-                              <% } else { %>
-                                <span class="text-xs text-gray-400">-</span>
-                              <% } %>
-                            </div>
-
+                              </div>
+                            <% } else if (item.returnRejected) { %>
+                              <span class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium bg-red-100 text-red-700 border border-red-200">
+                                <i class="fas fa-times-circle mr-1"></i> Return Request Rejected
+                              </span>
+                            <% } else if (item.returnReason) { %>
+                              <div class="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <p class="text-xs text-yellow-800">
+                                  <i class="fas fa-info-circle mr-1"></i>
+                                  <span class="font-medium">Return Reason:</span> <%= item.returnReason %>
+                                </p>
+                              </div>
+                            <% } %>
+                          </div>
                           
                           <% if (item.cancellationReason && isCancelled) { %>
                             <p class="text-xs text-gray-600 mt-2">
@@ -500,7 +503,6 @@
                   </span>
                 </div>
 
-
                 <div class="pt-3 border-t border-gray-200">
                   <div class="flex justify-between">
                     <span class="font-semibold text-gray-800">Total Amount</span>
@@ -529,7 +531,6 @@
               </div>
             </div>
 
-            <!-- Shipping Address -->
             <div class="border border-gray-200 rounded-lg p-6">
               <h2 class="text-lg font-semibold text-gray-800 mb-4">
                 <i class="fas fa-map-marker-alt mr-2 text-red-700"></i>Shipping Address
@@ -698,271 +699,271 @@
       </div>
     </div>
 
-   <script>
-  let currentOrderId = null;
-  let currentItemId = null;
-  let currentItemName = null;
+    <script>
+      let currentOrderId = null;
+      let currentItemId = null;
+      let currentItemName = null;
 
-  document.addEventListener('DOMContentLoaded', function() {
-    const itemReturnReasonSelect = document.getElementById('itemReturnReason');
-    if (itemReturnReasonSelect) {
-      itemReturnReasonSelect.addEventListener('change', function(e) {
-        const otherReasonContainer = document.getElementById('itemOtherReasonContainer');
-        if (e.target.value === 'Other') {
-          otherReasonContainer.classList.remove('hidden');
-        } else {
-          otherReasonContainer.classList.add('hidden');
+      document.addEventListener('DOMContentLoaded', function() {
+        const itemReturnReasonSelect = document.getElementById('itemReturnReason');
+        if (itemReturnReasonSelect) {
+          itemReturnReasonSelect.addEventListener('change', function(e) {
+            const otherReasonContainer = document.getElementById('itemOtherReasonContainer');
+            if (e.target.value === 'Other') {
+              otherReasonContainer.classList.remove('hidden');
+            } else {
+              otherReasonContainer.classList.add('hidden');
+            }
+          });
         }
       });
-    }
-  });
 
-  function openItemReturnModal(orderId, itemId, itemName) {
-    currentOrderId = orderId;
-    currentItemId = itemId;
-    currentItemName = itemName;
-    
-    document.getElementById('itemReturnTitle').textContent = `Return Item: ${itemName}`;
-    document.getElementById('itemReturnModal').classList.remove('hidden');
-    
-    document.getElementById('itemReturnReason').value = '';
-    document.getElementById('itemOtherReasonContainer').classList.add('hidden');
-    document.getElementById('itemOtherReason').value = '';
-  }
-
-  function closeItemReturnModal() {
-    document.getElementById('itemReturnModal').classList.add('hidden');
-    currentOrderId = null;
-    currentItemId = null;
-    currentItemName = null;
-  }
-
-  async function submitItemReturn() {
-    const returnReason = document.getElementById('itemReturnReason').value;
-    const otherReason = document.getElementById('itemOtherReason')?.value || '';
-    
-    if (!returnReason) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Select Reason',
-        text: 'Please select a return reason',
-        confirmButtonColor: '#3085d6'
-      });
-      return;
-    }
-    
-    if (returnReason === 'Other' && !otherReason.trim()) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Specify Reason',
-        text: 'Please specify your return reason',
-        confirmButtonColor: '#3085d6'
-      });
-      return;
-    }
-    
-    const finalReason = returnReason === 'Other' ? otherReason : returnReason;
-    
-    const result = await Swal.fire({
-      title: 'Return This Item?',
-      html: `
-        <div class="text-left">
-          <p class="text-gray-600 mb-3">Are you sure you want to return "<strong>${currentItemName}</strong>"?</p>
-          <p class="text-sm text-gray-500"><strong>Reason:</strong> ${finalReason}</p>
-          <p class="text-xs text-gray-400 mt-2">Once submitted, you cannot modify this request.</p>
-        </div>
-      `,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, Return Item',
-      cancelButtonText: 'Cancel'
-    });
-    
-    if (!result.isConfirmed) return;
-    
-    try {
-      const submitBtn = document.getElementById('submitItemReturnBtn');
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...';
-      
-      const response = await axios.post(`/orders/${currentOrderId}/return`, {
-        reason: finalReason,
-        itemId: currentItemId
-      });
-      
-      if (response.data.success) {
-        closeItemReturnModal();
-        Swal.fire({
-          icon: 'success',
-          title: 'Request Submitted!',
-          text: response.data.message,
-          confirmButtonColor: '#3085d6'
-        }).then(() => {
-          window.location.reload();
-        });
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: response.data.message,
-          confirmButtonColor: '#d33'
-        });
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Submit Return';
+      function openItemReturnModal(orderId, itemId, itemName) {
+        currentOrderId = orderId;
+        currentItemId = itemId;
+        currentItemName = itemName;
+        
+        document.getElementById('itemReturnTitle').textContent = `Return Item: ${itemName}`;
+        document.getElementById('itemReturnModal').classList.remove('hidden');
+        
+        document.getElementById('itemReturnReason').value = '';
+        document.getElementById('itemOtherReasonContainer').classList.add('hidden');
+        document.getElementById('itemOtherReason').value = '';
       }
-    } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: error.response?.data?.message || 'Failed to submit return request',
-        confirmButtonColor: '#d33'
-      });
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Submit Return';
-    }
-  }
 
-  function openCancelModal(orderId, itemId, itemName) {
-    Swal.fire({
-      title: `Cancel ${itemName || 'Item'}`,
-      html: `
-      <div class="text-left">
-        <p class="text-sm text-gray-600 mb-3">Are you sure you want to cancel this item?</p>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Reason (Optional)</label>
-        <textarea id="cancelReason" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-600 focus:border-red-600" placeholder="Write your reason..." rows="3"></textarea>
-      </div>
-    `,
-      showCancelButton: true,
-      confirmButtonText: "Submit",
-      cancelButtonText: "Close",
-      confirmButtonColor: "#b91c1c",
-      cancelButtonColor: "#6b7280",
-      showLoaderOnConfirm: true,
-      preConfirm: () => {
-        return {
-          reason: document.getElementById("cancelReason").value || "",
-          itemId: itemId,
-        };
-      },
-      allowOutsideClick: () => !Swal.isLoading(),
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const { reason, itemId } = result.value;
+      function closeItemReturnModal() {
+        document.getElementById('itemReturnModal').classList.add('hidden');
+        currentOrderId = null;
+        currentItemId = null;
+        currentItemName = null;
+      }
 
-        axios
-          .post(
-            `/orders/cancel/${orderId}`,
-            {
+      async function submitItemReturn() {
+        const returnReason = document.getElementById('itemReturnReason').value;
+        const otherReason = document.getElementById('itemOtherReason')?.value || '';
+        
+        if (!returnReason) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Select Reason',
+            text: 'Please select a return reason',
+            confirmButtonColor: '#3085d6'
+          });
+          return;
+        }
+        
+        if (returnReason === 'Other' && !otherReason.trim()) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Specify Reason',
+            text: 'Please specify your return reason',
+            confirmButtonColor: '#3085d6'
+          });
+          return;
+        }
+        
+        const finalReason = returnReason === 'Other' ? otherReason : returnReason;
+        
+        const result = await Swal.fire({
+          title: 'Return This Item?',
+          html: `
+            <div class="text-left">
+              <p class="text-gray-600 mb-3">Are you sure you want to return "<strong>${currentItemName}</strong>"?</p>
+              <p class="text-sm text-gray-500"><strong>Reason:</strong> ${finalReason}</p>
+              <p class="text-xs text-gray-400 mt-2">Once submitted, you cannot modify this request.</p>
+            </div>
+          `,
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, Return Item',
+          cancelButtonText: 'Cancel'
+        });
+        
+        if (!result.isConfirmed) return;
+        
+        try {
+          const submitBtn = document.getElementById('submitItemReturnBtn');
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Submitting...';
+          
+          const response = await axios.post(`/orders/${currentOrderId}/return`, {
+            reason: finalReason,
+            itemId: currentItemId
+          });
+          
+          if (response.data.success) {
+            closeItemReturnModal();
+            Swal.fire({
+              icon: 'success',
+              title: 'Request Submitted!',
+              text: response.data.message,
+              confirmButtonColor: '#3085d6'
+            }).then(() => {
+              window.location.reload();
+            });
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'Error',
+              text: response.data.message,
+              confirmButtonColor: '#d33'
+            });
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Return';
+          }
+        } catch (error) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: error.response?.data?.message || 'Failed to submit return request',
+            confirmButtonColor: '#d33'
+          });
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Return';
+        }
+      }
+
+      function openCancelModal(orderId, itemId, itemName) {
+        Swal.fire({
+          title: `Cancel ${itemName || 'Item'}`,
+          html: `
+          <div class="text-left">
+            <p class="text-sm text-gray-600 mb-3">Are you sure you want to cancel this item?</p>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Reason (Optional)</label>
+            <textarea id="cancelReason" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-600 focus:border-red-600" placeholder="Write your reason..." rows="3"></textarea>
+          </div>
+        `,
+          showCancelButton: true,
+          confirmButtonText: "Submit",
+          cancelButtonText: "Close",
+          confirmButtonColor: "#b91c1c",
+          cancelButtonColor: "#6b7280",
+          showLoaderOnConfirm: true,
+          preConfirm: () => {
+            return {
+              reason: document.getElementById("cancelReason").value || "",
               itemId: itemId,
-              reason: reason,
-            },
-            {
-              headers: { "Content-Type": "application/json" },
-            }
-          )
-          .then((res) => {
-            if (res.data.success) {
-              Swal.fire({
-                icon: "success",
-                title: "Cancelled Successfully",
-                text: res.data.message,
-                timer: 2000,
-                showConfirmButton: false,
-              }).then(() => {
-                window.location.reload();
-              });
-            } else {
-              Swal.fire({
-                icon: "error",
-                title: "Error",
-                text: res.data.message,
-                confirmButtonColor: "#b91c1c",
-              });
-            }
-          })
-          .catch((error) => {
-            Swal.fire({
-              icon: "error",
-              title: "Error",
-              text: error.response?.data?.message || "Something went wrong",
-              confirmButtonColor: "#b91c1c",
-            });
-          });
-      }
-    });
-  }
+            };
+          },
+          allowOutsideClick: () => !Swal.isLoading(),
+        }).then((result) => {
+          if (result.isConfirmed) {
+            const { reason, itemId } = result.value;
 
-  function cancelEntireOrder(orderId) {
-    Swal.fire({
-      title: "Cancel Entire Order?",
-      html: `
-      <div class="text-left">
-        <p class="text-sm text-gray-600 mb-3">This will cancel all items in this order.</p>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Reason (Optional)</label>
-        <textarea id="cancelOrderReason" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-600 focus:border-red-600" placeholder="Write your reason..." rows="3"></textarea>
-      </div>
-    `,
-      showCancelButton: true,
-      confirmButtonText: "Yes, Cancel Order",
-      cancelButtonText: "No, Keep It",
-      confirmButtonColor: "#b91c1c",
-      cancelButtonColor: "#6b7280",
-      showLoaderOnConfirm: true,
-      preConfirm: () => {
-        return {
-          reason: document.getElementById("cancelOrderReason").value || "",
-          cancelAll: true,
-        };
-      },
-      allowOutsideClick: () => !Swal.isLoading(),
-    }).then((result) => {
-      if (result.isConfirmed) {
-        const { reason, cancelAll } = result.value;
-
-        axios
-          .post(
-            `/orders/cancel/${orderId}`,
-            {
-              reason: reason,
-              cancelAll: cancelAll,
-            },
-            {
-              headers: { "Content-Type": "application/json" },
-            }
-          )
-          .then((res) => {
-            if (res.data.success) {
-              Swal.fire({
-                icon: "success",
-                title: "Order Cancelled",
-                text: res.data.message,
-                timer: 2000,
-                showConfirmButton: false,
-              }).then(() => {
-                window.location.reload();
+            axios
+              .post(
+                `/orders/cancel/${orderId}`,
+                {
+                  itemId: itemId,
+                  reason: reason,
+                },
+                {
+                  headers: { "Content-Type": "application/json" },
+                }
+              )
+              .then((res) => {
+                if (res.data.success) {
+                  Swal.fire({
+                    icon: "success",
+                    title: "Cancelled Successfully",
+                    text: res.data.message,
+                    timer: 2000,
+                    showConfirmButton: false,
+                  }).then(() => {
+                    window.location.reload();
+                  });
+                } else {
+                  Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: res.data.message,
+                    confirmButtonColor: "#b91c1c",
+                  });
+                }
+              })
+              .catch((error) => {
+                Swal.fire({
+                  icon: "error",
+                  title: "Error",
+                  text: error.response?.data?.message || "Something went wrong",
+                  confirmButtonColor: "#b91c1c",
+                });
               });
-            } else {
-              Swal.fire({
-                icon: "error",
-                title: "Error",
-                text: res.data.message,
-                confirmButtonColor: "#b91c1c",
-              });
-            }
-          })
-          .catch((error) => {
-            Swal.fire({
-              icon: "error",
-              title: "Error",
-              text: error.response?.data?.message || "Something went wrong",
-              confirmButtonColor: "#b91c1c",
-            });
-          });
+          }
+        });
       }
-    });
-  }
-</script>
+
+      function cancelEntireOrder(orderId) {
+        Swal.fire({
+          title: "Cancel Entire Order?",
+          html: `
+          <div class="text-left">
+            <p class="text-sm text-gray-600 mb-3">This will cancel all items in this order.</p>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Reason (Optional)</label>
+            <textarea id="cancelOrderReason" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-red-600 focus:border-red-600" placeholder="Write your reason..." rows="3"></textarea>
+          </div>
+        `,
+          showCancelButton: true,
+          confirmButtonText: "Yes, Cancel Order",
+          cancelButtonText: "No, Keep It",
+          confirmButtonColor: "#b91c1c",
+          cancelButtonColor: "#6b7280",
+          showLoaderOnConfirm: true,
+          preConfirm: () => {
+            return {
+              reason: document.getElementById("cancelOrderReason").value || "",
+              cancelAll: true,
+            };
+          },
+          allowOutsideClick: () => !Swal.isLoading(),
+        }).then((result) => {
+          if (result.isConfirmed) {
+            const { reason, cancelAll } = result.value;
+
+            axios
+              .post(
+                `/orders/cancel/${orderId}`,
+                {
+                  reason: reason,
+                  cancelAll: cancelAll,
+                },
+                {
+                  headers: { "Content-Type": "application/json" },
+                }
+              )
+              .then((res) => {
+                if (res.data.success) {
+                  Swal.fire({
+                    icon: "success",
+                    title: "Order Cancelled",
+                    text: res.data.message,
+                    timer: 2000,
+                    showConfirmButton: false,
+                  }).then(() => {
+                    window.location.reload();
+                  });
+                } else {
+                  Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: res.data.message,
+                    confirmButtonColor: "#b91c1c",
+                  });
+                }
+              })
+              .catch((error) => {
+                Swal.fire({
+                  icon: "error",
+                  title: "Error",
+                  text: error.response?.data?.message || "Something went wrong",
+                  confirmButtonColor: "#b91c1c",
+                });
+              });
+          }
+        });
+      }
+    </script>
   </body>
 </html>
