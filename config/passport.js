@@ -1,6 +1,9 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import User from "../model/userSchema.js";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 passport.use(
   new GoogleStrategy(
@@ -17,24 +20,30 @@ passport.use(
           $or: [{ googleId: profile.id }, { email }],
         });
 
-        if (user) return done(null, user);
+        if (user) {
+          if (user.isBlocked) {
+            return done(null, false, { message: "blocked" });
+          }
+
+          return done(null, user);
+        }
 
         user = new User({
           name: profile.displayName,
           email,
           googleId: profile.id,
-          authProvider: "google",
+          authProvider: "google"
         });
-
         await user.save();
+
         return done(null, user);
-      } catch (err) {
-        return done(err, null);
+
+      } catch (error) {
+        return done(error, null);
       }
     }
   )
 );
-
 
 passport.serializeUser((user, done) => {
   done(null, user.id);
