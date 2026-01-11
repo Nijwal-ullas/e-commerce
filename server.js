@@ -56,13 +56,6 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use((req, res, next) => {
-  if (req.headers.host === "16.171.64.20") {
-    return res.redirect(301, "https://ruhecollecton.info" + req.originalUrl);
-  }
-  next();
-});
-
 
 app.use(
   session({
