@@ -289,10 +289,10 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
     orderDoc.discount = 0;
     orderDoc.finalAmount = 0;
     orderDoc.walletUsed = 0;
-    orderDoc.couponCode = null;
-    orderDoc.couponId = null;
+    // orderDoc.couponCode = null;
+    // orderDoc.couponId = null;
     orderDoc.couponDiscount = 0;
-    orderDoc.couponUsed = false;
+    // orderDoc.couponUsed = false;
 
     await orderDoc.save();
 
@@ -427,10 +427,10 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
     orderDoc.discount = 0;
     orderDoc.finalAmount = 0;
 
-    orderDoc.couponCode = null;
-    orderDoc.couponId = null;
+    // orderDoc.couponCode = null;
+    // orderDoc.couponId = null;
     orderDoc.couponDiscount = 0;
-    orderDoc.couponUsed = false;
+    // orderDoc.couponUsed = false;
 
     await orderDoc.save();
 
