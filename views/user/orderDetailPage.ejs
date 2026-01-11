@@ -31,7 +31,7 @@
 
       .status-line {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         margin-top: 12px;
         padding: 4px 0;
         position: relative;
@@ -65,9 +65,10 @@
         height: 16px;
         border-radius: 50%;
         border: 3px solid white;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
         position: relative;
         z-index: 2;
+        flex-shrink: 0;
       }
       
       .status-dot.completed {
