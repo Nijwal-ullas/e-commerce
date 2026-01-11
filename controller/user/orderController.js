@@ -332,9 +332,16 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
   orderDoc.totalPrice = newBaseTotal;
   orderDoc.discount = newBaseTotal - newOfferTotal;
 
-  const afterDiscount = newOfferTotal - orderDoc.couponDiscount;
+  const rawAfterDiscount = newOfferTotal - (orderDoc.couponDiscount || 0);
+
+  const afterDiscount = Math.max(0, rawAfterDiscount);
+
   const deliveryCharge =
-    afterDiscount === 0 ? 0 : afterDiscount >= 500 ? 0 : 50;
+    deliveredItems.length > 0 && afterDiscount > 0 && afterDiscount < 500
+      ? 50
+      : 0;
+
+  orderDoc.finalAmount = afterDiscount + deliveryCharge;
 
   orderDoc.finalAmount = afterDiscount + deliveryCharge;
 
@@ -462,10 +469,15 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
     newDiscount += (basePrice - finalPrice) * activeItem.quantity;
   }
 
-  const afterDiscount = newBase - newDiscount - (orderDoc.couponDiscount || 0);
+  const rawAfterDiscount =
+    newBase - newDiscount - (orderDoc.couponDiscount || 0);
+
+  const afterDiscount = Math.max(0, rawAfterDiscount);
 
   const deliveryCharge =
-    afterDiscount === 0 ? 0 : afterDiscount >= 500 ? 0 : 50;
+    remainingItems.length > 0 && afterDiscount > 0 && afterDiscount < 500
+      ? 50
+      : 0;
 
   orderDoc.totalPrice = newBase;
   orderDoc.discount = newDiscount;
