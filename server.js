@@ -6,6 +6,7 @@ import MongoStore from "connect-mongo";
 import { fileURLToPath } from "url";
 import connectDB from "./config/db.js";
 
+
 import userRouter from "./router/user/userRouter.js";
 import userProductRouter from "./router/user/productRouter.js";
 import profileRouter from "./router/user/profileRouter.js";
@@ -54,6 +55,14 @@ app.use((req, res, next) => {
   res.setHeader("Expires", "0");
   next();
 });
+
+app.use((req, res, next) => {
+  if (req.headers.host === "16.171.64.20") {
+    return res.redirect(301, "https://ruhecollecton.info" + req.originalUrl);
+  }
+  next();
+});
+
 
 app.use(
   session({
