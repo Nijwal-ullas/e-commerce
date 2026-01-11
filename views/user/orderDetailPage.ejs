@@ -492,10 +492,14 @@
 
                 <div class="flex justify-between text-sm">
                   <span class="text-gray-600">Delivery Charges</span>
-                  <span class="font-medium <%= order.deliveryCharge === 0 ? 'text-green-600' : 'text-gray-800' %>">
-                    <%= order.deliveryCharge === 0 ? 'FREE' : '₹' + parseFloat(order.deliveryCharge || 0).toFixed(2) %>
+
+                  <% const showFree = order.finalAmount === 0 || order.deliveryCharge === 0; %>
+
+                  <span class="font-medium <%= showFree ? 'text-green-600' : 'text-gray-800' %>">
+                    <%= showFree ? 'FREE' : '₹' + Number(order.deliveryCharge).toFixed(2) %>
                   </span>
                 </div>
+
 
                 <div class="pt-3 border-t border-gray-200">
                   <div class="flex justify-between">
