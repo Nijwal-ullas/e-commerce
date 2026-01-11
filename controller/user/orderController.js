@@ -333,7 +333,8 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
   orderDoc.discount = newBaseTotal - newOfferTotal;
 
   const afterDiscount = newOfferTotal - orderDoc.couponDiscount;
-  const deliveryCharge = afterDiscount >= 500 ? 0 : 50;
+  const deliveryCharge =
+    afterDiscount === 0 ? 0 : afterDiscount >= 500 ? 0 : 50;
 
   orderDoc.finalAmount = afterDiscount + deliveryCharge;
 
@@ -352,9 +353,7 @@ async function cancelAllItems(orderDoc, userId, reason, res) {
 }
 
 async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
-  const item = orderDoc.orderedItem.find(
-    (i) => i._id.toString() === itemId
-  );
+  const item = orderDoc.orderedItem.find((i) => i._id.toString() === itemId);
 
   if (!item) {
     return res.status(404).json({
@@ -388,8 +387,7 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
       0
     );
 
-    const couponValid =
-      coupon && remainingSubtotal >= coupon.minCartValue;
+    const couponValid = coupon && remainingSubtotal >= coupon.minCartValue;
 
     if (!couponValid) {
       item.status = "Pending";
@@ -407,9 +405,7 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
 
   if (!isCOD) {
     refundAmount =
-      remainingItems.length === 0
-        ? orderDoc.finalAmount
-        : cancelledPrice;
+      remainingItems.length === 0 ? orderDoc.finalAmount : cancelledPrice;
 
     if (refundAmount > 0) {
       await refundToWallet(userId, refundAmount);
@@ -454,9 +450,7 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
         (v) => v._id.toString() === activeItem.variantId.toString()
       );
     } else if (activeItem.ml) {
-      variant = productDoc.VariantItem.find(
-        (v) => v.Ml === activeItem.ml
-      );
+      variant = productDoc.VariantItem.find((v) => v.Ml === activeItem.ml);
     }
 
     const basePrice = variant ? variant.Price : activeItem.price;
@@ -468,10 +462,10 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
     newDiscount += (basePrice - finalPrice) * activeItem.quantity;
   }
 
-  const afterDiscount =
-    newBase - newDiscount - (orderDoc.couponDiscount || 0);
+  const afterDiscount = newBase - newDiscount - (orderDoc.couponDiscount || 0);
 
-  const deliveryCharge = afterDiscount >= 500 ? 0 : 50;
+  const deliveryCharge =
+    afterDiscount === 0 ? 0 : afterDiscount >= 500 ? 0 : 50;
 
   orderDoc.totalPrice = newBase;
   orderDoc.discount = newDiscount;
@@ -490,9 +484,6 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
     couponDiscount: orderDoc.couponDiscount || 0,
   });
 }
-
-
-
 
 async function refundToWallet(userId, amount) {
   if (!amount || amount <= 0) return;
