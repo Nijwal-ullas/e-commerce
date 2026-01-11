@@ -370,47 +370,48 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
     });
   }
 
+  // Temporarily mark cancelled
   item.status = "Cancelled";
   item.cancellationReason = reason || "";
 
   const cancelledPrice = item.price * item.quantity;
   let refundAmount = 0;
 
-  const activeItems = orderDoc.orderedItem.filter(
+  // Remaining active items
+  const remainingItems = orderDoc.orderedItem.filter(
     (i) => i.status !== "Cancelled"
   );
 
-  const remainingItems = activeItems.filter(
-    (i) => i._id.toString() !== itemId
-  );
-
-  const remainingSubtotal = remainingItems.reduce(
-    (sum, i) => sum + i.price * i.quantity,
-    0
-  );
-
-  let coupon = null;
+  // ---------- COUPON VALIDATION (FOR COD + ONLINE) ----------
   let couponValid = true;
 
-  if (orderDoc.couponId) {
-    coupon = await Coupons.findById(orderDoc.couponId);
+  if (orderDoc.couponId && remainingItems.length > 0) {
+    const coupon = await Coupons.findById(orderDoc.couponId);
+
+    const remainingSubtotal = remainingItems.reduce(
+      (sum, i) => sum + i.price * i.quantity,
+      0
+    );
+
     couponValid = coupon && remainingSubtotal >= coupon.minCartValue;
+
+    if (!couponValid) {
+      // rollback cancellation
+      item.status = "Pending";
+      item.cancellationReason = "";
+
+      return res.status(statusCode.BAD_REQUEST).json({
+        success: false,
+        message:
+          "Cannot cancel this item because remaining items are not eligible for the applied coupon",
+      });
+    }
   }
 
-  
-  if (orderDoc.couponId && !couponValid && remainingItems.length > 0) {
-    item.status = "Pending";
-    item.cancellationReason = "";
+  // ---------- REFUND LOGIC (ONLY NON-COD) ----------
+  const isCOD = orderDoc.payment === "Cod";
 
-    return res.status(statusCode.BAD_REQUEST).json({
-      success: false,
-      message:
-        "Cannot cancel this item because remaining items are not eligible for the applied coupon",
-    });
-  }
-
-  
-  if (orderDoc.payment !== "Cod") {
+  if (!isCOD) {
     if (remainingItems.length === 0) {
       refundAmount = orderDoc.finalAmount;
     } else {
@@ -422,9 +423,10 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
     }
   }
 
+  // Restore stock
   await restoreStock(item);
 
- 
+  // ---------- FULL ORDER CANCEL ----------
   if (remainingItems.length === 0) {
     orderDoc.orderStatus = "Cancelled";
     orderDoc.totalPrice = 0;
@@ -436,12 +438,12 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
     return res.json({
       success: true,
       message: "Item cancelled and order closed",
-      refundedToWallet: refundAmount,
+      refundedToWallet: refundAmount, // 0 for COD
       orderStatus: "Cancelled",
     });
   }
 
- 
+  // ---------- RECALCULATE ORDER ----------
   let newBase = 0;
   let newDiscount = 0;
 
@@ -455,9 +457,7 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
       variant = productDoc.VariantItem.find(
         (v) => v._id.toString() === activeItem.variantId.toString()
       );
-    }
-
-    if (!variant && activeItem.ml) {
+    } else if (activeItem.ml) {
       variant = productDoc.VariantItem.find(
         (v) => v.Ml === activeItem.ml
       );
@@ -480,7 +480,6 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
   orderDoc.totalPrice = newBase;
   orderDoc.discount = newDiscount;
   orderDoc.finalAmount = afterDiscount + deliveryCharge;
-
   orderDoc.orderStatus = getUpdatedOrderStatus(remainingItems);
 
   await orderDoc.save();
@@ -488,12 +487,13 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
   return res.json({
     success: true,
     message: "Item cancelled successfully",
-    refundedToWallet: refundAmount,
+    refundedToWallet: refundAmount, // 0 for COD
     newFinalAmount: orderDoc.finalAmount,
     orderStatus: orderDoc.orderStatus,
     remainingItems: remainingItems.length,
   });
 }
+
 
 
 async function refundToWallet(userId, amount) {
