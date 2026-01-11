@@ -2,25 +2,20 @@ import user from "../model/userSchema.js";
 import admin from "../model/adminSchema.js";
 
 const checkUser = async (req, res, next) => {
+  if (req.originalUrl.startsWith('/auth/google')) return next();
   if (req.originalUrl.startsWith('/admin')) return next();
 
   if (!req.session.user) {
-  const acceptsJson =
-    req.xhr ||
-    (req.headers.accept && req.headers.accept.includes("application/json"));
-
-  if (acceptsJson) {
-    return res.status(401).json({
-      success: false,
-      message: "Please login to continue",
-      redirect: "/login",
-    });
+    if (req.xhr || req.headers.accept.includes("application/json")) {
+      return res.status(401).json({
+        success: false,
+        message: "Please login to continue",
+        redirect: "/login",
+      });
+    }
+    return res.redirect("/login");
   }
-
-  return res.redirect("/login");
-}
-
-
+  
   try {
     const currentUser = await user.findById(req.session.user._id || req.session.user);
     if (currentUser && !currentUser.isBlocked) {
@@ -71,9 +66,9 @@ const adminAuth = async (req, res, next) => {
 };
 
 const isBlocked = async (req, res, next) => {
-    if (req.originalUrl.startsWith('/admin')) {
-    return next();
-  }
+    if (req.originalUrl.startsWith('/auth/google')) return next();
+  if (req.originalUrl.startsWith('/admin')) return next();
+  
   if (req.session.user?._id || req.session.user) {
     try {
       const userId = req.session.user._id || req.session.user;
