@@ -370,20 +370,15 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
     });
   }
 
-  // Temporarily mark cancelled
   item.status = "Cancelled";
   item.cancellationReason = reason || "";
 
   const cancelledPrice = item.price * item.quantity;
   let refundAmount = 0;
 
-  // Remaining active items
   const remainingItems = orderDoc.orderedItem.filter(
     (i) => i.status !== "Cancelled"
   );
-
-  // ---------- COUPON VALIDATION (FOR COD + ONLINE) ----------
-  let couponValid = true;
 
   if (orderDoc.couponId && remainingItems.length > 0) {
     const coupon = await Coupons.findById(orderDoc.couponId);
@@ -393,10 +388,10 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
       0
     );
 
-    couponValid = coupon && remainingSubtotal >= coupon.minCartValue;
+    const couponValid =
+      coupon && remainingSubtotal >= coupon.minCartValue;
 
     if (!couponValid) {
-      // rollback cancellation
       item.status = "Pending";
       item.cancellationReason = "";
 
@@ -408,42 +403,43 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
     }
   }
 
-  // ---------- REFUND LOGIC (ONLY NON-COD) ----------
   const isCOD = orderDoc.payment === "Cod";
 
   if (!isCOD) {
-    if (remainingItems.length === 0) {
-      refundAmount = orderDoc.finalAmount;
-    } else {
-      refundAmount = cancelledPrice;
-    }
+    refundAmount =
+      remainingItems.length === 0
+        ? orderDoc.finalAmount
+        : cancelledPrice;
 
     if (refundAmount > 0) {
       await refundToWallet(userId, refundAmount);
     }
   }
 
-  // Restore stock
   await restoreStock(item);
 
-  // ---------- FULL ORDER CANCEL ----------
   if (remainingItems.length === 0) {
     orderDoc.orderStatus = "Cancelled";
     orderDoc.totalPrice = 0;
     orderDoc.discount = 0;
     orderDoc.finalAmount = 0;
 
+    orderDoc.couponCode = null;
+    orderDoc.couponId = null;
+    orderDoc.couponDiscount = 0;
+    orderDoc.couponUsed = false;
+
     await orderDoc.save();
 
     return res.json({
       success: true,
       message: "Item cancelled and order closed",
-      refundedToWallet: refundAmount, // 0 for COD
+      refundedToWallet: isCOD ? 0 : refundAmount,
       orderStatus: "Cancelled",
+      couponDiscount: 0,
     });
   }
 
-  // ---------- RECALCULATE ORDER ----------
   let newBase = 0;
   let newDiscount = 0;
 
@@ -487,12 +483,14 @@ async function cancelSingleItem(orderDoc, userId, itemId, reason, res) {
   return res.json({
     success: true,
     message: "Item cancelled successfully",
-    refundedToWallet: refundAmount, // 0 for COD
+    refundedToWallet: isCOD ? 0 : refundAmount,
     newFinalAmount: orderDoc.finalAmount,
     orderStatus: orderDoc.orderStatus,
     remainingItems: remainingItems.length,
+    couponDiscount: orderDoc.couponDiscount || 0,
   });
 }
+
 
 
 
