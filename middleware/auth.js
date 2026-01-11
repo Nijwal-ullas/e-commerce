@@ -5,15 +5,21 @@ const checkUser = async (req, res, next) => {
   if (req.originalUrl.startsWith('/admin')) return next();
 
   if (!req.session.user) {
-    if (req.xhr || req.headers.accept.includes("application/json")) {
-      return res.status(401).json({
-        success: false,
-        message: "Please login to continue",
-        redirect: "/login",
-      });
-    }
-    return res.redirect("/login");
+  const acceptsJson =
+    req.xhr ||
+    (req.headers.accept && req.headers.accept.includes("application/json"));
+
+  if (acceptsJson) {
+    return res.status(401).json({
+      success: false,
+      message: "Please login to continue",
+      redirect: "/login",
+    });
   }
+
+  return res.redirect("/login");
+}
+
 
   try {
     const currentUser = await user.findById(req.session.user._id || req.session.user);

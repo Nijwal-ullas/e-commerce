@@ -4,6 +4,7 @@ import User from "../model/userSchema.js";
 import dotenv from "dotenv";
 
 dotenv.config();
+console.log("GOOGLE CLIENT ID USED =", process.env.GOOGLE_CLIENT_ID);
 
 passport.use(
   new GoogleStrategy(
