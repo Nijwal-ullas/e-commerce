@@ -14,7 +14,6 @@ const CouponsSchema = new Schema(
     expireAt: {
       type: Date,
       required: true,
-      index: { expireAfterSeconds: 0 },
     },
     minCartValue: {
       type: Number,

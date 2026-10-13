@@ -26,6 +26,7 @@ import productRouter from "./router/admin/productRoutes.js";
 import ordersRouter from "./router/admin/ordersRouter.js";
 import couponRouter from "./router/admin/couponRouter.js";
 import adminProfileRouter from "./router/admin/profileRouter.js";
+import bannerRouter from "./router/admin/bannerRoutes.js";
 
 import auth from "./middleware/auth.js";
 import passport from "./config/passport.js";
@@ -120,6 +121,7 @@ app.use("/admin", productRouter);
 app.use("/admin", ordersRouter);
 app.use("/admin", couponRouter);
 app.use("/admin", adminProfileRouter);
+app.use("/admin", bannerRouter);
 
 app.use((req, res) => {
   res.status(404).render("error");

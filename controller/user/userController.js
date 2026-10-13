@@ -2,6 +2,7 @@ import user from "../../model/userSchema.js";
 import category from "../../model/categorySchema.js";
 import product from "../../model/productSchema.js";
 import wallet from "../../model/walletSchema.js";
+import Banner from "../../model/bannerSchema.js";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
@@ -153,6 +154,8 @@ const loadHomePage = async (req, res) => {
       }
     }
 
+    const banners = await Banner.find({ isActive: true }).sort({ displayOrder: 1, createdAt: -1 });
+
     return res.render("user/home", {
       user: userData,
       userWishlist: userWishlist,
@@ -161,6 +164,7 @@ const loadHomePage = async (req, res) => {
       totalProducts: totalProducts,
       totalPages: totalPages,
       currentPage: page,
+      banners,
     });
   } catch (error) {
     console.error(error.message);

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Order Details - Ruhe Collection</title>
+    <title>Order Details - Wasm Collection</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -418,7 +418,7 @@
                       <div class="flex flex-col gap-1 items-center">
                         <% if (canApproveReturn) { %>
                           <button
-                            onclick="approveItemReturn('<%= order._id %>', '<%= item._id %>')"
+                            onclick="approveItemReturn('<%= order._id %>', '<%= item._id %>', this)"
                             class="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition text-xs font-medium action-btn"
                           >
                             <i class="fas fa-check mr-1"></i> Approve
@@ -427,7 +427,7 @@
                         
                         <% if (canRejectReturn) { %>
                           <button
-                            onclick="rejectItemReturn('<%= order._id %>', '<%= item._id %>')"
+                            onclick="rejectItemReturn('<%= order._id %>', '<%= item._id %>', this)"
                             class="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition text-xs font-medium action-btn"
                           >
                             <i class="fas fa-times mr-1"></i> Reject
@@ -436,7 +436,7 @@
                         
                         <% if (canRefund) { %>
                           <button
-                            onclick="refundItem('<%= order._id %>', '<%= item._id %>', <%= (item.price || 0) * (item.quantity || 1) %>)"
+                            onclick="refundItem('<%= order._id %>', '<%= item._id %>', <%= (item.price || 0) * (item.quantity || 1) %>, this)"
                             class="px-3 py-1 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition text-xs font-medium action-btn"
                           >
                             <i class="fas fa-money-check-alt mr-1"></i> Refund
@@ -868,7 +868,7 @@
         }
       });
 
-      async function approveItemReturn(orderId, itemId) {
+      async function approveItemReturn(orderId, itemId, btn) {
         const result = await Swal.fire({
           title: "Approve Item Return?",
           icon: "question",
@@ -880,6 +880,11 @@
         });
 
         if (!result.isConfirmed) return;
+
+        const originalHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.classList.add("opacity-60", "cursor-not-allowed");
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Approving...';
 
         try {
           const response = await axios.put(
@@ -904,10 +909,13 @@
             text: error.response?.data?.message || "Failed to approve item return",
             confirmButtonColor: "#d33",
           });
+          btn.disabled = false;
+          btn.classList.remove("opacity-60", "cursor-not-allowed");
+          btn.innerHTML = originalHTML;
         }
       }
 
-    async function rejectItemReturn(orderId, itemId) {
+    async function rejectItemReturn(orderId, itemId, btn) {
   const { value: formData } = await Swal.fire({
     title: "Reject Return Request",
     html: `
@@ -993,6 +1001,11 @@
       ? `${formData.reason} - ${formData.comments}`
       : formData.reason;
 
+  const originalHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.classList.add("opacity-60", "cursor-not-allowed");
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Rejecting...';
+
   try {
     const response = await axios.put(
       `/admin/adminOrders/${orderId}/item/${itemId}/reject-return`,
@@ -1019,11 +1032,14 @@
         "An error occurred while rejecting the return request.",
       confirmButtonColor: "#ef4444"
     });
+    btn.disabled = false;
+    btn.classList.remove("opacity-60", "cursor-not-allowed");
+    btn.innerHTML = originalHTML;
   }
 }
 
 
-      async function refundItem(orderId, itemId, refundAmount) {
+      async function refundItem(orderId, itemId, refundAmount, btn) {
         const result = await Swal.fire({
           title: "Process Refund for this Item?",
           html: `Are you sure you want to process refund for this item? <br><br>Refund Amount:</strong> ₹${refundAmount.toFixed(2)}`,
@@ -1036,6 +1052,11 @@
         });
 
         if (!result.isConfirmed) return;
+
+        const originalHTML = btn.innerHTML;
+        btn.disabled = true;
+        btn.classList.add("opacity-60", "cursor-not-allowed");
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Refunding...';
 
         try {
           const response = await axios.put(
@@ -1063,6 +1084,9 @@
             text: error.response?.data?.message || "Failed to process item refund",
             confirmButtonColor: "#d33",
           });
+          btn.disabled = false;
+          btn.classList.remove("opacity-60", "cursor-not-allowed");
+          btn.innerHTML = originalHTML;
         }
       }
     </script>

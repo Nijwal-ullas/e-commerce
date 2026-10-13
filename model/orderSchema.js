@@ -84,7 +84,7 @@ const OrdersSchema = new Schema(
 
     payment: {
       type: String,
-      enum: ["COD", "Cod", "razorpay", "Razorpay", "Wallet", "wallet"],
+      enum: ["COD", "Cod", "cod", "razorpay", "Razorpay", "Wallet", "wallet"],
       required: true,
     },
 
@@ -105,6 +105,15 @@ const OrdersSchema = new Schema(
     discount: { type: Number, default: 0 },
     walletUsed: { type: Number, default: 0 },
     finalAmount: { type: Number, required: true },
+    shippingCharge: { type: Number, default: 0 },
+
+    razorpayOrderId: { type: String, default: null },
+    razorpayPaymentId: { type: String, default: null },
+    razorpaySignature: { type: String, default: null },
+    paymentDate: { type: Date },
+    failedAt: { type: Date },
+    retryAttempts: { type: Number, default: 0 },
+    lastRetryAt: { type: Date },
 
     couponId: { type: Schema.Types.ObjectId, ref: "Coupon" },
 
@@ -148,6 +157,7 @@ const OrdersSchema = new Schema(
         "Cancelled",
         "Refunded",
         "Returned",
+        "Payment Failed",
       ],
       default: "Pending",
     },

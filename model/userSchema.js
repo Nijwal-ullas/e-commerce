@@ -13,13 +13,14 @@ const UserSchema = new Schema({
   cloudinaryPublicIds: [{
   type: String
 }],
+  cloudinaryPublicId: { type: String, default: "" },
 authProvider: {
   type: String,
   enum: ["local", "google"],
   default: "local"
 },
 referralCode : {type :String},
-referredBy : {type : mongoose.Schema.Types.ObjectId,req:"User"},
+referredBy : {type : mongoose.Schema.Types.ObjectId, ref: "User"},
 },
 { timestamps: true }   
 );

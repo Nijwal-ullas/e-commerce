@@ -589,14 +589,14 @@ const downloadInvoice = async (req, res) => {
 
     const topY = doc.y;
 
-    doc.fontSize(12).fillColor("#000000").text("Ruhe Collection", 50, topY);
+    doc.fontSize(12).fillColor("#000000").text("Wasm Collection", 50, topY);
     doc
       .fontSize(9)
       .fillColor("#4b5563")
       .text("123 Business Street", 50)
       .text("City, State - 123456", 50)
       .text("Phone: +91 1234567890", 50)
-      .text("Email: info@ruhecollection.com", 50);
+      .text("Email: info@wasmcollection.com", 50);
 
     doc
       .fontSize(10)
@@ -830,7 +830,7 @@ const downloadInvoice = async (req, res) => {
     doc
       .fontSize(9)
       .fillColor("#2563eb")
-      .text("Thank you for shopping with Ruhe Collection!", 50, currentY, {
+      .text("Thank you for shopping with Wasm Collection!", 50, currentY, {
         align: "center",
       });
 

@@ -85,7 +85,7 @@ const getWallet = async (req, res) => {
         balance: parseFloat(wallet.Balance) || 0,
       },
       transactions: formattedTransactions,
-      pageTitle: "My Wallet - Ruhe Collection",
+      pageTitle: "My Wallet - Wasm Collection",
       page: page,
       totalPage: totalPage,
       currentFilter: filterType,
