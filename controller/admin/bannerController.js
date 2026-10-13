@@ -6,7 +6,6 @@ import {
 import statusCode from "../../utilities/statusCodes.js";
 import errorMessage from "../../utilities/errorMessages.js";
 
-// GET /admin/banner
 const bannerPage = async (req, res) => {
   try {
     const banners = await Banner.find().sort({ displayOrder: 1, createdAt: -1 });
@@ -20,7 +19,6 @@ const bannerPage = async (req, res) => {
   }
 };
 
-// POST /admin/banner
 const addBanner = async (req, res) => {
   try {
     if (!req.file) {
@@ -53,7 +51,6 @@ const addBanner = async (req, res) => {
   }
 };
 
-// PUT /admin/banner/:id
 const editBanner = async (req, res) => {
   try {
     const { id } = req.params;
@@ -87,7 +84,6 @@ const editBanner = async (req, res) => {
   }
 };
 
-// PATCH /admin/banner/:id/toggle
 const toggleBanner = async (req, res) => {
   try {
     const { id } = req.params;
@@ -114,7 +110,6 @@ const toggleBanner = async (req, res) => {
   }
 };
 
-// DELETE /admin/banner/:id
 const deleteBanner = async (req, res) => {
   try {
     const { id } = req.params;

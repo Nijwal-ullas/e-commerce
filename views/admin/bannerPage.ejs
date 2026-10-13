@@ -18,7 +18,6 @@
         <%- include('../partials/admin/header') %>
 
         <div class="p-6">
-          <!-- Page Header -->
           <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-semibold text-gray-800">Banner Management</h1>
             <button
@@ -29,7 +28,6 @@
             </button>
           </div>
 
-          <!-- Banners Grid -->
           <% if (banners.length === 0) { %>
           <div class="bg-white rounded-lg shadow p-12 text-center text-gray-500">
             <i class="fas fa-image text-5xl mb-4 text-gray-300"></i>
@@ -39,21 +37,18 @@
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             <% banners.forEach(banner => { %>
             <div class="bg-white rounded-lg shadow overflow-hidden" id="banner-<%= banner._id %>">
-              <!-- Banner Image -->
               <div class="relative h-48 bg-gray-200">
                 <img
                   src="<%= banner.imageUrl %>"
                   alt="Banner"
                   class="w-full h-full object-cover"
                 />
-                <!-- Active Badge -->
                 <span class="absolute top-2 right-2 px-2 py-1 rounded text-xs font-semibold
                   <%= banner.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' %>">
                   <%= banner.isActive ? 'Active' : 'Inactive' %>
                 </span>
               </div>
 
-              <!-- Action Buttons -->
               <div class="p-3 flex gap-2">
                 <button
                   onclick="openEditModal('<%= banner._id %>', '<%= banner.imageUrl %>')"
@@ -85,7 +80,6 @@
       </main>
     </div>
 
-    <!-- ===== ADD BANNER MODAL ===== -->
     <div id="addModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-center p-6 border-b">
@@ -116,7 +110,6 @@
       </div>
     </div>
 
-    <!-- ===== EDIT BANNER MODAL ===== -->
     <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-center p-6 border-b">
@@ -149,7 +142,6 @@
     </div>
 
     <script>
-      // ─── Modal helpers ───────────────────────────────────────────────
       function openAddModal() {
         document.getElementById("addBannerForm").reset();
         document.getElementById("addPreview").classList.add("hidden");
@@ -169,7 +161,6 @@
         document.getElementById("editModal").classList.add("hidden");
       }
 
-      // ─── Image preview ───────────────────────────────────────────────
       function previewImage(input, previewId) {
         const preview = document.getElementById(previewId);
         const img = document.getElementById(previewId + "Img");
@@ -183,7 +174,6 @@
         }
       }
 
-      // ─── Loading helper ───────────────────────────────────────────────
       function setLoading(btn, isLoading, loadingText, originalHTML) {
         if (isLoading) {
           btn.disabled = true;
@@ -196,7 +186,6 @@
         }
       }
 
-      // ─── Add Banner ──────────────────────────────────────────────────
       async function submitAddBanner() {
         const imageFile = document.getElementById("addImage").files[0];
 
@@ -221,7 +210,6 @@
         }
       }
 
-      // ─── Edit Banner ─────────────────────────────────────────────────
       async function submitEditBanner() {
         const id = document.getElementById("editBannerId").value;
         const imageFile = document.getElementById("editImage").files[0];
@@ -245,7 +233,6 @@
         }
       }
 
-      // ─── Toggle Banner ───────────────────────────────────────────────
       async function toggleBanner(id, currentStatus) {
         const action = currentStatus ? "deactivate" : "activate";
         const confirm = await Swal.fire({
@@ -270,7 +257,6 @@
         }
       }
 
-      // ─── Delete Banner ───────────────────────────────────────────────
       async function deleteBanner(id) {
         const confirm = await Swal.fire({
           title: "Delete Banner?",
@@ -294,7 +280,6 @@
         }
       }
 
-      // Close modals on backdrop click
       document.getElementById("addModal").addEventListener("click", (e) => {
         if (e.target === document.getElementById("addModal")) closeAddModal();
       });
