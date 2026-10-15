@@ -59,7 +59,10 @@ const addToWishlist = async (req, res) => {
     const { productId } = req.body;
 
     if (!userId) {
-      return res.redirect("/login");
+      return res.status(statusCode.UNAUTHORIZED).json({
+        success: false,
+        message: "Please login to manage your wishlist",
+      });
     }
 
     if (!productId) {
@@ -126,7 +129,10 @@ const removeFromWishlist = async (req, res) => {
     const { productId } = req.params;
 
     if (!userId) {
-      return res.redirect("/login");
+      return res.status(statusCode.UNAUTHORIZED).json({
+        success: false,
+        message: "Please login to manage your wishlist",
+      });
     }
 
     if (!isValidObjectId(productId)) {
@@ -179,7 +185,10 @@ const clearWishlist = async (req, res) => {
     const userId = req.session.user;
 
     if (!userId) {
-      return res.redirect("/login");
+      return res.status(statusCode.UNAUTHORIZED).json({
+        success: false,
+        message: "Please login to manage your wishlist",
+      });
     }
 
     const userWishlist = await wishlist.findOne({ userId });

@@ -12,10 +12,10 @@
     </a>
 
     <nav class="hidden md:flex space-x-6">
-      <a href="/" class="hover:text-gray-300 transition">Home</a>
-      <a href="/product" class="hover:text-gray-300 transition">Shop</a>
-      <a href="/about" class="hover:text-gray-300 transition">About Us</a>
-      <a href="/contact" class="hover:text-gray-300 transition">Contacts</a>
+      <a href="/" class="hover:text-amber-400 transition">Home</a>
+      <a href="/product" class="hover:text-amber-400 transition">Shop</a>
+      <a href="/about" class="hover:text-amber-400 transition">About Us</a>
+      <a href="/contact" class="hover:text-amber-400 transition">Contacts</a>
     </nav>
 
     <div class="flex space-x-4 text-lg items-center relative">
@@ -23,7 +23,7 @@
       <div class="relative">
         <button
           id="userDropdownBtn"
-          class="hover:text-gray-300 flex items-center space-x-2 focus:outline-none"
+          class="hover:text-amber-400 flex items-center space-x-2 focus:outline-none"
         >
           <% if (user.profileImage) { %>
           <img
@@ -50,21 +50,21 @@
           </div>
           <a
             href="/profile"
-            class="block px-4 py-2 hover:bg-gray-100 transition text-sm flex items-center"
+            class="block px-4 py-2 hover:bg-amber-50 hover:text-amber-700 transition text-sm flex items-center"
           >
             <i class="fas fa-user-circle mr-2 text-gray-600"></i>
             My Profile
           </a>
           <a 
             href="/orders" 
-            class="block px-4 py-2 hover:bg-gray-100 transition text-sm flex items-center"
+            class="block px-4 py-2 hover:bg-amber-50 hover:text-amber-700 transition text-sm flex items-center"
           >
             <i class="fas fa-shopping-bag mr-2 text-gray-600"></i>
             My Orders
           </a>
           <a 
             href="/wishlist" 
-            class="block px-4 py-2 hover:bg-gray-100 transition text-sm flex items-center"
+            class="block px-4 py-2 hover:bg-amber-50 hover:text-amber-700 transition text-sm flex items-center"
           >
             <i class="fas fa-heart mr-2 text-gray-600"></i>
             Wishlist
@@ -80,7 +80,7 @@
       <div class="relative">
         <button
           id="authDropdownBtn"
-          class="hover:text-gray-300 flex items-center space-x-2 focus:outline-none"
+          class="hover:text-amber-400 flex items-center space-x-2 focus:outline-none"
         >
           <i class="fas fa-user"></i>
           <span class="hidden sm:block">Account</span>
@@ -91,13 +91,13 @@
           id="authDropdown"
           class="absolute right-0 mt-2 w-36 bg-white text-gray-800 rounded-lg shadow-lg py-2 hidden z-50 border border-gray-200"
         >
-          <a href="/login" class="block px-4 py-2 hover:bg-gray-100 transition text-sm flex items-center">
+          <a href="/login" class="block px-4 py-2 hover:bg-amber-50 hover:text-amber-700 transition text-sm flex items-center">
             <i class="fas fa-sign-in-alt mr-2 text-gray-600"></i>
             Sign In
           </a>
           <a
             href="/register"
-            class="block px-4 py-2 hover:bg-gray-100 transition text-sm flex items-center"
+            class="block px-4 py-2 hover:bg-amber-50 hover:text-amber-700 transition text-sm flex items-center"
           >
             <i class="fas fa-user-plus mr-2 text-gray-600"></i>
             Sign Up
@@ -106,13 +106,10 @@
       </div>
       <% } %>
 
-      <!-- <button class="hover:text-gray-300 transition" title="Search">
-        <i class="fas fa-search"></i>
-      </button> -->
-      <a href="/wishlist" class="hover:text-gray-300 transition" title="Wishlist">
+      <a href="/wishlist" class="hover:text-amber-400 transition" title="Wishlist">
         <i class="fas fa-heart"></i>
       </a>
-      <a href="/cart" class="hover:text-gray-300 transition relative" title="Cart">
+      <a href="/cart" class="hover:text-amber-400 transition relative" title="Cart">
         <i class="fas fa-shopping-bag"></i>
       </a>
     </div>

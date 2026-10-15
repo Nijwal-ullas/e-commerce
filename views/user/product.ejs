@@ -67,7 +67,7 @@
     
     #search-input:focus + div #search-btn,
     #search-input:focus + div #clear-search {
-      color: #dc2626;
+      color: #d97706;
     }
 
     .wishlist-btn {
@@ -79,11 +79,11 @@
     }
 
     .wishlist-btn.active i {
-      color: #dc2626 !important;
+      color: #d97706 !important;
     }
 
     .wishlist-btn.active {
-      background-color: #fef2f2;
+      background-color: #fffbeb;
     }
     
     @media (max-width: 768px) {
@@ -113,13 +113,13 @@
                 type="text" 
                 id="search-input"
                 placeholder="Search products..." 
-                class="w-full border border-gray-300 rounded-lg px-4 py-3 pr-20 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                class="w-full border border-gray-300 rounded-lg px-4 py-3 pr-20 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200"
                 aria-label="Search products"
               >
               <div class="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
                 <button 
                   id="clear-search" 
-                  class="text-gray-400 hover:text-red-600 transition-colors duration-200 opacity-0 pointer-events-none"
+                  class="text-gray-400 hover:text-amber-600 transition-colors duration-200 opacity-0 pointer-events-none"
                   aria-label="Clear search"
                   style="transition: opacity 0.2s ease;"
                 >
@@ -127,8 +127,8 @@
                 </button>
                 
                 <button 
-                  id="search-btn"
-                  class="text-gray-400 hover:text-red-600 transition-colors duration-200"
+                  id="search-btn" 
+                  class="text-gray-400 hover:text-amber-600 transition-colors duration-200"
                   aria-label="Search"
                 >
                   <i class="fas fa-search"></i>
@@ -151,7 +151,7 @@
                   <div class="form-check">
                     <input 
                       type="checkbox" 
-                      class="brand-filter mr-3 rounded border-gray-300 text-red-600 focus:ring-red-500" 
+                      class="brand-filter mr-3 rounded border-gray-300 text-amber-600 focus:ring-amber-500" 
                       value="<%= brand._id %>" 
                       id="brand-<%= brand._id %>"
                     >
@@ -180,7 +180,7 @@
                   <div class="form-check">
                     <input 
                       type="checkbox" 
-                      class="category-filter mr-3 rounded border-gray-300 text-red-600 focus:ring-red-500" 
+                      class="category-filter mr-3 rounded border-gray-300 text-amber-600 focus:ring-amber-500" 
                       value="<%= category._id %>" 
                       id="category-<%= category._id %>"
                     >
@@ -216,7 +216,7 @@
                 max="10000" 
                 value="5000"
                 step="100"
-                class="w-full mb-4 accent-red-600 cursor-pointer"
+                class="w-full mb-4 accent-amber-500 cursor-pointer"
                 aria-label="Price range filter"
               >
             </div>
@@ -231,16 +231,16 @@
             </button>
             <div class="filter-content expanded">
               <div class="flex flex-wrap gap-3">
-                <button class="size-btn px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200" data-size="30">30ML</button>
-                <button class="size-btn px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200" data-size="50">50ML</button>
-                <button class="size-btn px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200" data-size="75">75ML</button>
-                <button class="size-btn px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200" data-size="100">100ML</button>
-                <button class="size-btn px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200" data-size="200">200ML</button>
+                <button class="size-btn px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-amber-500 hover:text-gray-950 hover:border-amber-500 transition-colors duration-200" data-size="30">30ML</button>
+                <button class="size-btn px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-amber-500 hover:text-gray-950 hover:border-amber-500 transition-colors duration-200" data-size="50">50ML</button>
+                <button class="size-btn px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-amber-500 hover:text-gray-950 hover:border-amber-500 transition-colors duration-200" data-size="75">75ML</button>
+                <button class="size-btn px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-amber-500 hover:text-gray-950 hover:border-amber-500 transition-colors duration-200" data-size="100">100ML</button>
+                <button class="size-btn px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-amber-500 hover:text-gray-950 hover:border-amber-500 transition-colors duration-200" data-size="200">200ML</button>
               </div>
             </div>
           </section>
 
-          <button id="clear-filters" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-3 px-4 rounded-lg transition-colors duration-200 mb-6">
+          <button id="clear-filters" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-semibold py-3 px-4 rounded-lg transition-colors duration-200 mb-6">
             Clear All Filters
           </button>
         </aside>
@@ -259,7 +259,7 @@
             </p>
             <div class="flex items-center gap-3">
               <span class="text-gray-600 text-base hidden sm:block">Sort by:</span>
-              <select id="sort-select" class="border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-base">
+              <select id="sort-select" class="border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-base">
                 <option value="latest" selected>Latest</option>
                 <option value="price-low">Price: Low to High</option>
                 <option value="price-high">Price: High to Low</option>
@@ -294,11 +294,11 @@
                     <div class="relative h-80 rounded-t-lg overflow-hidden flex-shrink-0">
                       <!-- Wishlist Heart Icon -->
                       <button 
-                        class="wishlist-btn absolute top-3 right-3 z-20 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-red-50 transition-all duration-300 <%= activeClass %>"
+                        class="wishlist-btn absolute top-3 right-3 z-20 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-amber-50 transition-all duration-300 <%= activeClass %>"
                         data-product-id="<%= productId %>"
                         aria-label="<%= isInWishlist ? 'Remove from wishlist' : 'Add to wishlist' %>"
                       >
-                        <i class="<%= heartIconClass %> text-red-600 text-lg"></i>
+                        <i class="<%= heartIconClass %> text-amber-500 text-lg"></i>
                       </button>
 
                       <a href="/product/<%= productId %>" class="block h-full">
@@ -310,7 +310,7 @@
                         >
 
                         <% if (product.bestDiscount && product.bestDiscount > 0) { %>
-                          <div class="absolute top-4 left-4 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
+                          <div class="absolute top-4 left-4 bg-amber-500 text-gray-950 px-2 py-1 rounded text-xs font-bold">
                             <%= product.bestDiscount %>% OFF
                           </div>
                         <% } %>
@@ -319,7 +319,7 @@
 
                     <div class="p-6 text-center flex-grow flex flex-col justify-end">
                       <a href="/product/<%= productId %>" class="block">
-                        <h3 class="text-base font-semibold text-gray-800 mb-3 line-clamp-2 hover:text-red-600 transition-colors" title="<%= productName %>">
+                        <h3 class="text-base font-semibold text-gray-800 mb-3 line-clamp-2 hover:text-amber-600 transition-colors" title="<%= productName %>">
                           <%= productName %>
                         </h3>
                       </a>
@@ -356,17 +356,17 @@
                 const hasNextPage = totalPages > 1;
                 const hasPrevPage = false; // First page
               %>
-              <button id="prev-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium <%= hasPrevPage ? '' : 'opacity-50 cursor-not-allowed' %>" <%= hasPrevPage ? '' : 'disabled' %>>
+              <button id="prev-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-amber-500 hover:text-gray-950 hover:border-amber-500 transition-colors duration-200 font-medium <%= hasPrevPage ? '' : 'opacity-50 cursor-not-allowed' %>" <%= hasPrevPage ? '' : 'disabled' %>>
                 ← Previous
               </button>
               
               <% for (let i = 1; i <= Math.min(5, totalPages); i++) { %>
-                <button class="page-btn px-5 py-3 border rounded-lg font-medium <%= i === currentPage ? 'bg-red-600 text-white border-red-600' : 'border-gray-300 hover:bg-red-600 hover:text-white hover:border-red-600' %>" data-page="<%= i %>">
+                <button class="page-btn px-5 py-3 border rounded-lg font-medium <%= i === currentPage ? 'bg-amber-500 text-gray-950 border-amber-500 font-bold' : 'border-gray-300 hover:bg-amber-500 hover:text-gray-950 hover:border-amber-500' %>" data-page="<%= i %>">
                   <%= i %>
                 </button>
               <% } %>
               
-              <button id="next-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium <%= hasNextPage ? '' : 'opacity-50 cursor-not-allowed' %>" <%= hasNextPage ? '' : 'disabled' %>>
+              <button id="next-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-amber-500 hover:text-gray-950 hover:border-amber-500 transition-colors duration-200 font-medium <%= hasNextPage ? '' : 'opacity-50 cursor-not-allowed' %>" <%= hasNextPage ? '' : 'disabled' %>>
                 Next →
               </button>
             <% } %>
@@ -407,6 +407,7 @@
     const mergedWishlist = [...new Set([...serverWishlist, ...userWishlist])];
     userWishlist = mergedWishlist;
     localStorage.setItem('userWishlist', JSON.stringify(mergedWishlist));
+    const isUserLoggedIn = <%= user ? 'true' : 'false' %>;
 
     const showAlert = {
         success: (message, timer = 2000) => {
@@ -788,9 +789,7 @@
           filters.size = selectedSize;
         }
         
-        if (maxPrice) {
-          filters.maxPrice = maxPrice;
-        }
+        filters.maxPrice = maxPrice;
         
         filters.sortBy = sortBy;
 
@@ -840,7 +839,7 @@
                     <i class="fas fa-search text-4xl text-gray-300 mb-4"></i>
                     <h3 class="text-xl font-semibold text-gray-600 mb-2">No products found</h3>
                     <p class="text-gray-500">Try adjusting your filters or search terms</p>
-                    <button onclick="clearAllFilters()" class="mt-4 bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                    <button onclick="clearAllFilters()" class="mt-4 bg-amber-500 text-gray-950 font-semibold px-6 py-2 rounded-lg hover:bg-amber-600 transition-colors">
                         Clear All Filters
                     </button>
                 </div>
@@ -876,11 +875,11 @@
             productElement.innerHTML = `
                 <div class="relative h-80 rounded-t-lg overflow-hidden flex-shrink-0">
                     <button 
-                        class="wishlist-btn absolute top-3 right-3 z-20 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-red-50 transition-all duration-300 ${activeClass}"
+                        class="wishlist-btn absolute top-3 right-3 z-20 w-10 h-10 bg-white rounded-full shadow-md flex items-center justify-center hover:bg-amber-50 transition-all duration-300 ${activeClass}"
                         data-product-id="${productId}"
                         aria-label="${isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}"
                     >
-                        <i class="${heartIconClass} text-red-600 text-lg"></i>
+                        <i class="${heartIconClass} text-amber-500 text-lg"></i>
                     </button>
 
                     <a href="/product/${productId}" class="block h-full">
@@ -898,7 +897,7 @@
                         ` : ''}
 
                         ${product.bestDiscount && product.bestDiscount > 0 ? `
-                            <div class="absolute top-4 left-4 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
+                            <div class="absolute top-4 left-4 bg-amber-500 text-gray-950 px-2 py-1 rounded text-xs font-bold">
                             ${product.bestDiscount}% OFF
                             </div>
                         ` : ''}
@@ -907,7 +906,7 @@
 
                 <div class="p-6 text-center flex-grow flex flex-col justify-end">
                     <a href="/product/${productId}" class="block">
-                        <h3 class="text-base font-semibold text-gray-800 mb-3 line-clamp-2 hover:text-red-600 transition-colors" title="${productName}">
+                        <h3 class="text-base font-semibold text-gray-800 mb-3 line-clamp-2 hover:text-amber-600 transition-colors" title="${productName}">
                             ${productName}
                         </h3>
                     </a>
@@ -945,7 +944,7 @@
         paginationContainer.style.display = 'flex';
         
         let paginationHTML = `
-          <button id="prev-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${currentPage === 1 ? 'disabled' : ''}>
+          <button id="prev-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-amber-500 hover:text-gray-950 hover:border-amber-500 transition-colors duration-200 font-medium ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}" ${currentPage === 1 ? 'disabled' : ''}>
             ← Previous
           </button>
         `;
@@ -956,14 +955,14 @@
         for (let i = startPage; i <= endPage; i++) {
           const isActive = i === currentPage;
           paginationHTML += `
-            <button class="page-btn px-5 py-3 border rounded-lg font-medium ${isActive ? 'bg-red-600 text-white border-red-600' : 'border-gray-300 hover:bg-red-600 hover:text-white hover:border-red-600'}" data-page="${i}">
+            <button class="page-btn px-5 py-3 border rounded-lg font-medium ${isActive ? 'bg-amber-500 text-gray-950 border-amber-500 font-bold' : 'border-gray-300 hover:bg-amber-500 hover:text-gray-950 hover:border-amber-500'}" data-page="${i}">
               ${i}
             </button>
           `;
         }
         
         paginationHTML += `
-          <button id="next-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors duration-200 font-medium ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}" ${currentPage === totalPages ? 'disabled' : ''}>
+          <button id="next-page" class="px-5 py-3 border border-gray-300 rounded-lg hover:bg-amber-500 hover:text-gray-950 hover:border-amber-500 transition-colors duration-200 font-medium ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : ''}" ${currentPage === totalPages ? 'disabled' : ''}>
             Next →
           </button>
         `;
@@ -1026,6 +1025,11 @@
                   
                   if (!productId) {
                       showAlert.error('Invalid product');
+                      return;
+                  }
+                  
+                  if (!isUserLoggedIn) {
+                      showAlert.info('Please login to manage your wishlist');
                       return;
                   }
                   
@@ -1105,10 +1109,10 @@
                           heartIcon.classList.remove('fas');
                       }
                       
-                      if (error.response?.status === 401) {
-                          showAlert.warning('Please login to manage your wishlist');
+                      if (error.response?.status === 401 || (error.response?.data?.message && error.response.data.message.toLowerCase().includes('login'))) {
+                          showAlert.info(error.response?.data?.message || 'Please login to manage your wishlist');
                       } else if (error.response?.status === 403) {
-                          showAlert.warning('Unauthorized access');
+                          showAlert.info('Unauthorized access');
                       } else {
                           showAlert.error('Error updating wishlist');
                       }
@@ -1148,7 +1152,7 @@
         const productGrid = document.getElementById('product-grid');
         productGrid.innerHTML = `
           <div class="col-span-full text-center py-12">
-            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+            <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
             <p class="text-gray-600 mt-4">Loading products...</p>
           </div>
         `;
@@ -1158,10 +1162,10 @@
         const productGrid = document.getElementById('product-grid');
         productGrid.innerHTML = `
           <div class="col-span-full text-center py-12">
-            <i class="fas fa-exclamation-triangle text-4xl text-red-300 mb-4"></i>
+            <i class="fas fa-exclamation-triangle text-4xl text-amber-300 mb-4"></i>
             <h3 class="text-xl font-semibold text-gray-600 mb-2">${message}</h3>
             <p class="text-gray-500">Please try again later</p>
-            <button onclick="loadProductsFromBackend()" class="mt-4 bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors">
+            <button onclick="loadProductsFromBackend()" class="mt-4 bg-amber-500 text-gray-950 font-semibold px-6 py-2 rounded-lg hover:bg-amber-600 transition-colors">
               Retry
             </button>
           </div>

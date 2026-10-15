@@ -165,15 +165,17 @@ const filterProducts = async (req, res) => {
       };
     }
 
-    if (req.query.maxPrice) {
-      const maxPrice = parseFloat(req.query.maxPrice) || 100000;
-      if (!filterQuery.VariantItem) {
-        filterQuery.VariantItem = {};
+    if (req.query.maxPrice !== undefined && req.query.maxPrice !== '') {
+      const maxPrice = parseFloat(req.query.maxPrice);
+      if (!isNaN(maxPrice)) {
+        if (!filterQuery.VariantItem) {
+          filterQuery.VariantItem = {};
+        }
+        filterQuery.VariantItem.$elemMatch = {
+          ...(filterQuery.VariantItem.$elemMatch || {}),
+          offerPrice: { $lte: maxPrice },
+        };
       }
-      filterQuery.VariantItem.$elemMatch = {
-        ...(filterQuery.VariantItem.$elemMatch || {}),
-        offerPrice: { $lte: maxPrice },
-      };
     }
 
     const totalCount = await product.countDocuments(filterQuery);

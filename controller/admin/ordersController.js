@@ -311,6 +311,22 @@ const updateItemStatus = async (req, res) => {
       });
     }
 
+    // ── Payment-Failed guard ──────────────────────────────────────────────────
+    // Never allow progressing order items when payment has not been received.
+    // The only allowed action on a Payment Failed order is cancellation (by user)
+    // or a successful payment retry.
+    if (
+      orderDoc.paymentStatus === "Failed" ||
+      orderDoc.orderStatus === "Payment Failed"
+    ) {
+      return res.status(statusCode.FORBIDDEN).json({
+        success: false,
+        message:
+          "Cannot update order status: payment has failed. The customer must complete payment before this order can be processed.",
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const itemIndex = orderDoc.orderedItem.findIndex(
       (item) => item._id.toString() === itemId
     );

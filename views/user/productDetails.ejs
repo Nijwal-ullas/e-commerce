@@ -13,9 +13,10 @@
         .logo { font-family: 'Playfair Display', serif; }
         .out-of-stock-btn { opacity: 0.5; cursor: not-allowed; }
         .variant-btn.active {
-            background-color: #1f2937;
-            color: white;
-            border-color: #1f2937;
+            background-color: #f59e0b;
+            color: #111827;
+            border-color: #d97706;
+            font-weight: 600;
         }
     </style>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -25,14 +26,14 @@
     <%- include('../partials/user/header') %>
 
     <div class="min-h-screen bg-gray-50">
-        <div class="bg-white border-b border-gray-200">
-            <div class="max-w-7xl mx-auto px-6 md:px-1 py-4">
+        <div class="bg-white border-b border-gray-200 mt-[72px]">
+            <div class="max-w-7xl mx-auto px-6 md:px-12 py-2">
                 <nav class="text-sm">
                     <ol class="flex items-center space-x-2 text-gray-600">
                         <% breadcrumb.forEach((item, index) => { %>
                             <li class="flex items-center">
                                 <% if (item.url) { %>
-                                    <a href="<%= item.url %>" class="hover:text-blue-600 transition-colors duration-200 flex items-center">
+                                    <a href="<%= item.url %>" class="hover:text-amber-600 transition-colors duration-200 flex items-center">
                                         <% if (index === 0) { %>
                                             <i class="fas fa-home mr-2 text-xs"></i>
                                         <% } %>
@@ -57,7 +58,7 @@
             </div>
         </div>
 
-        <section class="max-w-7xl mx-auto px-6 md:px-12 py-8">
+        <section class="max-w-7xl mx-auto px-6 md:px-12 py-6">
             <div class="grid md:grid-cols-2 gap-12">
                 <div>
                     <div class="bg-gray-50 rounded-lg p-8 mb-4 flex items-center justify-center h-96">
@@ -117,7 +118,7 @@
                                             }
                                         %>
                                         <% if (discountPercentage > 0) { %>
-                                            <span class="bg-red-100 text-red-600 px-2 py-1 rounded text-sm font-medium">
+                                            <span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-sm font-semibold">
                                                 <%= discountPercentage %>% OFF
                                             </span>
                                         <% } %>
@@ -131,7 +132,7 @@
                                         }
                                     %>
                                     <% if (discountPercentage > 0) { %>
-                                        <span class="bg-red-100 text-red-600 px-2 py-1 rounded text-sm font-medium">
+                                        <span class="bg-amber-100 text-amber-800 px-2 py-1 rounded text-sm font-semibold">
                                             <%= discountPercentage %>% OFF
                                         </span>
                                     <% } %>
@@ -183,10 +184,10 @@
                                         data-discount="<%= discountPercentage %>">
                                     50ml
                                     <% if (discountPercentage > 0) { %>
-                                        <span class="block text-xs text-red-600 font-medium"><%= discountPercentage %>% OFF</span>
+                                        <span class="block text-xs text-amber-600 font-semibold"><%= discountPercentage %>% OFF</span>
                                     <% } %>
                                 </button>
-                                <button class="variant-btn px-4 py-2 border border-gray-300 rounded hover:border-gray-800 hover:bg-gray-800 hover:text-white transition text-sm" 
+                                <button class="variant-btn px-4 py-2 border border-gray-300 rounded hover:border-amber-500 hover:bg-amber-50 hover:text-amber-900 transition text-sm" 
                                         data-ml="100" 
                                         data-quantity="10" 
                                         data-offerprice="<%= product.price || 0 %>" 
@@ -194,7 +195,7 @@
                                         data-discount="<%= discountPercentage %>">
                                     100ml
                                     <% if (discountPercentage > 0) { %>
-                                        <span class="block text-xs text-red-600 font-medium"><%= discountPercentage %>% OFF</span>
+                                        <span class="block text-xs text-amber-600 font-semibold"><%= discountPercentage %>% OFF</span>
                                     <% } %>
                                 </button>
                             <% } %>
@@ -225,10 +226,10 @@
                     <div class="space-y-4 mb-6">
                         <button 
                         id="add-to-cart-btn"
-                        class="w-full py-3 rounded-full font-semibold transition flex items-center justify-center
+                        class="w-full py-3 rounded-full font-bold transition flex items-center justify-center shadow-md
                                 <%= isBlocked 
-                                    ? 'bg-gray-400 opacity-50 cursor-not-allowed' 
-                                    : 'bg-blue-600 text-white hover:bg-blue-700' %>"
+                                    ? 'bg-gray-400 opacity-50 cursor-not-allowed text-white' 
+                                    : 'bg-amber-500 text-gray-950 hover:bg-amber-600' %>"
                         onclick="addToCart(false)"
                         <%= isBlocked ? 'disabled' : '' %>>
                         🛒 Add to cart
@@ -236,10 +237,10 @@
                                                 
                         <button 
                         id="buy-now-btn"
-                        class="w-full py-3 rounded-full font-semibold transition flex items-center justify-center
+                        class="w-full py-3 rounded-full font-bold transition flex items-center justify-center shadow-md
                                 <%= isBlocked 
-                                    ? 'bg-gray-400 opacity-50 cursor-not-allowed' 
-                                    : 'bg-green-600 text-white hover:bg-green-700' %>"
+                                    ? 'bg-gray-400 opacity-50 cursor-not-allowed text-white' 
+                                    : 'bg-gray-900 text-amber-400 hover:bg-black border border-amber-400/30' %>"
                         onclick="addToCart(true)"
                         <%= isBlocked ? 'disabled' : '' %>>
                         ⚡ Buy Now
@@ -247,7 +248,7 @@
                     </div>
 
                     <button id="wishlist-btn" 
-                            class="flex items-center justify-center w-full text-sm text-gray-700 hover:text-red-500 transition mb-6">
+                            class="flex items-center justify-center w-full text-sm text-gray-700 hover:text-amber-500 transition mb-6">
                         <i class="far fa-heart mr-2"></i> ADD TO WISHLIST
                     </button>
 
@@ -311,7 +312,7 @@
                                             }
                                           %>
                                           <% if (discountPercentage > 0) { %>
-                                            <span class="absolute top-2 left-2 bg-red-100 text-red-600 px-2 py-1 rounded text-sm font-medium">
+                                            <span class="absolute top-2 left-2 bg-amber-100 text-amber-800 px-2 py-1 rounded text-sm font-semibold">
                                                <%= discountPercentage %>% OFF
                                             </span>
                                           <% } %>
@@ -326,7 +327,7 @@
                                     </div>
                                     
                                     <div class="p-4">
-                                        <h3 class="text-sm font-semibold text-gray-800 mb-2 line-clamp-2 hover:text-red-600 transition-colors">
+                                        <h3 class="text-sm font-semibold text-gray-800 mb-2 line-clamp-2 hover:text-amber-600 transition-colors">
                                             <%= relatedProduct.productName %>
                                         </h3>
                                         
@@ -348,7 +349,7 @@
                                 
                                 <div class="p-4 border-t">
                                     <button 
-                                        class="add-to-cart-related w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium transition-colors duration-200 text-sm flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" 
+                                        class="add-to-cart-related w-full bg-amber-500 text-gray-950 px-4 py-2 rounded-lg hover:bg-amber-600 font-semibold transition-colors duration-200 text-sm flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed" 
                                         data-product-id="<%= relatedProduct._id %>"
                                         onclick="addRelatedToCart('<%= relatedProduct._id %>')"
                                         <%= !isInStock ? 'disabled style="display: none;"' : '' %>
@@ -383,6 +384,7 @@
         let selectedQuantity = 1;
         const productId = '<%= product._id %>';
         const isBlocked = <%= isBlocked ? 'true' : 'false' %>;
+        const isUserLoggedIn = <%= user ? 'true' : 'false' %>;
 
         const showAlert = {
             success: (message, timer = 2000) => {
@@ -601,6 +603,11 @@
                     );
                     return;
                 }
+
+                if (!isUserLoggedIn) {
+                    showAlert.info('Please login to manage your wishlist');
+                    return;
+                }
                 
                 const wishlistBtn = document.getElementById('wishlist-btn');
                 const heartIcon = wishlistBtn.querySelector('i');
@@ -676,8 +683,8 @@
             } catch (error) {
                 console.error('Error updating wishlist:', error);
                 
-                if (error.response?.status === 401) {
-                    showAlert.warning('Please login to manage your wishlist');
+                if (error.response?.status === 401 || (error.response?.data?.message && error.response.data.message.toLowerCase().includes('login'))) {
+                    showAlert.info(error.response?.data?.message || 'Please login to manage your wishlist');
                 } else {
                     showAlert.error('Error updating wishlist');
                 }
@@ -926,6 +933,11 @@ async function toggleWishlist() {
             showAlert.warning("This product is blocked by admin and cannot be added to wishlist.");
             return;
         }
+
+        if (!isUserLoggedIn) {
+            showAlert.info('Please login to manage your wishlist');
+            return;
+        }
         
         const wishlistBtn = document.getElementById('wishlist-btn');
         const heartIcon = wishlistBtn.querySelector('i');
@@ -983,8 +995,8 @@ async function toggleWishlist() {
     } catch (error) {
         console.error('Error updating wishlist:', error);
         
-        if (error.response?.status === 401) {
-            showAlert.warning('Please login to manage your wishlist');
+        if (error.response?.status === 401 || (error.response?.data?.message && error.response.data.message.toLowerCase().includes('login'))) {
+            showAlert.info(error.response?.data?.message || 'Please login to manage your wishlist');
         } else {
             showAlert.error('Error updating wishlist');
         }

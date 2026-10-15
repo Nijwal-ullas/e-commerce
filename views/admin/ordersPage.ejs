@@ -71,6 +71,7 @@
                 <option value="Delivered" <%= statusFilter === 'Delivered' ? 'selected' : '' %>>Delivered</option>
                 <option value="Cancelled" <%= statusFilter === 'Cancelled' ? 'selected' : '' %>>Cancelled</option>
                 <option value="Returned" <%= statusFilter === 'Returned' ? 'selected' : '' %>>Returned</option>
+                <option value="Payment Failed" <%= statusFilter === 'Payment Failed' ? 'selected' : '' %>>⚠️ Payment Failed</option>
               </select>
             </div>
           </div>
@@ -130,8 +131,12 @@
                          order.status === 'Shipped' ? 'bg-blue-100 text-blue-800' : 
                          order.status === 'Processing' ? 'bg-indigo-100 text-indigo-800' : 
                          order.status === 'Cancelled' ? 'bg-red-100 text-red-800' : 
+                         order.status === 'Payment Failed' ? 'bg-red-200 text-red-900 font-bold' :
                          'bg-yellow-100 text-yellow-800' %>"
                     >
+                      <% if (order.status === 'Payment Failed') { %>
+                        <i class="fas fa-exclamation-circle mr-1 text-red-700"></i>
+                      <% } %>
                       <%= order.status || 'Pending' %>
                     </span>
                   </td>
