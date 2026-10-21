@@ -1,16 +1,32 @@
-<div class="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
+<div class="bg-white shadow-sm px-4 py-4 flex items-center justify-between sticky top-0 z-20">
+  <!-- Hamburger (mobile only) -->
+  <button
+    class="lg:hidden text-gray-600 hover:text-gray-900 focus:outline-none mr-3"
+    onclick="openSidebar()"
+    aria-label="Open menu"
+  >
+    <i class="fas fa-bars text-xl"></i>
+  </button>
+
   <h1 class="text-lg font-semibold text-gray-800">Perfume Dashboard</h1>
 
   <div class="flex items-center gap-4">
-    <!-- <div class="relative">
-      <i class="fas fa-bell text-gray-600"></i>
-    </div> -->
     <a href="/admin/profile" class="block w-8 h-8 rounded-full overflow-hidden">
-      <img
-        src="<%= admin?.image || '/images/default-avatar.png' %>"
-        alt="Admin"
-        class="w-full h-full object-cover rounded-full"
-      />
+      <% if (typeof admin !== 'undefined' && admin && admin.image) { %>
+        <img
+          src="<%= admin.image %>"
+          alt="Admin"
+          class="w-full h-full object-cover rounded-full"
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+        />
+        <div class="w-full h-full bg-indigo-600 text-white hidden items-center justify-center text-xs font-bold rounded-full">
+          <i class="fas fa-user-shield"></i>
+        </div>
+      <% } else { %>
+        <div class="w-full h-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold rounded-full">
+          <i class="fas fa-user-shield"></i>
+        </div>
+      <% } %>
     </a>
   </div>
 </div>

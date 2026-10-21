@@ -1,9 +1,20 @@
-<div class="w-64 bg-white shadow-lg">
-  <div class="p-4 border-b">
-    <div class="text-gray-600 text-sm">Admin Panel</div>
+<!-- Overlay for mobile -->
+<div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden" onclick="closeSidebar()"></div>
+
+<!-- Sidebar -->
+<div
+  id="adminSidebar"
+  class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col"
+>
+  <div class="p-4 border-b flex items-center justify-between">
+    <div class="text-gray-600 text-sm font-semibold">Admin Panel</div>
+    <!-- Close button visible only on mobile -->
+    <button class="lg:hidden text-gray-500 hover:text-gray-700 focus:outline-none" onclick="closeSidebar()">
+      <i class="fas fa-times text-lg"></i>
+    </button>
   </div>
 
-  <nav class="p-4 space-y-1">
+  <nav class="p-4 space-y-1 flex-1 overflow-y-auto">
     <a
       href="/admin/dashboard"
       class="flex items-center gap-3 px-4 py-2 <%= currentRoute === '/admin/dashboard' ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-600' : 'text-gray-700 hover:bg-gray-100' %> rounded"
@@ -70,10 +81,25 @@
 
     <a
       href="/admin/logout"
-      class="flex items-center gap-3 px-4 py-2 <%= currentRoute === '/admin/logout' ? 'bg-blue-50 text-blue-700 border-r-4 border-blue-600' : 'text-gray-700 hover:bg-gray-100' %> rounded"
+      class="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded"
     >
       <i class="fas fa-sign-out-alt"></i>
       <span>Logout</span>
     </a>
   </nav>
 </div>
+
+<script>
+  function openSidebar() {
+    const sidebar = document.getElementById('adminSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (sidebar) sidebar.classList.remove('-translate-x-full');
+    if (overlay) overlay.classList.remove('hidden');
+  }
+  function closeSidebar() {
+    const sidebar = document.getElementById('adminSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (sidebar) sidebar.classList.add('-translate-x-full');
+    if (overlay) overlay.classList.add('hidden');
+  }
+</script>

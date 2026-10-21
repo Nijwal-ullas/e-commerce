@@ -1,7 +1,7 @@
 <div class="w-full lg:w-72 flex-shrink-0">
   <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-200">
-    <!-- Header with back button -->
-    <div class="px-6 py-5 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
+    <!-- Header with back button & mobile toggle -->
+    <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 flex items-center justify-between">
       <button
         onclick="window.history.back()"
         class="flex items-center gap-2 text-gray-600 hover:text-amber-600 transition-all duration-200 group font-medium"
@@ -16,9 +16,21 @@
         </svg>
         <span class="text-sm font-semibold">Go Back</span>
       </button>
+
+      <button
+        id="profileSidebarToggle"
+        type="button"
+        class="lg:hidden text-xs font-semibold px-3 py-1.5 bg-gray-100 hover:bg-amber-100 text-gray-700 hover:text-amber-800 rounded-lg flex items-center gap-1.5 transition"
+        onclick="toggleProfileNav()"
+        aria-label="Toggle navigation menu"
+      >
+        <span>Account Menu</span>
+        <i id="profileNavChevron" class="fas fa-chevron-down text-xs transition-transform duration-200"></i>
+      </button>
     </div>
 
-    <!-- Navigation Menu -->
+    <!-- Navigation Menu (collapsible on mobile, always visible on lg+) -->
+    <div id="profileSidebarCollapse" class="hidden lg:block">
     <nav class="p-4 space-y-1">
       <!-- Profile -->
       <a
@@ -193,5 +205,19 @@
         </button>
       </form>
     </div>
+    </div> <!-- Close profileSidebarCollapse -->
   </div>
 </div>
+
+<script>
+  function toggleProfileNav() {
+    const collapse = document.getElementById('profileSidebarCollapse');
+    const chevron = document.getElementById('profileNavChevron');
+    if (collapse) {
+      const isHidden = collapse.classList.toggle('hidden');
+      if (chevron) {
+        chevron.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
+      }
+    }
+  }
+</script>
