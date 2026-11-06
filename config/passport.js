@@ -10,11 +10,12 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "https://e-commerce-khbn.vercel.app",
+      callbackURL: process.env.GOOGLE_CALLBACK_URL || "/auth/google/callback",
+      proxy: true,
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        let email = profile.emails?.[0]?.value;
+        let email = profile.emails?.[0]?.value?.toLowerCase();
 
         let user = await User.findOne({
           $or: [{ googleId: profile.id }, { email }],
@@ -25,13 +26,22 @@ passport.use(
             return done(null, false, { message: "blocked" });
           }
 
+          if (!user.googleId) {
+            user.googleId = profile.id;
+            if (!user.profileImage && profile.photos?.[0]?.value) {
+              user.profileImage = profile.photos[0].value;
+            }
+            await user.save();
+          }
+
           return done(null, user);
         }
 
         user = new User({
-          name: profile.displayName,
+          name: profile.displayName || "Google User",
           email,
           googleId: profile.id,
+          profileImage: profile.photos?.[0]?.value || null,
           authProvider: "google"
         });
         await user.save();
@@ -39,6 +49,7 @@ passport.use(
         return done(null, user);
 
       } catch (error) {
+        console.error("Google Auth error:", error);
         return done(error, null);
       }
     }

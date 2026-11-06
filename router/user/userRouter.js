@@ -41,7 +41,14 @@ router.get(
       email: req.user.email,
       profileImage: req.user.profileImage || null
     };
-    res.redirect('/');
+
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error after Google auth:", err);
+        return res.redirect('/login');
+      }
+      res.redirect('/');
+    });
   }
 );
 
